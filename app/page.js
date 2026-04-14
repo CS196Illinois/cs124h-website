@@ -74,7 +74,7 @@ export default function Home() {
           <br />
           
           {/* TODO: comment this out */}
-          <p>To be announced! Please check back later.</p>
+          {/* <p>To be announced! Please check back later.</p> */}
 
           {/* TODO: update links and uncomment this */}
           <h3>Step 1:</h3>
