@@ -3,18 +3,31 @@ import { supabase } from "../../lib/supbaseClient";
 export async function getGroupPointsSummary() {
   const { data, error } = await supabase
     .from("event_attendance_sp26")
-    .select("name, netid, group, total");
+    .select("*");
 
   if (error) {
-    console.error("Error fetching attendance:", error);
+    console.error("Error fetching attendance:", error.message, error.details, error.hint);
+    return [];
+  }
+
+  console.log("Fetched rows:", data?.length, "| Sample row:", data?.[0]);
+  if (!data || data.length === 0) return [];
+
+  // resolve actual column names case-insensitively
+  const sampleKeys = Object.keys(data[0]);
+  const groupKey = sampleKeys.find((k) => k.toLowerCase() === "group");
+  const totalKey = sampleKeys.find((k) => k.toLowerCase() === "total");
+
+  if (!groupKey || !totalKey) {
+    console.error("Could not find group/total columns. Available columns:", sampleKeys);
     return [];
   }
 
   // group points by group name; each unit of total = 10 points
   const groupSummaryMap = {};
   for (const student of data) {
-    const points = (student.total || 0) * 10;
-    const groupName = student.group;
+    const points = (student[totalKey] || 0) * 10;
+    const groupName = student[groupKey];
 
     if (!groupSummaryMap[groupName]) {
       groupSummaryMap[groupName] = {
