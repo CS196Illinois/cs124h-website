@@ -55,7 +55,7 @@ export default function Leaderboard() {
               }`}
             >
               <div className={styles.rank}>#{group.rank}</div>
-              <div className={styles.name}>{group.group_name}</div>
+              <div className={styles.name}>Group: <span>{group.group_name}</span></div>
               <div className={styles.points}>
                 Points: <span>{group.total_points}</span> 🏆
               </div>
