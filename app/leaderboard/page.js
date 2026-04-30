@@ -18,24 +18,22 @@ export default function Leaderboard() {
   const [visibleCount, setVisibleCount] = useState(4);
   const [leaderboardData, setLeaderboardData] = useState([]);
 
-  {/* TODO: uncomment when new leaderboard db is ready */}
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     const newLeaderboardData = await getGroupPointsSummary();
-  //     setLeaderboardData(newLeaderboardData || []);
-  //   }
+  useEffect(() => {
+    const fetchData = async () => {
+      const newLeaderboardData = await getGroupPointsSummary();
+      setLeaderboardData(newLeaderboardData || []);
+    };
 
-  //   fetchData()
-  // }, []) // empty dependency array => runs on mount
-  
+    fetchData();
+  }, []);
 
-  // const handleToggle = () => {
-  //   if (visibleCount === leaderboardData.length) {
-  //     setVisibleCount(4); // Collapse
-  //   } else {
-  //     setVisibleCount(leaderboardData.length); // Show all
-  //   }
-  // };
+  const handleToggle = () => {
+    if (visibleCount === leaderboardData.length) {
+      setVisibleCount(4);
+    } else {
+      setVisibleCount(leaderboardData.length);
+    }
+  };
 
   return (
     <>
@@ -48,10 +46,6 @@ export default function Leaderboard() {
           </span>
         </h1>
 
-          {/* TODO: uncomment when new leaderboard db is ready */}
-
-          <p>Coming Soon...🤖</p>
-{/* 
         <div className={styles.groupList}>
           {leaderboardData.slice(0, visibleCount).map((group, index) => (
             <div
@@ -61,7 +55,7 @@ export default function Leaderboard() {
               }`}
             >
               <div className={styles.rank}>#{group.rank}</div>
-              <div className={styles.name}>Group: {group.group_number}</div>
+              <div className={styles.name}>{group.group_name}</div>
               <div className={styles.points}>
                 Points: <span>{group.total_points}</span> 🏆
               </div>
@@ -71,7 +65,7 @@ export default function Leaderboard() {
 
         <button className={styles.moreButton} onClick={handleToggle}>
           {visibleCount === leaderboardData.length ? "Show Less" : "Show More"}
-        </button> */}
+        </button>
       </div>
     </>
   );
