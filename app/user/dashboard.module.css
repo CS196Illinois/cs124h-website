@@ -1,0 +1,785 @@
+/* ─── Layout ──────────────────────────────────────────────────── */
+.container {
+  flex: 1;
+  padding: 2rem;
+  background-color: #112a67;
+  animation: pageEnter 0.18s ease-out;
+}
+
+/* ─── Responsive grid layouts ─────────────────────────────── */
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.threeCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1.25rem 1rem;
+    padding-top: 3.5rem;
+    overflow-x: hidden;
+  }
+
+  .twoCol,
+  .threeCol {
+    grid-template-columns: 1fr;
+  }
+
+  .searchBar {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .searchWrap {
+    width: 100%;
+  }
+
+  .searchWrap .searchBar {
+    width: 100%;
+  }
+
+  .toolbarLeft {
+    width: 100%;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbarRight {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.header {
+  margin-bottom: 2rem;
+}
+
+.header h1 {
+  font-size: 1.9rem;
+  color: #f9f9f9;
+  font-family: "Kufam", sans-serif;
+}
+
+.header p {
+  color: rgba(249, 249, 249, 0.55);
+  font-size: 0.9rem;
+  margin-top: 0.3rem;
+  font-family: "Inter", sans-serif;
+}
+
+/* ─── Stats ───────────────────────────────────────────────────── */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.statCard {
+  background: #18245d;
+  border-radius: 16px;
+  padding: 1.25rem 1rem;
+  text-align: center;
+}
+
+.statNumber {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #f9f9f9;
+  font-family: "Kufam", sans-serif;
+  line-height: 1;
+}
+
+.statLabel {
+  color: rgba(249, 249, 249, 0.55);
+  font-size: 0.78rem;
+  margin-top: 0.35rem;
+  font-family: "Inter", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Tabs ────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(249, 249, 249, 0.5);
+  font-size: 0.95rem;
+  font-family: "Inter", sans-serif;
+  padding: 0.55rem 1.1rem;
+  cursor: pointer;
+  transition: color 0.18s;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: #f9f9f9;
+}
+
+.activeTab {
+  color: #f9f9f9;
+  border-bottom-color: #ecb557;
+  font-weight: 600;
+}
+
+/* ─── Panel ───────────────────────────────────────────────────── */
+.panel {
+  background: #18245d;
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+/* ─── Toolbar ─────────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ─── Filter chips ────────────────────────────────────────────── */
+.filterChips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.chip {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(249, 249, 249, 0.65);
+  border-radius: 20px;
+  padding: 0.28rem 0.85rem;
+  font-size: 0.82rem;
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f9f9f9;
+}
+
+.activeChip {
+  background: hsl(223, 44%, 47%);
+  border-color: transparent;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* ─── Search bar ──────────────────────────────────────────────── */
+.searchWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.searchWrap .searchBar {
+  padding-right: 2rem;
+}
+
+.searchClear {
+  position: absolute;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: rgba(249, 249, 249, 0.45);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.searchClear:hover {
+  color: #f9f9f9;
+}
+
+.searchBar {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f9f9f9;
+  border-radius: 6px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.88rem;
+  font-family: "Inter", sans-serif;
+  outline: none;
+  width: 220px;
+  transition: border-color 0.18s;
+}
+
+.searchBar::placeholder {
+  color: rgba(249, 249, 249, 0.3);
+}
+
+.searchBar:focus {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 0 3px rgba(236, 181, 87, 0.12);
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────── */
+.btnPrimary {
+  background-color: #ecb557;
+  color: #112a67;
+  border: none;
+  border-radius: 6px;
+  padding: 0.55rem 1.25rem;
+  font-size: 0.88rem;
+  font-family: "Inter", sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.btnPrimary:hover {
+  background-color: #f4c767;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  background: transparent;
+  color: rgba(249, 249, 249, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.88rem;
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+
+.btnSecondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f9f9f9;
+}
+
+.btnSmall {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8rem;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  font-family: "Inter", sans-serif;
+  transition: background-color 0.18s;
+  white-space: nowrap;
+}
+
+.btnComplete {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.25);
+}
+
+.btnComplete:hover {
+  background: rgba(74, 222, 128, 0.25);
+}
+
+.btnReopen {
+  background: rgba(79, 141, 222, 0.15);
+  color: #4f8dde;
+  border: 1px solid rgba(79, 141, 222, 0.25);
+}
+
+.btnReopen:hover {
+  background: rgba(79, 141, 222, 0.25);
+}
+
+.btnDanger {
+  background: transparent;
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 5px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8rem;
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+  transition: background-color 0.18s;
+  white-space: nowrap;
+}
+
+.btnDanger:hover {
+  background: rgba(248, 113, 113, 0.1);
+}
+
+/* ─── Table ───────────────────────────────────────────────────── */
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Inter", sans-serif;
+}
+
+.table th {
+  text-align: left;
+  color: rgba(249, 249, 249, 0.5);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 500;
+}
+
+.table td {
+  padding: 0.75rem 0.9rem;
+  color: #f9f9f9;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.cellMono {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: rgba(249, 249, 249, 0.65);
+}
+
+.cellActions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ─── Role badges ─────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: "Inter", sans-serif;
+  letter-spacing: 0.03em;
+}
+
+.badgeLEAD    { background: rgba(124, 58, 237, 0.2);  color: #c4b5fd; }
+.badgeLEADWEB { background: rgba(99, 102, 241, 0.2);  color: #a5b4fc; }
+.badgeHEAD    { background: rgba(5, 150, 105, 0.2);   color: #6ee7b7; }
+.badgePM      { background: rgba(79, 141, 222, 0.2);  color: #93c5fd; }
+.badgeWEB     { background: rgba(219, 39, 119, 0.2);  color: #f9a8d4; }
+.badgeSTUDENT { background: rgba(236, 181, 87, 0.2);  color: #fcd34d; }
+
+/* ─── Status ──────────────────────────────────────────────────── */
+.statusDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 0.45rem;
+}
+
+.statusDone       { color: #4ade80; }
+.statusDoneDot    { background: #4ade80; }
+.statusPending    { color: rgba(249, 249, 249, 0.6); }
+.statusPendingDot { background: rgba(249, 249, 249, 0.4); }
+
+/* ─── Inline role select ──────────────────────────────────────── */
+.roleSelect {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f9f9f9;
+  border-radius: 6px;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.8rem;
+  font-family: "Inter", sans-serif;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+/* Arrow only for <select> elements — not for <input> with roleSelect */
+select.roleSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='rgba(249%2C249%2C249%2C0.45)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  background-size: 0.75rem;
+  padding-right: 2rem;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.roleSelect:focus {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 0 3px rgba(236, 181, 87, 0.12);
+}
+
+.roleSelect option {
+  background: #18245d;
+}
+
+/* ─── Modal ───────────────────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1rem;
+}
+
+.modal {
+  background: #18245d;
+  border-radius: 16px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal h2 {
+  color: #f9f9f9;
+  font-family: "Kufam", sans-serif;
+  font-size: 1.3rem;
+  margin-bottom: 1.5rem;
+}
+
+.formGroup {
+  margin-bottom: 1rem;
+}
+
+.formGroup label {
+  display: block;
+  color: rgba(249, 249, 249, 0.6);
+  font-size: 0.8rem;
+  font-family: "Inter", sans-serif;
+  margin-bottom: 0.35rem;
+  font-weight: 500;
+}
+
+.formGroup input,
+.formGroup select,
+.formGroup textarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f9f9f9;
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+  font-family: "Inter", sans-serif;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+.formGroup select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='rgba(249%2C249%2C249%2C0.45)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 0.75rem;
+  padding-right: 2.4rem;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.formGroup input:focus,
+.formGroup select:focus,
+.formGroup textarea:focus {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 0 3px rgba(236, 181, 87, 0.12);
+}
+
+.formGroup select option {
+  background: #18245d;
+  color: #f9f9f9;
+}
+
+.formGroup textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.checkboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  color: rgba(249, 249, 249, 0.75);
+  font-size: 0.85rem;
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+  user-select: none;
+}
+
+.checkboxInput {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin: 0;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.18s, border-color 0.18s;
+}
+
+.checkboxInput:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.checkboxInput:checked {
+  background: #ecb557;
+  border-color: #ecb557;
+}
+
+.checkboxInput:checked::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 10px;
+  border: solid #18245d;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkboxInput:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(236, 181, 87, 0.25);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+/* ─── Action item cards ───────────────────────────────────────── */
+.actionList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.actionCard {
+  padding: 1rem 0.25rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.actionCard:last-child {
+  border-bottom: none;
+}
+
+.actionCard.done {
+  opacity: 0.5;
+}
+
+.actionCheckbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(249, 249, 249, 0.25);
+  background: transparent;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.18s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.actionCheckbox.checked {
+  background: #4ade80;
+  border-color: #4ade80;
+}
+
+.actionBody {
+  flex: 1;
+}
+
+.actionTitle {
+  color: #f9f9f9;
+  font-size: 0.95rem;
+  font-family: "Inter", sans-serif;
+  font-weight: 500;
+}
+
+.actionTitle.strikethrough {
+  text-decoration: line-through;
+  color: rgba(249, 249, 249, 0.4);
+}
+
+.actionMeta {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.actionMetaItem {
+  color: rgba(249, 249, 249, 0.4);
+  font-size: 0.78rem;
+  font-family: "Inter", sans-serif;
+}
+
+.actionDesc {
+  color: rgba(249, 249, 249, 0.5);
+  font-size: 0.82rem;
+  font-family: "Inter", sans-serif;
+  margin-top: 0.2rem;
+}
+
+/* ─── Empty state ─────────────────────────────────────────────── */
+.emptyState {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: rgba(249, 249, 249, 0.3);
+  font-family: "Inter", sans-serif;
+  font-size: 0.9rem;
+}
+
+.emptyIcon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+/* ─── Loading ─────────────────────────────────────────────────── */
+.loading {
+  text-align: center;
+  padding: 4rem;
+  color: rgba(249, 249, 249, 0.35);
+  font-family: "Inter", sans-serif;
+}
+
+/* ─── Skeleton shimmer ─────────────────────────────────────────── */
+.skeletonBlock {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+/* ─── Alert ───────────────────────────────────────────────────── */
+.alertError {
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  color: #fca5a5;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  font-size: 0.85rem;
+  font-family: "Inter", sans-serif;
+  margin-bottom: 1rem;
+}
+
+.alertSuccess {
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  color: #86efac;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  font-size: 0.85rem;
+  font-family: "Inter", sans-serif;
+  margin-bottom: 1rem;
+}
+
+/* ─── Sub-tabs (within a panel) ───────────────────────────────── */
+.subTabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.subTab {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(249, 249, 249, 0.55);
+  border-radius: 6px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.82rem;
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.subTab:hover {
+  color: #f9f9f9;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.activeSubTab {
+  background: hsl(223, 44%, 47%);
+  border-color: transparent;
+  color: #ffffff;
+  font-weight: 600;
+}

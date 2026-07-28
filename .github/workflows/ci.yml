@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+# All test files share one live set of Supabase test_ tables with no
+# per-run isolation (each file's beforeEach wipes them) — two concurrent CI
+# runs would race each other's cleanup. Serialize repo-wide instead of
+# building full per-run data isolation.
+concurrency:
+  group: ci-shared-test-tables
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      NEXTAUTH_URL: http://localhost:3100
+      AUTH_URL: http://localhost:3100
+      CILOGON_CLIENT_ID: ${{ secrets.CILOGON_CLIENT_ID }}
+      CILOGON_CLIENT_SECRET: ${{ secrets.CILOGON_CLIENT_SECRET }}
+      CILOGON_ISSUER: ${{ secrets.CILOGON_ISSUER }}
+      CILOGON_REDIRECT_URI: ${{ secrets.CILOGON_REDIRECT_URI }}
+      ATTENDANCE_SECRET: ${{ secrets.ATTENDANCE_SECRET }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+      DISCORD_PUBLIC_KEY: ${{ secrets.DISCORD_PUBLIC_KEY }}
+      DISCORD_APP_ID: ${{ secrets.DISCORD_APP_ID }}
+      DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
+      DISCORD_WELCOME_CHANNEL_ID: ${{ secrets.DISCORD_WELCOME_CHANNEL_ID }}
+      DISCORD_LINK_SECRET: ${{ secrets.DISCORD_LINK_SECRET }}
+      # Not secret — just means "run against the test_ tables, never production".
+      USE_TEST_TABLES: "true"
+      NEXT_PUBLIC_USE_TEST_TABLES: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Run Vitest (API/unit tests)
+        run: npm test
+
+      # Playwright E2E only gates the higher-stakes dev -> main promotion.
+      # Feature -> dev PRs get faster feedback from build + Vitest alone.
+      - name: Install Playwright browsers
+        if: github.base_ref == 'main'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright E2E tests
+        if: github.base_ref == 'main'
+        run: npm run test:e2e

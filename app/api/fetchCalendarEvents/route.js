@@ -1,4 +1,4 @@
-// Note: This file will be useful once our app is authenticated and we can use the google calendar api 
+// Note: This file will be useful once our app is authenticated and we can use the google calendar api
 
 // import { google } from 'googleapis';
 
