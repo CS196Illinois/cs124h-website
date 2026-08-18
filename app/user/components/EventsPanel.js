@@ -1,0 +1,343 @@
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import styles from "../dashboard.module.css";
+import panelStyles from "./EventsPanel.module.css";
+
+export default function EventsPanel() {
+  const [events, setEvents]         = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [expandedId, setExpandedId] = useState(null); // event whose attendees are shown
+  const [attendees, setAttendees]   = useState({});   // eventId → [{ net_id, checked_in_at }]
+
+  // Create-event modal
+  const [showModal, setShowModal]   = useState(false);
+  const [form, setForm]             = useState({ title: "", description: "", location: "", presenter: "", start_time: "", end_time: "" });
+  const [formError, setFormError]   = useState("");
+  const [formLoading, setFormLoading] = useState(false);
+
+  // Live rotating codes: eventId → { code, expiresIn }
+  const [liveCodes, setLiveCodes]   = useState({});
+  const pollRef                     = useRef({});
+  const tickRef                     = useRef(null);
+
+  // ── Data fetching ──────────────────────────────────────────────
+
+  const fetchEvents = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/events");
+    if (res.ok) setEvents(await res.json());
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchEvents(); }, [fetchEvents]);
+
+  // ── Code polling: start/stop per open event ────────────────────
+
+  const fetchCode = useCallback(async (eventId) => {
+    const res = await fetch(`/api/events/${eventId}/code`);
+    if (res.ok) {
+      const { code, expiresIn } = await res.json();
+      setLiveCodes(prev => ({ ...prev, [eventId]: { code, expiresIn } }));
+    }
+  }, []);
+
+  useEffect(() => {
+    const openIds = events.filter(e => e.check_in_open).map(e => e.id);
+    const prevIds = Object.keys(pollRef.current);
+
+    // Stop polling for events that closed
+    prevIds.forEach(id => {
+      if (!openIds.includes(id)) {
+        clearInterval(pollRef.current[id]);
+        delete pollRef.current[id];
+        setLiveCodes(prev => { const n = { ...prev }; delete n[id]; return n; });
+      }
+    });
+
+    // Start polling for newly opened events
+    openIds.forEach(id => {
+      if (!pollRef.current[id]) {
+        fetchCode(id);
+        pollRef.current[id] = setInterval(() => fetchCode(id), 5_000);
+      }
+    });
+  }, [events, fetchCode]);
+
+  // Tick-down the expiresIn counters every second
+  useEffect(() => {
+    tickRef.current = setInterval(() => {
+      setLiveCodes(prev => {
+        const next = { ...prev };
+        let changed = false;
+        Object.keys(next).forEach(id => {
+          if (next[id].expiresIn > 0) {
+            next[id] = { ...next[id], expiresIn: next[id].expiresIn - 1 };
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }, 1_000);
+    return () => clearInterval(tickRef.current);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(pollRef.current).forEach(clearInterval);
+      clearInterval(tickRef.current);
+    };
+  }, []);
+
+  // ── Actions ────────────────────────────────────────────────────
+
+  const toggleCheckIn = async (eventId, currentlyOpen) => {
+    await fetch(`/api/events/${eventId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ check_in_open: !currentlyOpen }),
+    });
+    await fetchEvents();
+  };
+
+  const deleteEvent = async (eventId) => {
+    if (!confirm("Delete this event and all its check-ins?")) return;
+    await fetch(`/api/events/${eventId}`, { method: "DELETE" });
+    await fetchEvents();
+  };
+
+  const viewAttendees = async (eventId) => {
+    if (expandedId === eventId) { setExpandedId(null); return; }
+    const res = await fetch(`/api/events/${eventId}/checkin`);
+    if (res.ok) setAttendees(async (prev) => ({ ...prev, [eventId]: await res.json() }));
+    setExpandedId(eventId);
+  };
+
+  const handleCreate = async () => {
+    setFormError("");
+    if (!form.title.trim()) { setFormError("Title is required."); return; }
+    setFormLoading(true);
+    const res = await fetch("/api/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const json = await res.json();
+    if (!res.ok) { setFormError(json.error || "Failed to create event."); setFormLoading(false); return; }
+    setShowModal(false);
+    setForm({ title: "", description: "", location: "", presenter: "", start_time: "", end_time: "" });
+    setFormLoading(false);
+    await fetchEvents();
+  };
+
+  // ── Render ─────────────────────────────────────────────────────
+
+  return (
+    <div>
+      {/* Toolbar */}
+      <div className={styles.toolbar}>
+        <span style={{ color: "#f9f9f9", fontFamily: "Inter", fontWeight: 600 }}>
+          Events ({events.length})
+        </span>
+        <button className={styles.btnPrimary} onClick={() => setShowModal(true)}>
+          + New Event
+        </button>
+      </div>
+
+      {/* Event list */}
+      {loading ? (
+        <div className={styles.loading}>Loading events…</div>
+      ) : events.length === 0 ? (
+        <div className={styles.emptyState}>
+          <span className={styles.emptyIcon}>📅</span>
+          No events yet. Create one to get started.
+        </div>
+      ) : (
+        <div className={styles.tableWrapper}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Date / Time</th>
+                <th>Created by</th>
+                <th>Check-in</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map(event => (
+                <>
+                  {/* Main row */}
+                  <tr key={event.id}>
+                    <td style={{ fontWeight: 500 }}>{event.title}</td>
+                    <td style={{ color: "rgba(249,249,249,0.55)", fontSize: "0.85rem" }}>
+                      {event.start_time
+                        ? new Date(event.start_time).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })
+                        : "-"}
+                    </td>
+                    <td className={styles.cellMono}>{event.created_by ?? "-"}</td>
+                    <td>
+                      {event.check_in_open
+                        ? <span style={{ color: "#4ade80", fontWeight: 600, fontSize: "0.85rem" }}>● Open</span>
+                        : <span style={{ color: "rgba(249,249,249,0.35)", fontSize: "0.85rem" }}>● Closed</span>}
+                    </td>
+                    <td>
+                      <div className={styles.cellActions}>
+                        <button
+                          className={`${styles.btnSmall} ${event.check_in_open ? styles.btnDanger : styles.btnComplete}`}
+                          onClick={() => toggleCheckIn(event.id, event.check_in_open)}
+                        >
+                          {event.check_in_open ? "Close Check-in" : "Open Check-in"}
+                        </button>
+                        <button
+                          className={styles.btnSmall}
+                          style={{ background: expandedId === event.id ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.07)", color: "#f9f9f9", border: "1px solid rgba(255,255,255,0.15)" }}
+                          onClick={() => viewAttendees(event.id)}
+                        >
+                          Attendees
+                        </button>
+                        <button className={styles.btnDanger} onClick={() => deleteEvent(event.id)}>
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Live code row - shown when check-in is open */}
+                  {event.check_in_open && liveCodes[event.id] && (
+                    <tr key={`${event.id}-code`}>
+                      <td colSpan={5} style={{ padding: 0 }}>
+                        <div className={panelStyles.codeRow}>
+                          <div className={panelStyles.codeBlock}>
+                            <span className={panelStyles.codeLabel}>Check-in Code</span>
+                            <span className={panelStyles.codeDigits}>
+                              {liveCodes[event.id].code}
+                            </span>
+                          </div>
+                          <div className={panelStyles.timerBlock}>
+                            <span className={panelStyles.codeLabel}>Rotates in</span>
+                            <span
+                              className={panelStyles.timerDigits}
+                              style={{ color: liveCodes[event.id].expiresIn <= 5 ? "#f87171" : "#f9f9f9" }}
+                            >
+                              {liveCodes[event.id].expiresIn}s
+                            </span>
+                          </div>
+                          <div className={panelStyles.codeHint}>
+                            Project this screen or read the code aloud.
+                            It rotates every 30 seconds - absent students can't use a shared screenshot.
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* Attendees row */}
+                  {expandedId === event.id && (
+                    <tr key={`${event.id}-att`}>
+                      <td colSpan={5} style={{ padding: 0 }}>
+                        <div className={panelStyles.attendeeRow}>
+                          <div className={panelStyles.attendeeHeader}>
+                            <span>
+                              {attendees[event.id]?.length ?? 0} attendee{attendees[event.id]?.length !== 1 ? "s" : ""}
+                            </span>
+                            <button
+                              className={styles.btnSecondary}
+                              style={{ padding: "0.2rem 0.6rem", fontSize: "0.8rem" }}
+                              onClick={() => setExpandedId(null)}
+                            >
+                              Close
+                            </button>
+                          </div>
+                          {!attendees[event.id]?.length ? (
+                            <p className={panelStyles.attendeeEmpty}>No check-ins yet.</p>
+                          ) : (
+                            <div className={panelStyles.attendeeChips}>
+                              {attendees[event.id].map(a => (
+                                <span key={a.net_id} className={panelStyles.chip}>
+                                  {a.net_id}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Create event modal */}
+      {showModal && (
+        <div className={styles.overlay} onClick={() => setShowModal(false)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <h2>New Event</h2>
+            {formError && <div className={styles.alertError}>{formError}</div>}
+            <div className={styles.formGroup}>
+              <label>Title *</label>
+              <input
+                value={form.title}
+                onChange={e => setForm({ ...form, title: e.target.value })}
+                placeholder="e.g. Week 5 Guest Lecture"
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label>Description</label>
+              <textarea
+                rows={2}
+                value={form.description}
+                onChange={e => setForm({ ...form, description: e.target.value })}
+                placeholder="Optional details…"
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label>Presenter</label>
+              <input
+                value={form.presenter}
+                onChange={e => setForm({ ...form, presenter: e.target.value })}
+                placeholder="Speaker name (optional)"
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label>Location</label>
+              <input
+                value={form.location}
+                onChange={e => setForm({ ...form, location: e.target.value })}
+                placeholder="e.g. Siebel 1404"
+              />
+            </div>
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <div className={styles.formGroup} style={{ flex: 1 }}>
+                <label>Start Time</label>
+                <input
+                  type="datetime-local"
+                  value={form.start_time}
+                  onChange={e => setForm({ ...form, start_time: e.target.value })}
+                />
+              </div>
+              <div className={styles.formGroup} style={{ flex: 1 }}>
+                <label>End Time <span style={{ color: "rgba(249,249,249,0.35)", fontWeight: 400 }}>(optional)</span></label>
+                <input
+                  type="datetime-local"
+                  value={form.end_time}
+                  onChange={e => setForm({ ...form, end_time: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className={styles.modalActions}>
+              <button className={styles.btnSecondary} onClick={() => setShowModal(false)}>Cancel</button>
+              <button className={styles.btnPrimary} onClick={handleCreate} disabled={formLoading}>
+                {formLoading ? "Creating…" : "Create Event"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

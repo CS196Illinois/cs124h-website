@@ -1,0 +1,109 @@
+/* ─── Live code row ───────────────────────────────────────────── */
+.codeRow {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+  padding: 1rem 0.9rem;
+  background: #112a67;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .codeDigits {
+    font-size: 1.8rem;
+    letter-spacing: 0.2em;
+  }
+
+  .timerDigits {
+    font-size: 1.2rem;
+  }
+
+  .codeRow {
+    gap: 1.25rem;
+  }
+}
+
+.codeLabel {
+  display: block;
+  color: rgba(249, 249, 249, 0.45);
+  font-size: 0.68rem;
+  font-family: "Inter", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  margin-bottom: 0.3rem;
+}
+
+.codeBlock {
+  flex-shrink: 0;
+}
+
+.codeDigits {
+  display: block;
+  font-family: "Kufam", monospace;
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: #f9f9f9;
+  letter-spacing: 0.3em;
+  line-height: 1;
+}
+
+.timerBlock {
+  flex-shrink: 0;
+}
+
+.timerDigits {
+  display: block;
+  font-family: monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: color 0.3s;
+}
+
+.codeHint {
+  color: rgba(249, 249, 249, 0.4);
+  font-size: 0.8rem;
+  font-family: "Inter", sans-serif;
+  max-width: 320px;
+  line-height: 1.45;
+}
+
+/* ─── Attendees row ───────────────────────────────────────────── */
+.attendeeRow {
+  padding: 1rem 0.9rem;
+  background: #112a67;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.attendeeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  color: #f9f9f9;
+  font-family: "Inter", sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.attendeeEmpty {
+  color: rgba(249, 249, 249, 0.35);
+  font-family: "Inter", sans-serif;
+  font-size: 0.85rem;
+}
+
+.attendeeChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 0.2rem 0.75rem;
+  font-family: monospace;
+  font-size: 0.82rem;
+  color: #f9f9f9;
+}

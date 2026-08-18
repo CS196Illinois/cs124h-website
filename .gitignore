@@ -16,7 +16,15 @@ pnpm-debug.log*
 .env.test.local
 .env.production.local
 
+# Test artifacts
+/test-results/
+/playwright-report/
+
 # Miscellaneous
 .DS_Store
 .idea/
 .vscode/
+
+.mcp.json
+cilogon-token-response.json
+tasks.md

@@ -1,0 +1,140 @@
+.section {
+  margin-bottom: 1.75rem;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  font-family: "Inter", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: rgba(249, 249, 249, 0.4);
+  margin-bottom: 0.75rem;
+}
+
+.eventList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.eventCard {
+  background: #112a67;
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pastCard {
+  opacity: 0.65;
+}
+
+.eventMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.eventTitle {
+  font-family: "Inter", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f9f9f9;
+}
+
+.eventDetail {
+  font-family: "Inter", sans-serif;
+  font-size: 0.78rem;
+  color: rgba(249, 249, 249, 0.45);
+}
+
+/* Code entry */
+.codeEntry {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.codeInput {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #f9f9f9;
+  font-family: monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.2em;
+  padding: 0.45rem 0.75rem;
+  width: 130px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.18s;
+}
+
+.codeInput:focus {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.codeInput::placeholder {
+  color: rgba(249, 249, 249, 0.25);
+  letter-spacing: 0.05em;
+  font-size: 0.8rem;
+}
+
+.codeSubmit {
+  background: #ecb557;
+  color: #112a67;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.88rem;
+  font-family: "Inter", sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.18s;
+  white-space: nowrap;
+}
+
+.codeSubmit:hover {
+  background: #f4c767;
+}
+
+.codeSubmit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Already checked in badge */
+.alreadyIn {
+  display: flex;
+  align-items: center;
+  font-family: "Inter", sans-serif;
+  font-size: 0.85rem;
+  color: #4ade80;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+/* Feedback messages */
+.feedbackOk {
+  width: 100%;
+  font-family: "Inter", sans-serif;
+  font-size: 0.82rem;
+  color: #4ade80;
+}
+
+.feedbackErr {
+  width: 100%;
+  font-family: "Inter", sans-serif;
+  font-size: 0.82rem;
+  color: #f87171;
+}

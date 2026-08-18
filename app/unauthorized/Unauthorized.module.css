@@ -1,0 +1,72 @@
+/* Container for the entire page */
+.pageContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 100vh;
+  padding: 2rem;
+  color: #0f172a;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Large error code text */
+.error {
+  font-size: 56px;
+  font-weight: 700;
+  color: #ef4444;
+  margin-bottom: 1rem;
+}
+
+/* Heading "Unauthorized" */
+.heading {
+  font-size: 24px;
+  margin: 0.5rem 0;
+}
+
+/* Description paragraph */
+.description {
+  color: #76859b;
+  margin-bottom: 1.5rem;
+  max-width: 480px; /* optional for readability */
+}
+
+/* Container for buttons */
+.buttonGroup {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Sign In button */
+.signInButton {
+  background: #0ea5e9;
+  color: #fff;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.signInButton:hover {
+  background: #0284c7;
+}
+
+/* Home button */
+.homeButton {
+  background: transparent;
+  color: #ffffff;
+  padding: 0.55rem 0.9rem;
+  border-radius: 6px;
+  text-decoration: none;
+  border: 1px solid #e2e8f0;
+  transition: background 0.2s, color 0.2s;
+}
+
+.homeButton:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
