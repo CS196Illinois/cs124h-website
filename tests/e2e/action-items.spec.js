@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures";
-import { insertUser, clearAllTestTables } from "../helpers/db";
+import { insertUser, insertActionItem, clearAllTestTables } from "../helpers/db";
 
 test.describe("action items: assign, complete, and grade", () => {
   test.beforeEach(clearAllTestTables);
@@ -43,5 +43,99 @@ test.describe("action items: assign, complete, and grade", () => {
 
     // Batch modal closes and the item no longer needs grading
     await expect(page.getByRole("heading", { name: "Grade Batch" })).not.toBeVisible();
+  });
+
+  test("pm assigns to a specific student, edits the item, then deletes it", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 2 });
+    await insertUser({ net_id: "e2e-stu1", role: "STUDENT", name: "Student One", group_number: 2 });
+    await insertUser({ net_id: "e2e-stu2", role: "STUDENT", name: "Student Two", group_number: 2 });
+
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/action_items");
+
+    await page.getByRole("button", { name: "+ Assign to Group" }).click();
+    // The page also has a title-filter <select>, so scope to the modal
+    // (h2's parent) to find the "Assign To" select unambiguously.
+    const modal = page.getByRole("heading", { name: "Assign Action Item" }).locator("..");
+    await modal.getByPlaceholder("Action item…").fill("Individual Task");
+    await modal.locator("select").selectOption("individual");
+    await page.locator("label", { hasText: "e2e-stu1" }).click();
+    await page.getByRole("button", { name: "Assign", exact: true }).click();
+    await expect(page.getByText(/Assigned to 1 students?\./)).toBeVisible();
+    // The modal auto-closes ~1.2s after success - wait for it to actually
+    // close so its own (still-mounted) student picker doesn't double-match text below.
+    await expect(page.getByRole("heading", { name: "Assign Action Item" })).not.toBeVisible();
+
+    // Only the targeted student got it, not their groupmate. (The title also
+    // appears as a filter-dropdown <option>, so scope to the table cell.)
+    await expect(page.getByRole("cell", { name: "Individual Task" })).toBeVisible();
+    await expect(page.getByText("e2e-stu1")).toBeVisible();
+    await expect(page.getByText("e2e-stu2")).not.toBeVisible();
+
+    // Edit its title. The edit modal's title field is its first text input.
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Edit Action Item" })).toBeVisible();
+    await page.locator("input").first().fill("Individual Task (renamed)");
+    await page.getByRole("button", { name: "Save Changes" }).click();
+    await expect(page.getByRole("cell", { name: "Individual Task (renamed)" })).toBeVisible();
+
+    // Delete it.
+    page.once("dialog", (d) => d.accept());
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await expect(page.getByRole("cell", { name: "Individual Task (renamed)" })).not.toBeVisible();
+  });
+
+  test("grading rejects a grade above the item's max score", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 4 });
+    await insertUser({ net_id: "e2e-stu1", role: "STUDENT", name: "Student One", group_number: 4 });
+    await insertActionItem({
+      net_id: "e2e-stu1", assigned_by: "e2e-pm", title: "Capped Item",
+      is_gradable: true, max_score: 50, is_done: true,
+    });
+
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/action_items");
+    await page.getByRole("button", { name: /Needs Grading/ }).click();
+    await page.getByRole("button", { name: "Grade", exact: true }).click();
+
+    await expect(page.getByRole("heading", { name: "Grade Item" })).toBeVisible();
+    await page.getByPlaceholder("e.g. 92").fill("999");
+    await page.getByRole("button", { name: "Save Grade" }).click();
+
+    await expect(page.getByText("Grade cannot exceed 50.")).toBeVisible();
+    // Modal stays open — the bad grade was never saved.
+    await expect(page.getByRole("heading", { name: "Grade Item" })).toBeVisible();
+  });
+
+  test("reopening a graded item clears its grade and puts it back up for grading", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 5 });
+    await insertUser({ net_id: "e2e-stu1", role: "STUDENT", name: "Student One", group_number: 5 });
+    await insertActionItem({
+      net_id: "e2e-stu1", assigned_by: "e2e-pm", title: "Graded Item",
+      is_gradable: true, max_score: 100, is_done: true, grade: 90,
+    });
+
+    // Student reopens their completed item.
+    await loginAs({ netID: "e2e-stu1", role: "student" });
+    await page.goto("/user/student/action_items");
+    await page.getByRole("button", { name: "Completed" }).click();
+    await expect(page.getByText("Score: 90/100")).toBeVisible();
+    await page.getByRole("button", { name: "Mark incomplete" }).click();
+
+    // Reopening moves it back to "To Do" and clears the grade.
+    await page.getByRole("button", { name: "To Do" }).click();
+    await expect(page.getByText("Graded Item")).toBeVisible();
+    await page.getByRole("button", { name: "Completed" }).click();
+    await expect(page.getByText("Graded Item")).not.toBeVisible();
+
+    // The pm sees it as a normal open item again, not something to grade —
+    // reopening clears is_done too, so it drops out of Needs Grading entirely.
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/action_items");
+    await expect(page.getByRole("button", { name: "Needs Grading" })).toBeVisible();
+    await page.getByRole("button", { name: "Open (1)" }).click();
+    // "Graded Item" also appears as an <option> in the title filter - the
+    // table cell is the specific thing being asserted on.
+    await expect(page.getByRole("cell", { name: "Graded Item" })).toBeVisible();
   });
 });
