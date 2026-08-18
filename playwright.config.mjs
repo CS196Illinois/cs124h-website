@@ -22,6 +22,14 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: "list",
 
+  // Next dev-mode compiles each route on-demand on its first hit, which can
+  // take ~10s for a route nobody's visited yet this run — well past the
+  // default 5s assertion timeout. Bumped so whichever test happens to hit a
+  // given route first doesn't fail on cold-compile time alone.
+  expect: {
+    timeout: 10_000,
+  },
+
   use: {
     baseURL: BASE_URL,
     trace: "on-first-retry",
