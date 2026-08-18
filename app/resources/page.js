@@ -4,6 +4,10 @@ import VideoCard from "../../components/VideoCard.js";
 import { getSupabaseServer } from "../../lib/supabaseServer";
 import { table } from "../../lib/tables";
 
+// Server-rendered from Supabase at build time; without this, edits to the
+// resources table would need a full redeploy to ever show up.
+export const revalidate = 60;
+
 export default async function ResourcesPage() {
   const supabase = getSupabaseServer();
   const { data } = await supabase
