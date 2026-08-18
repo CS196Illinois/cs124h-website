@@ -1,7 +1,6 @@
 import "./global.css";
 import AuthSessionProvider from "../components/AuthSessionProvider";
 import Navbar from "../components/navbar.js";
-import ChatWidget from "../components/ChatWidget";
 
 export const metadata = {
   title: "CS124H",
@@ -20,7 +19,6 @@ export default function RootLayout({ children }) {
         <AuthSessionProvider>
           <Navbar />
           {children}
-          <ChatWidget />
         </AuthSessionProvider>
       </body>
     </html>

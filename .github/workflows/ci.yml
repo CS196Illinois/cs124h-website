@@ -28,13 +28,6 @@ jobs:
       CILOGON_ISSUER: ${{ secrets.CILOGON_ISSUER }}
       CILOGON_REDIRECT_URI: ${{ secrets.CILOGON_REDIRECT_URI }}
       ATTENDANCE_SECRET: ${{ secrets.ATTENDANCE_SECRET }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
-      DISCORD_PUBLIC_KEY: ${{ secrets.DISCORD_PUBLIC_KEY }}
-      DISCORD_APP_ID: ${{ secrets.DISCORD_APP_ID }}
-      DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
-      DISCORD_WELCOME_CHANNEL_ID: ${{ secrets.DISCORD_WELCOME_CHANNEL_ID }}
-      DISCORD_LINK_SECRET: ${{ secrets.DISCORD_LINK_SECRET }}
       # Not secret — just means "run against the test_ tables, never production".
       USE_TEST_TABLES: "true"
       NEXT_PUBLIC_USE_TEST_TABLES: "true"
