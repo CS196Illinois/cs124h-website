@@ -52,7 +52,13 @@ export async function DELETE(request, { params }) {
   let query = supabaseServer.from(table("events")).delete().eq("id", id);
   if (!FULL_EVENT_ACCESS.includes(userRole)) query = query.eq("created_by", netID);
 
-  const { error } = await query;
+  const { data, error } = await query.select("id");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // A scoped delete matching 0 rows means either the event doesn't exist, or
+  // (more likely) it belongs to someone else and this caller isn't full-access -
+  // surface that instead of silently no-opping.
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: "Not found, or you don't have permission to delete this event" }, { status: 403 });
+  }
   return NextResponse.json({ success: true });
 }

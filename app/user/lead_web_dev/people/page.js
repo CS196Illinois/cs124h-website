@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useUndo } from "../../../../components/UndoProvider";
 import styles from "../../dashboard.module.css";
 import Modal from "../../components/Modal";
 import RoleBadge from "../../components/RoleBadge";
@@ -24,6 +25,7 @@ function sortUsers(users, roleOrderMap, key, dir) {
 }
 
 export default function LeadWebDevPeople() {
+  const { scheduleUndo } = useUndo();
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [roleFilter, setRoleFilter] = useState("ALL");
@@ -107,10 +109,15 @@ export default function LeadWebDevPeople() {
     await fetchUsers();
   };
 
-  const handleRemove = async (net_id) => {
-    if (!confirm(`Remove ${net_id} from the web dev team?`)) return;
-    await fetch(`/api/users/${net_id}`, { method: "DELETE" });
-    await fetchUsers();
+  const handleRemove = (net_id) => {
+    const user = users.find((u) => u.net_id === net_id);
+    if (!user) return;
+    setUsers((prev) => prev.filter((u) => u.net_id !== net_id));
+    scheduleUndo({
+      message: `Removed ${user.name || net_id} from the web dev team`,
+      onExpire: () => fetch(`/api/users/${net_id}`, { method: "DELETE" }),
+      onCancel: () => setUsers((prev) => [...prev, user]),
+    });
   };
 
   const sortIcon = (key) => {

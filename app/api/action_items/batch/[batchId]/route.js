@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
+import { canManageItem } from "../../[id]/route";
 
 /**
  * Bulk-grade every eligible item in a batch (a set of action items created
@@ -80,4 +81,43 @@ export async function PATCH(request, { params }) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ success: true, updated: data.length, skipped, data });
+}
+
+/**
+ * Delete every item in a batch at once. Uses the same per-recipient
+ * authority check as deleting a single item (canManageItem), not the
+ * assigner-only rule PATCH uses above — a course_lead deleting a PM's
+ * batch, or a head_pm deleting one assigned to their students, is exactly
+ * as valid as deleting those items one at a time already was.
+ */
+export async function DELETE(request, { params }) {
+  const session = await getServerSession(authOptions);
+  const userRole = session?.user?.role;
+  const netID = session?.user?.netID;
+
+  if (!userRole || userRole === "student" || userRole === "error") {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { batchId } = await params;
+
+  const { data: items, error: fetchErr } = await supabaseServer
+    .from(table("actionItems"))
+    .select("id")
+    .eq("batch_id", batchId);
+  if (fetchErr) return NextResponse.json({ error: fetchErr.message }, { status: 500 });
+  if (!items || items.length === 0) {
+    return NextResponse.json({ error: "Batch not found" }, { status: 404 });
+  }
+
+  for (const item of items) {
+    if (!(await canManageItem(userRole, netID, item.id))) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+  }
+
+  const { error } = await supabaseServer.from(table("actionItems")).delete().eq("batch_id", batchId);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ success: true, count: items.length });
 }

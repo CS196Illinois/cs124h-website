@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useUndo } from "./UndoProvider";
 import styles from "../app/user/dashboard.module.css";
 
 function getCurrentSprint(sprints) {
@@ -13,6 +14,7 @@ function getCurrentSprint(sprints) {
 }
 
 export default function SprintsManager({ canManage = false }) {
+  const { scheduleUndo } = useUndo();
   const [sprints, setSprints] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [completions, setCompletions] = useState([]);
@@ -23,7 +25,6 @@ export default function SprintsManager({ canManage = false }) {
   const [editingSprint, setEditingSprint] = useState(null);
   const [form, setForm] = useState({ number: "", goal: "", start_date: "", end_date: "" });
   const [saving, setSaving] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
   const [modalError, setModalError] = useState(null);
 
   const fetchBase = useCallback(async () => {
@@ -132,16 +133,25 @@ export default function SprintsManager({ canManage = false }) {
     setSaving(false);
   };
 
-  const handleDelete = async (id) => {
-    await fetch(`/api/sprints/${id}`, { method: "DELETE" });
+  const handleDelete = (id) => {
+    const sprint = sprints.find((s) => s.id === id);
+    if (!sprint) return;
+    const wasSelected = selectedId === id;
     setSprints((prev) => {
       const remaining = prev.filter((s) => s.id !== id);
-      if (selectedId === id) {
+      if (wasSelected) {
         setSelectedId(remaining.length ? (getCurrentSprint(remaining)?.id ?? remaining[0].id) : null);
       }
       return remaining;
     });
-    setDeleteTarget(null);
+    scheduleUndo({
+      message: `Deleted Sprint ${sprint.number}`,
+      onExpire: () => fetch(`/api/sprints/${id}`, { method: "DELETE" }),
+      onCancel: () => {
+        setSprints((prev) => [...prev, sprint]);
+        if (wasSelected) setSelectedId(id);
+      },
+    });
   };
 
   const selectedSprint = sprints.find((s) => s.id === selectedId);
@@ -202,20 +212,9 @@ export default function SprintsManager({ canManage = false }) {
                 <button className={styles.btnSecondary} onClick={() => openEdit(selectedSprint)}>
                   Edit
                 </button>
-                {deleteTarget === selectedSprint.id ? (
-                  <>
-                    <button className={styles.btnDanger} onClick={() => handleDelete(selectedSprint.id)}>
-                      Confirm delete
-                    </button>
-                    <button className={styles.btnSecondary} onClick={() => setDeleteTarget(null)}>
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <button className={styles.btnDanger} onClick={() => setDeleteTarget(selectedSprint.id)}>
-                    Delete
-                  </button>
-                )}
+                <button className={styles.btnDanger} onClick={() => handleDelete(selectedSprint.id)}>
+                  Delete
+                </button>
               </div>
             )}
           </div>

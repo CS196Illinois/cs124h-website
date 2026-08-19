@@ -43,22 +43,35 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await insertUser({ net_id: "e2e-pm-other", role: "PM", group_number: 2 });
     await insertEvent({ title: "Owner's Event", created_by: "e2e-pm-owner" });
 
-    // A different pm sees it (all staff can see all events) but can't remove it.
+    // A different pm sees it (all staff can see all events), and deleting it
+    // optimistically removes it from their own view - but once the undo
+    // window ends and the real request 403s, the undo system auto-restores
+    // it, since the action never actually happened server-side.
+    // "Owner's Event" also appears (as a substring) inside the undo toast's
+    // own message once it's up, so every check on the table row itself uses
+    // exact:true to stay unambiguous.
     await loginAs({ netID: "e2e-pm-other", role: "pm" });
     await page.goto("/user/pm/events");
-    await expect(page.getByText("Owner's Event")).toBeVisible();
-    page.once("dialog", (d) => d.accept());
+    await expect(page.getByText("Owner's Event", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Delete" }).click();
-    await page.waitForTimeout(500); // let the (no-op) request round-trip
-    await page.reload();
-    await expect(page.getByText("Owner's Event")).toBeVisible();
+    await expect(page.getByText("Owner's Event", { exact: true })).not.toBeVisible();
+    // Confirm the toast actually appeared before waiting for it to clear -
+    // otherwise not.toBeVisible() below could pass trivially before it ever renders.
+    const toast = page.getByText(/Deleted "Owner's Event"/);
+    await expect(toast).toBeVisible();
+    await expect(toast).not.toBeVisible(); // commit attempted, 403'd
+    await expect(page.getByText("Owner's Event", { exact: true })).toBeVisible(); // ...and restored
 
-    // course_lead has full access and can delete anyone's event.
+    // course_lead has full access and can delete anyone's event - this time
+    // the commit succeeds, so nothing comes back.
     await loginAs({ netID: "e2e-lead", role: "course_lead" });
     await page.goto("/user/course_lead/events");
-    await expect(page.getByText("Owner's Event")).toBeVisible();
-    page.once("dialog", (d) => d.accept());
+    await expect(page.getByText("Owner's Event", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Delete" }).click();
-    await expect(page.getByText("Owner's Event")).not.toBeVisible();
+    await expect(page.getByText("Owner's Event", { exact: true })).not.toBeVisible();
+    const secondToast = page.getByText(/Deleted "Owner's Event"/);
+    await expect(secondToast).toBeVisible();
+    await expect(secondToast).not.toBeVisible();
+    await expect(page.getByText("Owner's Event", { exact: true })).not.toBeVisible(); // stays gone - commit succeeded
   });
 });

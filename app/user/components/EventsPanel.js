@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useUndo } from "../../../components/UndoProvider";
 import styles from "../dashboard.module.css";
 import panelStyles from "./EventsPanel.module.css";
 
 export default function EventsPanel() {
+  const { scheduleUndo } = useUndo();
   const [events, setEvents]         = useState([]);
   const [loading, setLoading]       = useState(true);
   const [expandedId, setExpandedId] = useState(null); // event whose attendees are shown
@@ -101,10 +103,15 @@ export default function EventsPanel() {
     await fetchEvents();
   };
 
-  const deleteEvent = async (eventId) => {
-    if (!confirm("Delete this event and all its check-ins?")) return;
-    await fetch(`/api/events/${eventId}`, { method: "DELETE" });
-    await fetchEvents();
+  const deleteEvent = (eventId) => {
+    const event = events.find((e) => e.id === eventId);
+    if (!event) return;
+    setEvents((prev) => prev.filter((e) => e.id !== eventId));
+    scheduleUndo({
+      message: `Deleted "${event.title}" and its check-ins`,
+      onExpire: () => fetch(`/api/events/${eventId}`, { method: "DELETE" }),
+      onCancel: () => setEvents((prev) => [...prev, event]),
+    });
   };
 
   const viewAttendees = async (eventId) => {
