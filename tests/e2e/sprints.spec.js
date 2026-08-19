@@ -24,9 +24,8 @@ test.describe("sprints: course lead manages sprints, pm marks completions", () =
     await page.getByRole("button", { name: "Save Changes" }).click();
     await expect(page.getByText("Ship the MVP (revised)")).toBeVisible();
 
-    // Delete requires a confirm click, not a native dialog.
+    // Delete is optimistic - an undo toast appears instead of a confirm step.
     await page.getByRole("button", { name: "Delete", exact: true }).click();
-    await page.getByRole("button", { name: "Confirm delete" }).click();
     await expect(page.getByText("No sprints yet")).toBeVisible();
   });
 

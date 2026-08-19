@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures";
-import { insertUser, insertActionItem, clearAllTestTables } from "../helpers/db";
+import { insertUser, insertActionItem, clearAllTestTables, testClient } from "../helpers/db";
+import { table } from "../../lib/tables";
 
 test.describe("action items: assign, complete, and grade", () => {
   test.beforeEach(clearAllTestTables);
@@ -79,8 +80,8 @@ test.describe("action items: assign, complete, and grade", () => {
     await page.getByRole("button", { name: "Save Changes" }).click();
     await expect(page.getByRole("cell", { name: "Individual Task (renamed)" })).toBeVisible();
 
-    // Delete it.
-    page.once("dialog", (d) => d.accept());
+    // Delete it - removal is optimistic (an undo toast appears instead of a
+    // confirm() dialog), so the row disappears immediately.
     await page.getByRole("button", { name: "Delete", exact: true }).click();
     await expect(page.getByRole("cell", { name: "Individual Task (renamed)" })).not.toBeVisible();
   });
@@ -137,5 +138,120 @@ test.describe("action items: assign, complete, and grade", () => {
     // "Graded Item" also appears as an <option> in the title filter - the
     // table cell is the specific thing being asserted on.
     await expect(page.getByRole("cell", { name: "Graded Item" })).toBeVisible();
+  });
+});
+
+test.describe("undo: deferred-execution safety net for destructive actions", () => {
+  test.beforeEach(clearAllTestTables);
+
+  test("clicking Undo restores the item, and the real delete is never sent", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
+    await insertUser({ net_id: "e2e-stu1", role: "STUDENT", group_number: 1 });
+    const item = await insertActionItem({ net_id: "e2e-stu1", assigned_by: "e2e-pm", title: "Undo Me" });
+
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/action_items");
+
+    await expect(page.getByRole("cell", { name: "Undo Me" })).toBeVisible();
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await expect(page.getByRole("cell", { name: "Undo Me" })).not.toBeVisible();
+
+    await expect(page.getByText('Deleted "Undo Me"')).toBeVisible();
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(page.getByRole("cell", { name: "Undo Me" })).toBeVisible();
+
+    // Undo cancels the pending request outright - check the DB immediately
+    // (no need to wait out the window) to confirm it was never sent.
+    const { data } = await testClient().from(table("actionItems")).select("id").eq("id", item.id).maybeSingle();
+    expect(data).not.toBeNull();
+  });
+
+  test("letting the undo window run out actually commits the delete", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
+    await insertUser({ net_id: "e2e-stu1", role: "STUDENT", group_number: 1 });
+    const item = await insertActionItem({ net_id: "e2e-stu1", assigned_by: "e2e-pm", title: "Really Delete Me" });
+
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/action_items");
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await expect(page.getByRole("cell", { name: "Really Delete Me" })).not.toBeVisible();
+
+    // Wait for the toast to clear on its own (nobody clicked Undo) - that's
+    // when the timer fires and the real DELETE request goes out. Confirm the
+    // toast appeared first (not.toBeVisible() would otherwise pass trivially
+    // before it ever renders), and separately wait for the DELETE response
+    // itself - the toast disappearing only means the timer fired, not that
+    // the in-flight request has finished.
+    const toast = page.getByText('Deleted "Really Delete Me"');
+    await expect(toast).toBeVisible();
+    const [response] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes(`/api/action_items/${item.id}`) && res.request().method() === "DELETE"),
+      expect(toast).not.toBeVisible(),
+    ]);
+    expect(response.ok()).toBe(true);
+
+    const { data } = await testClient().from(table("actionItems")).select("id").eq("id", item.id).maybeSingle();
+    expect(data).toBeNull();
+  });
+});
+
+test.describe("batch delete: undo a bulk assignment in one shot", () => {
+  test.beforeEach(clearAllTestTables);
+
+  test("pm deletes a whole batch via Delete Batch, with the same undo safety net", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
+    await insertUser({ net_id: "e2e-stu1", role: "STUDENT", name: "Student One", group_number: 1 });
+    await insertUser({ net_id: "e2e-stu2", role: "STUDENT", name: "Student Two", group_number: 1 });
+    const batchId = "11111111-1111-4111-8111-111111111111";
+    const item1 = await insertActionItem({
+      net_id: "e2e-stu1", assigned_by: "e2e-pm", title: "Bulk Item", batch_id: batchId,
+      is_gradable: true, is_done: true,
+    });
+    const item2 = await insertActionItem({
+      net_id: "e2e-stu2", assigned_by: "e2e-pm", title: "Bulk Item", batch_id: batchId,
+      is_gradable: true, is_done: true,
+    });
+
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/action_items");
+    await page.getByRole("button", { name: /Needs Grading/ }).click();
+    await expect(page.getByText(/2 total in batch/)).toBeVisible();
+
+    await page.getByRole("button", { name: "Delete Batch" }).click();
+    await expect(page.getByText(/2 total in batch/)).not.toBeVisible();
+
+    // Undo it - both items should come back as a pending grade batch again.
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(page.getByText(/2 total in batch/)).toBeVisible();
+
+    // Delete for real this time and let it commit.
+    await page.getByRole("button", { name: "Delete Batch" }).click();
+    const toast = page.getByText(/Deleted "Bulk Item" for 2 people/);
+    await expect(toast).toBeVisible();
+    const [response] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes(`/api/action_items/batch/${batchId}`) && res.request().method() === "DELETE"),
+      expect(toast).not.toBeVisible(),
+    ]);
+    expect(response.ok()).toBe(true);
+
+    const { data } = await testClient().from(table("actionItems")).select("id").in("id", [item1.id, item2.id]);
+    expect(data).toHaveLength(0);
+  });
+
+  test("a pm can't delete a batch containing a recipient outside their group", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
+    await insertUser({ net_id: "e2e-stu-in", role: "STUDENT", group_number: 1 });
+    await insertUser({ net_id: "e2e-stu-out", role: "STUDENT", group_number: 2 });
+    const batchId = "22222222-2222-4222-8222-222222222222";
+    const inGroup = await insertActionItem({ net_id: "e2e-stu-in", assigned_by: "e2e-pm", title: "Mixed Batch", batch_id: batchId });
+    await insertActionItem({ net_id: "e2e-stu-out", assigned_by: "e2e-pm", title: "Mixed Batch", batch_id: batchId });
+
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    const res = await page.request.delete(`/api/action_items/batch/${batchId}`);
+    expect(res.status()).toBe(403);
+
+    // Nothing was touched.
+    const { data } = await testClient().from(table("actionItems")).select("id").eq("id", inGroup.id).maybeSingle();
+    expect(data).not.toBeNull();
   });
 });

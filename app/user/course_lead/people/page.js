@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useUndo } from "../../../../components/UndoProvider";
 import styles from "../../dashboard.module.css";
 import ImportModal from "../../../../components/ImportModal";
 import Modal from "../../components/Modal";
@@ -30,6 +31,7 @@ function sortUsers(users, roleOrder, key, dir) {
 }
 
 export default function CourseLeadPeople() {
+  const { scheduleUndo } = useUndo();
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [roleFilter, setRoleFilter] = useState("ALL");
@@ -95,10 +97,15 @@ export default function CourseLeadPeople() {
     setAddLoading(false);
   };
 
-  const handleRemoveUser = async (net_id) => {
-    if (!confirm(`Remove ${net_id} from the course?`)) return;
-    await fetch(`/api/users/${encodeURIComponent(net_id)}`, { method: "DELETE" });
-    await fetchAll();
+  const handleRemoveUser = (net_id) => {
+    const user = users.find((u) => u.net_id === net_id);
+    if (!user) return;
+    setUsers((prev) => prev.filter((u) => u.net_id !== net_id));
+    scheduleUndo({
+      message: `Removed ${user.name || net_id} from the course`,
+      onExpire: () => fetch(`/api/users/${encodeURIComponent(net_id)}`, { method: "DELETE" }),
+      onCancel: () => setUsers((prev) => [...prev, user]),
+    });
   };
 
   const handleRoleChange = async (net_id, role) => {
@@ -110,12 +117,16 @@ export default function CourseLeadPeople() {
     await fetchAll();
   };
 
-  const handleDeleteCategory = async (role) => {
+  const handleDeleteCategory = (role) => {
     const label = roleLabel(role);
-    const count = users.filter((u) => u.role === role).length;
-    if (!confirm(`Delete all ${count} ${label}${count !== 1 ? "s" : ""}? This cannot be undone.`)) return;
-    await fetch(`/api/users?role=${encodeURIComponent(role)}`, { method: "DELETE" });
-    await fetchAll();
+    const removed = users.filter((u) => u.role === role);
+    if (removed.length === 0) return;
+    setUsers((prev) => prev.filter((u) => u.role !== role));
+    scheduleUndo({
+      message: `Deleted all ${removed.length} ${label}${removed.length !== 1 ? "s" : ""}`,
+      onExpire: () => fetch(`/api/users?role=${encodeURIComponent(role)}`, { method: "DELETE" }),
+      onCancel: () => setUsers((prev) => [...prev, ...removed]),
+    });
   };
 
   const handleGroupChange = async (net_id, group_number) => {

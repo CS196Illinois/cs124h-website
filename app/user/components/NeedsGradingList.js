@@ -7,7 +7,7 @@ import styles from "../dashboard.module.css";
  * (bulk-assigned together) collapse into a single row with one Grade Batch
  * action, instead of one row per recipient.
  */
-export default function NeedsGradingList({ items, allItems, peopleByNetId, onGradeSingle, onGradeBatch }) {
+export default function NeedsGradingList({ items, allItems, peopleByNetId, onGradeSingle, onGradeBatch, onDeleteBatch }) {
   if (items.length === 0) {
     return (
       <div className={styles.emptyState}>
@@ -69,13 +69,23 @@ export default function NeedsGradingList({ items, allItems, peopleByNetId, onGra
                 {row.due_date ? new Date(row.due_date).toLocaleDateString() : "-"}
               </td>
               <td>
-                <button
-                  className={styles.btnSmall}
-                  style={{ background: "rgba(236,181,87,0.15)", color: "#ecb557", border: "1px solid rgba(236,181,87,0.25)" }}
-                  onClick={() => (row.type === "batch" ? onGradeBatch(row.batchId, row.fullBatch) : onGradeSingle(row.item))}
-                >
-                  {row.type === "batch" ? `Grade Batch (${row.pending.length})` : "Grade"}
-                </button>
+                <div style={{ display: "flex", gap: "0.4rem" }}>
+                  <button
+                    className={styles.btnSmall}
+                    style={{ background: "rgba(236,181,87,0.15)", color: "#ecb557", border: "1px solid rgba(236,181,87,0.25)" }}
+                    onClick={() => (row.type === "batch" ? onGradeBatch(row.batchId, row.fullBatch) : onGradeSingle(row.item))}
+                  >
+                    {row.type === "batch" ? `Grade Batch (${row.pending.length})` : "Grade"}
+                  </button>
+                  {row.type === "batch" && onDeleteBatch && (
+                    <button
+                      className={styles.btnDanger}
+                      onClick={() => onDeleteBatch(row.batchId, row.fullBatch)}
+                    >
+                      Delete Batch
+                    </button>
+                  )}
+                </div>
               </td>
             </tr>
           ))}

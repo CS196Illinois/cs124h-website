@@ -66,11 +66,25 @@ test.describe("role view requests: web_dev requests, lead_web_dev approves/denie
     await loginAs({ netID: "e2e-leadweb", role: "lead_web_dev" });
     await page.goto("/user/lead_web_dev/role_requests");
     await page.getByRole("button", { name: "Approved" }).click();
-    await expect(page.getByText("e2e-webdev3")).toBeVisible();
+    await expect(page.getByText("e2e-webdev3", { exact: true })).toBeVisible();
 
-    page.once("dialog", (d) => d.accept());
     await page.getByRole("button", { name: "Revoke" }).click();
-    await expect(page.getByText("e2e-webdev3")).not.toBeVisible();
+    // "e2e-webdev3" also appears as a substring inside the undo toast's own
+    // message ("Revoked e2e-webdev3's..."), so this needs exact:true - without
+    // it, this assertion blocks for the entire 8s undo window waiting for the
+    // toast itself to clear, and every check after it ends up too late.
+    await expect(page.getByText("e2e-webdev3", { exact: true })).not.toBeVisible();
+    // Revoke is deferred (undo window) - wait for the toast to clear, which
+    // is when the timer fires and the real DELETE request goes out. The
+    // toast disappearing only means the timer fired, not that the in-flight
+    // request has finished, so wait for the response itself too.
+    const toast = page.getByText(/Revoked e2e-webdev3's/);
+    await expect(toast).toBeVisible();
+    const [response] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes(`/api/role-view-requests/${req.id}`) && res.request().method() === "DELETE"),
+      expect(toast).not.toBeVisible(),
+    ]);
+    expect(response.ok()).toBe(true);
 
     const { data } = await testClient().from(table("roleViewRequests")).select("id").eq("id", req.id).maybeSingle();
     expect(data).toBeNull();

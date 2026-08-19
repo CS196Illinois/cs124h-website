@@ -1,5 +1,6 @@
 import "./global.css";
 import AuthSessionProvider from "../components/AuthSessionProvider";
+import { UndoProvider } from "../components/UndoProvider";
 import Navbar from "../components/navbar.js";
 
 export const metadata = {
@@ -17,8 +18,10 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <AuthSessionProvider>
-          <Navbar />
-          {children}
+          <UndoProvider>
+            <Navbar />
+            {children}
+          </UndoProvider>
         </AuthSessionProvider>
       </body>
     </html>
