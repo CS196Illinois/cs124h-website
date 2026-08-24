@@ -48,7 +48,7 @@ export default async function Home() {
           </p>
           <div className={styles.buttonContainer}>
             <a
-              href="https://docs.google.com/document/d/1ymXgTRhm6I0bClRsU2X8kC4IvOF-kzIcOPiNUwxlkGQ/edit?usp=sharing"
+              href="https://docs.google.com/document/d/1Ntqjf5bQSoQJixR7SjGQp51i3ACZR5M7C1evNctvolM/edit?tab=t.0#heading=h.4jjz7jor04lz"
               target="_blank"
               rel="noopener noreferrer"
               className={styles.syllabusButton}
@@ -82,7 +82,7 @@ export default async function Home() {
             <iframe
               width="100%"
               height="400"
-              src="https://www.youtube.com/embed/9AiOHVYOYNk?si=ce5BFqwtK4au4XTU"
+              src="https://www.youtube.com/embed/QcWdjkM-utQ"
               title="CS124 Honors Overview"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
@@ -125,8 +125,8 @@ export default async function Home() {
           <h3>Step 2:</h3>
           <p>
             Please fill in the enrollment confirmation form:{" "}
-            <a href="https://forms.gle/86sNBypWGiVsjtFn6">
-              https://forms.gle/86sNBypWGiVsjtFn6.
+            <a href="https://forms.gle/mqTVoWHZyCsHbCT58">
+              https://forms.gle/mqTVoWHZyCsHbCT58.
             </a>{" "}
             <span className={styles.impText}>
               Failure to fill in the enrollment confirmation form will result in
@@ -140,8 +140,8 @@ export default async function Home() {
           <h3>Step 3:</h3>
           <p>
             Join the Discord:{" "}
-            <a href="https://discord.com/invite/YMtdnBdsup">
-              https://discord.com/invite/YMtdnBdsup
+            <a href="https://discord.gg/HBZ2thqde">
+              https://discord.gg/HBZ2thqde
             </a>
           </p>
 

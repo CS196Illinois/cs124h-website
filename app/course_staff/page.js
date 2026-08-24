@@ -77,6 +77,12 @@ export default function CourseStaffPage() {
         <main className={styles.mainContent}>
           <div className={styles.header}>
             <h1 className={`${styles.title}`}>Our Staff</h1>
+            <p className={styles.staffNote}>
+              Note: Anakin Tran (atran63@illinois.edu) and Shrest Das
+              (shrestd2@illinois.edu) will be the course leads for the Fall
+              2026 semester. Please contact them for any questions. The rest
+              of the course staff will be announced soon!
+            </p>
           </div>
           {/* Semester tab skeletons */}
           <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem", marginBottom: "3rem", flexWrap: "wrap" }}>
@@ -122,6 +128,12 @@ export default function CourseStaffPage() {
           <h1 className={`${styles.title} ${selectedMember ? styles.opacity20 : styles.opacity100}`}>
             Our Staff
           </h1>
+          <p className={styles.staffNote}>
+            Note: Anakin Tran (atran63@illinois.edu) and Shrest Das
+            (shrestd2@illinois.edu) will be the course leads for the Fall 2026
+            semester. Please contact them for any questions. The rest of the
+            course staff will be announced soon!
+          </p>
         </div>
 
         <SemesterTabs

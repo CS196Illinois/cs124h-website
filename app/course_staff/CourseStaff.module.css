@@ -11,6 +11,14 @@
   color: #f9fafb;
 }
 
+.staffNote {
+  max-width: 42rem;
+  margin: 0.75rem auto 0;
+  font-size: 0.95rem;
+  color: #f9fafb;
+  opacity: 0.85;
+}
+
 .staffCardContainer {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
