@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useUndo } from "../../../../components/UndoProvider";
 import styles from "../../dashboard.module.css";
 import Modal from "../../components/Modal";
 import EditActionItemModal from "../../components/EditActionItemModal";
@@ -17,6 +18,7 @@ import EmptyState from "../../components/EmptyState";
 export default function HeadPMActionItems() {
   const { data: session } = useSession();
   const myNetId = session?.user?.netID;
+  const { scheduleUndo } = useUndo();
 
   const [actionItems, setActionItems] = useState([]);
   const [users, setUsers] = useState([]);
@@ -91,10 +93,25 @@ export default function HeadPMActionItems() {
     await fetchData(scope);
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this action item?")) return;
-    await fetch(`/api/action_items/${id}`, { method: "DELETE" });
-    await fetchData(scope);
+  const handleDelete = (id) => {
+    const item = actionItems.find((i) => i.id === id);
+    if (!item) return;
+    setActionItems((prev) => prev.filter((i) => i.id !== id));
+    scheduleUndo({
+      message: `Deleted "${item.title}"`,
+      onExpire: () => fetch(`/api/action_items/${id}`, { method: "DELETE" }),
+      onCancel: () => setActionItems((prev) => [...prev, item]),
+    });
+  };
+
+  const handleDeleteBatch = (batchId, batchItems) => {
+    const ids = new Set(batchItems.map((i) => i.id));
+    setActionItems((prev) => prev.filter((i) => !ids.has(i.id)));
+    scheduleUndo({
+      message: `Deleted "${batchItems[0]?.title}" for ${batchItems.length} people`,
+      onExpire: () => fetch(`/api/action_items/batch/${batchId}`, { method: "DELETE" }),
+      onCancel: () => setActionItems((prev) => [...prev, ...batchItems]),
+    });
   };
 
   const handleCreate = async () => {
@@ -287,6 +304,7 @@ export default function HeadPMActionItems() {
             peopleByNetId={userByNetId}
             onGradeSingle={setGradeItem}
             onGradeBatch={(batchId, batchItems) => setGradeBatch({ batchId, items: batchItems })}
+            onDeleteBatch={handleDeleteBatch}
           />
         ) : titleFilter ? renderTitleGrouped() : renderPersonGrouped()}
       </div>

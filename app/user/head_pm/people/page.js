@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useUndo } from "../../../../components/UndoProvider";
 import styles from "../../dashboard.module.css";
 import Modal from "../../components/Modal";
 import RoleBadge from "../../components/RoleBadge";
@@ -30,6 +31,7 @@ function sortUsers(users, key, dir) {
 }
 
 export default function HeadPMPeople() {
+  const { scheduleUndo } = useUndo();
   const [users, setUsers] = useState([]);
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [search, setSearch] = useState("");
@@ -119,10 +121,15 @@ export default function HeadPMPeople() {
     await fetchUsers();
   };
 
-  const handleRemove = async (net_id) => {
-    if (!confirm(`Remove ${net_id}?`)) return;
-    await fetch(`/api/users/${encodeURIComponent(net_id)}`, { method: "DELETE" });
-    await fetchUsers();
+  const handleRemove = (net_id) => {
+    const user = users.find((u) => u.net_id === net_id);
+    if (!user) return;
+    setUsers((prev) => prev.filter((u) => u.net_id !== net_id));
+    scheduleUndo({
+      message: `Removed ${user.name || net_id}`,
+      onExpire: () => fetch(`/api/users/${encodeURIComponent(net_id)}`, { method: "DELETE" }),
+      onCancel: () => setUsers((prev) => [...prev, user]),
+    });
   };
 
   const sortIcon = (key) => {

@@ -147,7 +147,7 @@ export async function DELETE(request, { params }) {
  */
 const FULL_ITEM_ACCESS = ["course_lead", "lead_web_dev", "web_dev"];
 
-async function canManageItem(userRole, netID, itemId) {
+export async function canManageItem(userRole, netID, itemId) {
   if (FULL_ITEM_ACCESS.includes(userRole)) return true;
 
   // Fetch the item to find the recipient

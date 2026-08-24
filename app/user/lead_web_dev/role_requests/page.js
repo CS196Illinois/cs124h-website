@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useUndo } from "../../../../components/UndoProvider";
 import styles from "../../dashboard.module.css";
 
 const ROLE_LABELS = {
@@ -38,6 +39,7 @@ function expiryColor(expires_at) {
 }
 
 export default function LeadWebRoleRequests() {
+  const { scheduleUndo } = useUndo();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("pending");
@@ -82,12 +84,15 @@ export default function LeadWebRoleRequests() {
     await fetchRequests();
   };
 
-  const handleRevoke = async (id, requester) => {
-    if (!confirm(`Revoke role view access for ${requester}?`)) return;
-    setActionLoading(id);
-    await fetch(`/api/role-view-requests/${id}`, { method: "DELETE" });
-    await fetchRequests();
-    setActionLoading(null);
+  const handleRevoke = (id, requester) => {
+    const req = requests.find((r) => r.id === id);
+    if (!req) return;
+    setRequests((prev) => prev.filter((r) => r.id !== id));
+    scheduleUndo({
+      message: `Revoked ${requester}'s ${ROLE_LABELS[req.requested_role] ?? req.requested_role} view access`,
+      onExpire: () => fetch(`/api/role-view-requests/${id}`, { method: "DELETE" }),
+      onCancel: () => setRequests((prev) => [...prev, req]),
+    });
   };
 
   const displayed = requests.filter((r) => filter === "all" || r.status === filter);
