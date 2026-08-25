@@ -22,7 +22,7 @@ const MAX_AGE = 30 * 24 * 60 * 60; // 30 days
  * lead_web_dev / student). Pair with a seeded roster row for that netID so
  * pages that fetch /api/users/me etc. have something to find.
  */
-export async function loginAs(context, { netID, role, sub, approvedViews } = {}) {
+export async function loginAs(context, { netID, role, sub } = {}) {
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) throw new Error("NEXTAUTH_SECRET missing from .env.test.local");
 
@@ -33,7 +33,6 @@ export async function loginAs(context, { netID, role, sub, approvedViews } = {})
       role,
       roleVerifiedAt: Date.now(),
       name: netID,
-      ...(approvedViews ? { approvedViews } : {}),
     },
     secret,
     maxAge: MAX_AGE,
