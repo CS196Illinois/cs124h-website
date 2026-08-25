@@ -84,9 +84,6 @@ export const authOptions = {
 
         token.role = record ? mapRole(record.role) : "error";
         token.roleVerifiedAt = Date.now();
-        if (token.role === "web_dev") {
-          token.approvedViews = await fetchApprovedViews(token.netID);
-        }
         return token;
       }
 
@@ -102,9 +99,6 @@ export const authOptions = {
         // If the record is gone (user removed from roster), lock them out
         token.role = record ? mapRole(record.role) : "error";
         token.roleVerifiedAt = Date.now();
-        if (token.role === "web_dev") {
-          token.approvedViews = await fetchApprovedViews(token.netID);
-        }
       }
 
       return token;
@@ -178,20 +172,6 @@ async function claimRosterEntry(netID, sub, clogonName = "") {
     .is("sub", null);
 
   return error ? null : unclaimed;
-}
-
-/**
- * Fetch the list of approved, non-expired role-view paths for a web_dev user.
- * Stored in the JWT so middleware can check them without a DB hit.
- */
-async function fetchApprovedViews(netID) {
-  const { data } = await supabaseServer
-    .from(table("roleViewRequests"))
-    .select("requested_role")
-    .eq("requester_net_id", netID)
-    .eq("status", "approved")
-    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
-  return data?.map((r) => r.requested_role) ?? [];
 }
 
 /**

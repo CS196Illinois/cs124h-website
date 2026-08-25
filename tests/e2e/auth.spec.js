@@ -1,4 +1,6 @@
 import { test, expect } from "./fixtures";
+import { insertRoleViewRequest, testClient } from "../helpers/db";
+import { table } from "../../lib/tables";
 
 const ROLE_HOME = {
   course_lead: { path: "/user/course_lead", heading: /course lead/i },
@@ -56,8 +58,36 @@ test.describe("auth + role-gated dashboards", () => {
     await page.goto("/user/pm");
     await expect(page).toHaveURL(/\/unauthorized/);
 
-    await loginAs({ netID: "e2e-webdev", role: "web_dev", approvedViews: ["pm"] });
+    await insertRoleViewRequest({ requester_net_id: "e2e-webdev", requested_role: "pm", status: "approved" });
     await page.goto("/user/pm");
     await expect(page).not.toHaveURL(/\/unauthorized/);
+  });
+
+  // Regression test: role-view access is checked live against the DB, not
+  // cached on the JWT. It used to be JWT-cached, which meant an approval
+  // granted after the requester's session was already minted stayed
+  // invisible (and thus blocked) until the JWT happened to refresh.
+  test("a role approved after the web_dev's session was already minted works immediately", async ({ page, loginAs }) => {
+    await loginAs({ netID: "e2e-webdev-late-approve", role: "web_dev" });
+    await insertRoleViewRequest({ requester_net_id: "e2e-webdev-late-approve", requested_role: "course_lead", status: "approved" });
+
+    await page.goto("/user/course_lead");
+    await expect(page).not.toHaveURL(/\/unauthorized/);
+  });
+
+  // Mirror-image regression test: revoking access must take effect
+  // immediately too, not just granting it — a JWT-cached "yes" is just as
+  // wrong as a JWT-cached "no" once the DB has moved on.
+  test("revoking an approved view blocks access immediately, without needing a new session", async ({ page, loginAs }) => {
+    const req = await insertRoleViewRequest({ requester_net_id: "e2e-webdev-revoke", requested_role: "pm", status: "approved" });
+    await loginAs({ netID: "e2e-webdev-revoke", role: "web_dev" });
+
+    await page.goto("/user/pm");
+    await expect(page).not.toHaveURL(/\/unauthorized/);
+
+    await testClient().from(table("roleViewRequests")).delete().eq("id", req.id);
+
+    await page.goto("/user/pm");
+    await expect(page).toHaveURL(/\/unauthorized/);
   });
 });
