@@ -132,6 +132,23 @@ export async function insertProject(overrides = {}) {
   return data;
 }
 
+export async function insertSandboxOverlay(overrides = {}) {
+  const row = {
+    owner_net_id: overrides.owner_net_id,
+    table_key: overrides.table_key,
+    row_pk: overrides.row_pk,
+    op: overrides.op ?? "insert",
+    row_data: overrides.row_data ?? null,
+    ...overrides,
+  };
+  if (!row.owner_net_id || !row.table_key || !row.row_pk) {
+    throw new Error("insertSandboxOverlay requires owner_net_id, table_key, and row_pk");
+  }
+  const { data, error } = await client().from(table("sandboxOverlay")).insert(row).select().single();
+  if (error) throw new Error(`insertSandboxOverlay: ${error.message}`);
+  return data;
+}
+
 // Matches production's actual (mixed-case) column names on
 // event_attendance_sp26 — the leaderboard route resolves them
 // case-insensitively, so tests exercise that instead of assuming a
@@ -157,13 +174,15 @@ const TABLE_PK = {
   staff: "id",
   resources: "id",
   projects: "id",
+  sandboxOverlay: "id",
   users: "net_id",
 };
 
 // Children before parents, though FKs are ON DELETE CASCADE anyway.
 const CLEAR_ORDER = [
   "sprintCompletions", "eventCheckins", "actionItems", "roleViewRequests",
-  "sprints", "events", "eventAttendanceSp26", "staff", "resources", "projects", "users",
+  "sprints", "events", "eventAttendanceSp26", "staff", "resources", "projects",
+  "sandboxOverlay", "users",
 ];
 
 export async function clearAllTestTables() {
