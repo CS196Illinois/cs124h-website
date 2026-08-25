@@ -1,6 +1,7 @@
 // middleware.js
 import { decode } from "next-auth/jwt";
 import { NextResponse } from "next/server";
+import { fetchApprovedViews } from "./lib/roleViews";
 
 export default async function middleware(req) {
   // getToken() uses bracket-access on req.cookies which breaks in Next.js 15
@@ -41,20 +42,32 @@ export default async function middleware(req) {
   }
 
   // Web devs can visit role dashboards they have an approved (non-expired) view request for.
-  // Approved views are stored in the JWT so there's no DB hit here.
   if (role === "web_dev") {
-    const approvedViews = token?.approvedViews ?? [];
     const ROLE_PATH_MAP = {
       "/user/course_lead": "course_lead",
       "/user/head_pm":     "head_pm",
       "/user/pm":          "pm",
       "/user/student":     "student",
     };
-    for (const [prefix, viewRole] of Object.entries(ROLE_PATH_MAP)) {
-      if (path.startsWith(prefix) && approvedViews.includes(viewRole)) {
+    const matchedPrefix = Object.keys(ROLE_PATH_MAP).find((prefix) => path.startsWith(prefix));
+
+    if (matchedPrefix) {
+      const viewRole = ROLE_PATH_MAP[matchedPrefix];
+      // Checked live against the DB rather than cached on the JWT: a JWT
+      // snapshot only refreshes at sign-in or the periodic reverify window,
+      // which made both directions of this wrong — a freshly *approved* view
+      // stayed blocked, and a freshly *revoked* one stayed accessible. This
+      // path (a web_dev browsing another role's dashboard) is rare enough
+      // that a DB hit here is cheap insurance for an access-control decision.
+      const liveViews = await fetchApprovedViews(token.netID);
+      if (liveViews.includes(viewRole)) {
         return NextResponse.next();
       }
+      const url = new URL("/unauthorized", req.url);
+      url.searchParams.set("callbackUrl", path);
+      return NextResponse.redirect(url);
     }
+
     if (!path.startsWith("/user/web_dev")) {
       const url = new URL("/unauthorized", req.url);
       url.searchParams.set("callbackUrl", path);
