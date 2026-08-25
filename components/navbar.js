@@ -17,7 +17,11 @@ export default function Navbar() {
 
   useEffect(() => {
     const checkScreenSize = () => {
-      setIsMobile(window.innerWidth <= 768);
+      // Matches the CSS breakpoint in Navbar.module.css: below this width the
+      // full row of nav buttons doesn't fit on one line (labels wrap inside
+      // the fixed-height bar and later items get pushed off-screen), so the
+      // mobile hamburger menu takes over well before the old 768px cutoff.
+      setIsMobile(window.innerWidth <= 1280);
     };
     
     console.log(session);

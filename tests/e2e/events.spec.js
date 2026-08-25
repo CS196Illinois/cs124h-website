@@ -100,4 +100,29 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await expect(secondToast).not.toBeVisible();
     await expect(page.getByText("Owner's Event", { exact: true })).not.toBeVisible(); // stays gone - commit succeeded
   });
+
+  // Regression test: the Start Time / End Time row used `flex: 1` on two
+  // <input type="datetime-local"> fields, which can't shrink below their
+  // native rendering width in Chromium — on a narrow viewport that pushed
+  // the row past the modal's right edge. The modal's `overflow-y: auto`
+  // implicitly makes overflow-x `auto` too (CSS spec: one non-visible axis
+  // forces the other off `visible`), so this never showed up as
+  // document-level overflow — it was a horizontal scrollbar hidden inside
+  // the modal, with the End Time field clipped off requiring a scroll
+  // nobody would think to do. Checking the modal's own scrollWidth (not the
+  // document's) is what actually catches it.
+  test("the new event modal has no horizontal overflow on a narrow viewport", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
+    await page.setViewportSize({ width: 360, height: 720 });
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/events");
+
+    await page.getByRole("button", { name: "+ New Event" }).click();
+    await expect(page.getByText("Start Time")).toBeVisible();
+    await expect(page.getByText("End Time")).toBeVisible();
+
+    const modal = page.locator("h2", { hasText: "New Event" }).locator("..");
+    const overflowX = await modal.evaluate((el) => el.scrollWidth - el.clientWidth);
+    expect(overflowX).toBeLessThanOrEqual(1);
+  });
 });
