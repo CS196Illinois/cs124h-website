@@ -1,5 +1,7 @@
 "use client";
 
+import RoleBadge from "./RoleBadge";
+
 export default function PersonAccordion({
   netId,
   user,
@@ -7,7 +9,6 @@ export default function PersonAccordion({
   totalCount,
   isCollapsed,
   onToggle,
-  roleLabelFn,
   showRole = true,
   showGroup = false,
   children,
@@ -32,14 +33,7 @@ export default function PersonAccordion({
             {netId}
           </span>
         )}
-        {showRole && user?.role && (
-          <span style={{
-            background: "rgba(255,255,255,0.08)", color: "rgba(249,249,249,0.55)",
-            borderRadius: "6px", padding: "0.05rem 0.5rem", fontSize: "0.72rem", fontWeight: 600,
-          }}>
-            {roleLabelFn ? roleLabelFn(user.role) : user.role}
-          </span>
-        )}
+        {showRole && user?.role && <RoleBadge roleId={user.role} />}
         {showGroup && user?.group_number && (
           <span style={{ color: "rgba(249,249,249,0.35)", fontSize: "0.78rem" }}>
             Group {user.group_number}

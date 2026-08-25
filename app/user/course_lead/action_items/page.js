@@ -233,7 +233,6 @@ export default function CourseLeadActionItems() {
           totalCount={items.length}
           isCollapsed={collapsed[net_id]}
           onToggle={() => setCollapsed((c) => ({ ...c, [net_id]: !c[net_id] }))}
-          roleLabelFn={roleLabel}
           showGroup
         >
           <div className={styles.tableWrapper} style={{ marginTop: "0.25rem" }}>
