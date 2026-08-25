@@ -251,10 +251,6 @@ export default function EventsPanel() {
                               {liveCodes[event.id].expiresIn}s
                             </span>
                           </div>
-                          <div className={panelStyles.codeHint}>
-                            Project this screen or read the code aloud.
-                            It rotates every 30 seconds - absent students can't use a shared screenshot.
-                          </div>
                         </div>
                       </td>
                     </tr>
@@ -338,8 +334,8 @@ export default function EventsPanel() {
                 placeholder="e.g. Siebel 1404"
               />
             </div>
-            <div style={{ display: "flex", gap: "0.75rem" }}>
-              <div className={styles.formGroup} style={{ flex: 1 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+              <div className={styles.formGroup} style={{ flex: "1 1 160px" }}>
                 <label>Start Time</label>
                 <input
                   type="datetime-local"
@@ -347,7 +343,7 @@ export default function EventsPanel() {
                   onChange={e => setForm({ ...form, start_time: e.target.value })}
                 />
               </div>
-              <div className={styles.formGroup} style={{ flex: 1 }}>
+              <div className={styles.formGroup} style={{ flex: "1 1 160px" }}>
                 <label>End Time <span style={{ color: "rgba(249,249,249,0.35)", fontWeight: 400 }}>(optional)</span></label>
                 <input
                   type="datetime-local"
