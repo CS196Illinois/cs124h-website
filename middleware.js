@@ -28,6 +28,13 @@ export default async function middleware(req) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // The bare /user root just redirects to /user/<role> (handled by that page
+  // itself, which also gates on an invalid/missing role) — every role needs
+  // to reach it, so let it through before any role-specific path checks.
+  if (path === "/user") {
+    return NextResponse.next();
+  }
+
   // Lead web devs have full admin-level access and can navigate any dashboard
   if (role === "lead_web_dev") {
     return NextResponse.next();

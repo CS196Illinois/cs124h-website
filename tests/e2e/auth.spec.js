@@ -21,6 +21,16 @@ test.describe("auth + role-gated dashboards", () => {
       await page.goto(path);
       await expect(page).toHaveURL(new RegExp(path.replace(/\//g, "\\/")));
     });
+
+    // Covers the post-sign-in flow: /signin defaults callbackUrl to the bare
+    // /user root, which app/user/page.js redirects onward from. Regression
+    // test for a bug where middleware blocked web_dev at /user itself before
+    // that redirect could run, sending them to /unauthorized instead.
+    test(`${role} lands on their own dashboard via the bare /user redirect`, async ({ page, loginAs }) => {
+      await loginAs({ netID: `e2e-${role}-root`, role });
+      await page.goto("/user");
+      await expect(page).toHaveURL(new RegExp(path.replace(/\//g, "\\/")));
+    });
   }
 
   test("a student is redirected away from a pm-only page", async ({ page, loginAs }) => {
