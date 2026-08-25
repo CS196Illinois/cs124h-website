@@ -255,3 +255,46 @@ test.describe("batch delete: undo a bulk assignment in one shot", () => {
     expect(data).not.toBeNull();
   });
 });
+
+test.describe("role tags on the action items person accordion", () => {
+  test.beforeEach(clearAllTestTables);
+
+  // Regression test: the role tag next to each person's netID used to be a
+  // one-off inline style with no font-family, which fell back to the page's
+  // serif display font instead of the app's Inter sans-serif — visibly
+  // inconsistent with every other role tag in the app (e.g. the People
+  // pages), which all go through the shared RoleBadge component/`.badge`
+  // CSS class. Now PersonAccordion uses that same shared component, so this
+  // asserts the badge actually picks up Inter and is distinctly color-coded
+  // per role rather than a flat, unstyled box.
+  test("the role tag uses the app's shared badge font and per-role color, not the page's serif fallback", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-lead", role: "LEAD" });
+    await insertUser({ net_id: "e2e-badge-stu", role: "STUDENT", group_number: 1 });
+    await insertUser({ net_id: "e2e-badge-pm", role: "PM", group_number: 1 });
+    await insertActionItem({ net_id: "e2e-badge-stu", assigned_by: "e2e-lead", title: "Student item" });
+    await insertActionItem({ net_id: "e2e-badge-pm", assigned_by: "e2e-lead", title: "PM item" });
+
+    await loginAs({ netID: "e2e-lead", role: "course_lead" });
+    await page.goto("/user/course_lead/action_items");
+    await page.getByRole("button", { name: "All Items" }).click();
+
+    // Scoped to <span> — "PM" and "STUDENT" also appear as filter-chip button
+    // labels elsewhere on the page.
+    const studentBadge = page.locator("span", { hasText: /^STUDENT$/ });
+    const pmBadge = page.locator("span", { hasText: /^PM$/ });
+    await expect(studentBadge).toBeVisible();
+    await expect(pmBadge).toBeVisible();
+
+    const [studentFont, studentColor, pmColor] = await Promise.all([
+      studentBadge.evaluate((el) => getComputedStyle(el).fontFamily),
+      studentBadge.evaluate((el) => getComputedStyle(el).color),
+      pmBadge.evaluate((el) => getComputedStyle(el).color),
+    ]);
+
+    expect(studentFont).toContain("Inter");
+    expect(studentFont).not.toContain("Playfair");
+    // Each role gets a distinct color from the shared badge system — a flat,
+    // unstyled tag would render both the same.
+    expect(studentColor).not.toBe(pmColor);
+  });
+});

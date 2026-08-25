@@ -92,7 +92,7 @@ export default function PeopleMultiSelect({ people, selected, onChange, roleLabe
                 </span>
                 <span style={{ color: "rgba(249,249,249,0.45)", fontSize: "0.78rem", fontFamily: "monospace" }}>{p.net_id}</span>
                 {roleLabelFn && p.role && (
-                  <span style={{ color: "rgba(249,249,249,0.4)", fontSize: "0.72rem" }}>{roleLabelFn(p.role)}</span>
+                  <span style={{ color: "rgba(249,249,249,0.4)", fontSize: "0.72rem", fontFamily: "Inter, sans-serif" }}>{roleLabelFn(p.role)}</span>
                 )}
                 {p.group_number != null && (
                   <span style={{ marginLeft: "auto", color: "rgba(249,249,249,0.35)", fontSize: "0.75rem" }}>Group {p.group_number}</span>

@@ -169,7 +169,6 @@ export default function LeadWebDevActionItems() {
           totalCount={items.length}
           isCollapsed={collapsed[net_id]}
           onToggle={() => setCollapsed((c) => ({ ...c, [net_id]: !c[net_id] }))}
-          roleLabelFn={roleLabel}
         >
           <div className={styles.tableWrapper} style={{ marginTop: "0.25rem" }}>
             <table className={styles.table}>
