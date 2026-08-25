@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { MagnifyingGlassIcon, X } from "@phosphor-icons/react";
 import { useUndo } from "../../../components/UndoProvider";
 import styles from "../dashboard.module.css";
 import panelStyles from "./EventsPanel.module.css";
@@ -11,6 +12,7 @@ export default function EventsPanel() {
   const [loading, setLoading]       = useState(true);
   const [expandedId, setExpandedId] = useState(null); // event whose attendees are shown
   const [attendees, setAttendees]   = useState({});   // eventId → [{ net_id, checked_in_at }]
+  const [enlargedId, setEnlargedId] = useState(null);  // event whose code is shown full-screen
 
   // Create-event modal
   const [showModal, setShowModal]   = useState(false);
@@ -91,6 +93,14 @@ export default function EventsPanel() {
       clearInterval(tickRef.current);
     };
   }, []);
+
+  // Escape closes the enlarged code view
+  useEffect(() => {
+    if (!enlargedId) return;
+    const onKeyDown = (e) => { if (e.key === "Escape") setEnlargedId(null); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [enlargedId]);
 
   // ── Actions ────────────────────────────────────────────────────
 
@@ -218,9 +228,19 @@ export default function EventsPanel() {
                         <div className={panelStyles.codeRow}>
                           <div className={panelStyles.codeBlock}>
                             <span className={panelStyles.codeLabel}>Check-in Code</span>
-                            <span className={panelStyles.codeDigits}>
-                              {liveCodes[event.id].code}
-                            </span>
+                            <div className={panelStyles.codeDigitsRow}>
+                              <span className={panelStyles.codeDigits}>
+                                {liveCodes[event.id].code}
+                              </span>
+                              <button
+                                className={panelStyles.enlargeBtn}
+                                onClick={() => setEnlargedId(event.id)}
+                                aria-label="Enlarge check-in code"
+                                title="Enlarge for projecting"
+                              >
+                                <MagnifyingGlassIcon size={18} weight="bold" />
+                              </button>
+                            </div>
                           </div>
                           <div className={panelStyles.timerBlock}>
                             <span className={panelStyles.codeLabel}>Rotates in</span>
@@ -341,6 +361,33 @@ export default function EventsPanel() {
               <button className={styles.btnPrimary} onClick={handleCreate} disabled={formLoading}>
                 {formLoading ? "Creating…" : "Create Event"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enlarged check-in code, for projecting - closes itself if check-in
+          closes (liveCodes entry disappears) or the event is deleted. */}
+      {enlargedId && liveCodes[enlargedId] && (
+        <div className={panelStyles.enlargeOverlay} onClick={() => setEnlargedId(null)}>
+          <button
+            className={panelStyles.enlargeCloseBtn}
+            onClick={(e) => { e.stopPropagation(); setEnlargedId(null); }}
+            aria-label="Close enlarged code"
+          >
+            <X size={28} weight="bold" />
+          </button>
+          <div className={panelStyles.enlargeContent} onClick={(e) => e.stopPropagation()}>
+            <div className={panelStyles.enlargeEventTitle}>
+              {events.find((e) => e.id === enlargedId)?.title}
+            </div>
+            <div className={panelStyles.enlargeLabel}>Check-in Code</div>
+            <div className={panelStyles.enlargeDigits}>{liveCodes[enlargedId].code}</div>
+            <div
+              className={panelStyles.enlargeTimer}
+              style={{ color: liveCodes[enlargedId].expiresIn <= 5 ? "#f87171" : "rgba(249,249,249,0.55)" }}
+            >
+              Rotates in {liveCodes[enlargedId].expiresIn}s
             </div>
           </div>
         </div>

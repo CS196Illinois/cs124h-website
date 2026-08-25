@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures";
 import { insertUser, insertEvent, clearAllTestTables } from "../helpers/db";
+import { deriveCode } from "../../app/api/events/[id]/code/route";
 
 test.describe("events: create, check-in toggle, and creator-scoped permissions", () => {
   test.beforeEach(clearAllTestTables);
@@ -26,6 +27,31 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await page.getByRole("button", { name: "Close Check-in" }).click();
     await expect(page.getByText("● Closed")).toBeVisible();
     await expect(page.getByText("Check-in Code")).not.toBeVisible();
+  });
+
+  test("the magnifying glass enlarges the check-in code full-screen, and the close button returns to normal", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
+    const event = await insertEvent({ title: "Live Workshop", created_by: "e2e-pm", check_in_open: true });
+
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/events");
+
+    const code = deriveCode(event.id);
+    await expect(page.getByText(code, { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Enlarge check-in code" }).click();
+    // The enlarged view shows the same code and event title, full-screen -
+    // both also still exist in the (now-background) table row, so scope to
+    // the enlarged content itself to stay unambiguous.
+    await expect(page.getByRole("button", { name: "Close enlarged code" })).toBeVisible();
+    const enlarged = page.locator('[class*="enlargeContent"]');
+    await expect(enlarged.getByText("Live Workshop", { exact: true })).toBeVisible();
+    await expect(enlarged.getByText(code, { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Close enlarged code" }).click();
+    await expect(page.getByRole("button", { name: "Close enlarged code" })).not.toBeVisible();
+    // Still on the events page, code still showing normally.
+    await expect(page.getByRole("button", { name: "Enlarge check-in code" })).toBeVisible();
   });
 
   test("attendee list shows who checked in, and is empty for an event nobody has", async ({ page, loginAs }) => {
