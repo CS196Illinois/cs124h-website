@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
+import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 const FULL_EVENT_ACCESS = ["course_lead", "lead_web_dev", "web_dev"];
@@ -30,6 +31,18 @@ export async function PATCH(request, { params }) {
   if (body.description !== undefined) updates.description = body.description;
   if (body.location   !== undefined) updates.location   = body.location;
 
+  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
+    const { data: realRow } = await supabaseServer.from(table("events")).select("*").eq("id", id).maybeSingle();
+    const current = await getEffectiveRow(netID, "events", id, realRow);
+    if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!FULL_EVENT_ACCESS.includes(userRole) && current.created_by !== netID) {
+      return NextResponse.json({ error: "Not found, or you don't have permission to edit this event" }, { status: 403 });
+    }
+    const merged = { ...current, ...updates };
+    await sandboxWrite(netID, "events", "update", id, merged);
+    return NextResponse.json(merged);
+  }
+
   // Only the creator can modify, except course_lead can modify any
   let query = supabaseServer.from(table("events")).update(updates).eq("id", id);
   if (!FULL_EVENT_ACCESS.includes(userRole)) query = query.eq("created_by", netID);
@@ -49,6 +62,17 @@ export async function DELETE(request, { params }) {
   }
 
   const { id } = await params;
+
+  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
+    const { data: realRow } = await supabaseServer.from(table("events")).select("*").eq("id", id).maybeSingle();
+    const current = await getEffectiveRow(netID, "events", id, realRow);
+    if (!current || (!FULL_EVENT_ACCESS.includes(userRole) && current.created_by !== netID)) {
+      return NextResponse.json({ error: "Not found, or you don't have permission to delete this event" }, { status: 403 });
+    }
+    await sandboxWrite(netID, "events", "delete", id, null);
+    return NextResponse.json({ success: true });
+  }
+
   let query = supabaseServer.from(table("events")).delete().eq("id", id);
   if (!FULL_EVENT_ACCESS.includes(userRole)) query = query.eq("created_by", netID);
 

@@ -8,6 +8,7 @@ import {
   setSandboxMode,
   mergeSandboxRows,
   sandboxWrite,
+  getEffectiveRow,
   resetSandbox,
 } from "../../lib/sandbox";
 
@@ -200,6 +201,63 @@ describe("sandboxWrite", () => {
         { columns: ["event_id", "net_id"] }
       )
     ).resolves.toBeUndefined();
+  });
+
+  it("an update to a sandbox-only row stays tagged insert, not update", async () => {
+    await sandboxWrite("owner1", "sprints", "insert", "s1", { id: "s1", goal: "v1" });
+    await sandboxWrite("owner1", "sprints", "update", "s1", { id: "s1", goal: "v2" });
+
+    const { data } = await testClient().from(table("sandboxOverlay"))
+      .select("*").eq("owner_net_id", "owner1").eq("table_key", "sprints").eq("row_pk", "s1");
+    expect(data).toHaveLength(1);
+    expect(data[0].op).toBe("insert");
+    expect(data[0].row_data.goal).toBe("v2");
+
+    // Deleting it now must remove the overlay entry entirely, not tombstone.
+    await sandboxWrite("owner1", "sprints", "delete", "s1", null);
+    const { data: after } = await testClient().from(table("sandboxOverlay"))
+      .select("*").eq("owner_net_id", "owner1").eq("table_key", "sprints").eq("row_pk", "s1");
+    expect(after).toHaveLength(0);
+  });
+
+  it("a real row's first edit is tagged update, and stays update on a second edit", async () => {
+    await sandboxWrite("owner1", "sprints", "update", "real1", { id: "real1", goal: "v1" });
+    await sandboxWrite("owner1", "sprints", "update", "real1", { id: "real1", goal: "v2" });
+
+    const { data } = await testClient().from(table("sandboxOverlay"))
+      .select("*").eq("owner_net_id", "owner1").eq("table_key", "sprints").eq("row_pk", "real1");
+    expect(data).toHaveLength(1);
+    expect(data[0].op).toBe("update");
+    expect(data[0].row_data.goal).toBe("v2");
+  });
+});
+
+describe("getEffectiveRow", () => {
+  beforeEach(clearAllTestTables);
+
+  it("returns the real row unchanged when there's no overlay entry", async () => {
+    const real = { id: "r1", goal: "real" };
+    expect(await getEffectiveRow("owner1", "sprints", "r1", real)).toEqual(real);
+  });
+
+  it("returns null when both real and overlay are absent", async () => {
+    expect(await getEffectiveRow("owner1", "sprints", "nope", null)).toBeNull();
+  });
+
+  it("returns the overlay's row_data for an update, ignoring the stale real row passed in", async () => {
+    await sandboxWrite("owner1", "sprints", "update", "r1", { id: "r1", goal: "edited" });
+    const staleReal = { id: "r1", goal: "real" };
+    expect(await getEffectiveRow("owner1", "sprints", "r1", staleReal)).toEqual({ id: "r1", goal: "edited" });
+  });
+
+  it("returns the overlay's row_data for a sandbox-only insert even with no real row", async () => {
+    await sandboxWrite("owner1", "sprints", "insert", "s1", { id: "s1", goal: "new" });
+    expect(await getEffectiveRow("owner1", "sprints", "s1", null)).toEqual({ id: "s1", goal: "new" });
+  });
+
+  it("returns null for a row deleted in the overlay, even if a real row was passed in", async () => {
+    await sandboxWrite("owner1", "sprints", "delete", "r1", null);
+    expect(await getEffectiveRow("owner1", "sprints", "r1", { id: "r1", goal: "real" })).toBeNull();
   });
 });
 

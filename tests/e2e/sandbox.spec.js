@@ -61,4 +61,23 @@ test.describe("dashboard sandbox mode", () => {
     const res = await page.request.patch("/api/users/me/sandbox", { data: { mode: "persistent" } });
     expect(res.status()).toBe(403);
   });
+
+  test("creating an event through the UI in sandbox mode never touches the real table", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-webdev3", role: "WEB", sandbox_mode: "persistent" });
+    await loginAs({ netID: "e2e-webdev3", role: "web_dev" });
+    await page.goto("/user/web_dev/events");
+
+    await page.getByRole("button", { name: "+ New Event" }).click();
+    await page.getByPlaceholder("e.g. Week 5 Guest Lecture").fill("Sandbox-only workshop");
+    await page.getByRole("button", { name: "Create Event" }).click();
+
+    await expect(page.getByText("Sandbox-only workshop")).toBeVisible();
+
+    const { data: real } = await testClient().from(table("events")).select("*").eq("title", "Sandbox-only workshop");
+    expect(real).toHaveLength(0);
+
+    const { data: overlay } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", "e2e-webdev3").eq("table_key", "events");
+    expect(overlay).toHaveLength(1);
+    expect(overlay[0].row_data.title).toBe("Sandbox-only workshop");
+  });
 });

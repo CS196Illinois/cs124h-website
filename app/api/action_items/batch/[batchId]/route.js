@@ -4,6 +4,7 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
 import { canManageItem } from "../../[id]/route";
+import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../../../lib/sandbox";
 
 /**
  * Bulk-grade every eligible item in a batch (a set of action items created
@@ -26,11 +27,18 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: "No grades provided" }, { status: 400 });
   }
 
-  const { data: items, error: fetchErr } = await supabaseServer
+  const sandboxed = isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off";
+
+  const { data: realItems, error: fetchErr } = await supabaseServer
     .from(table("actionItems"))
-    .select("id, net_id, title, is_gradable, is_done, assigned_by, max_score")
+    .select("*")
     .eq("batch_id", batchId);
   if (fetchErr) return NextResponse.json({ error: fetchErr.message }, { status: 500 });
+
+  let items = realItems;
+  if (sandboxed) {
+    items = await mergeSandboxRows(netID, "actionItems", realItems, (row) => row.batch_id === batchId);
+  }
   if (!items || items.length === 0) {
     return NextResponse.json({ error: "Batch not found" }, { status: 404 });
   }
@@ -77,8 +85,16 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: "No valid grades to apply", skipped }, { status: 400 });
   }
 
-  const { data, error } = await supabaseServer.from(table("actionItems")).upsert(updates).select();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  let data;
+  if (sandboxed) {
+    const mergedRows = updates.map((u) => ({ ...itemsById[u.id], ...u }));
+    await Promise.all(mergedRows.map((row) => sandboxWrite(netID, "actionItems", "update", row.id, row)));
+    data = mergedRows;
+  } else {
+    const { data: upserted, error } = await supabaseServer.from(table("actionItems")).upsert(updates).select();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    data = upserted;
+  }
 
   return NextResponse.json({ success: true, updated: data.length, skipped, data });
 }
@@ -100,12 +116,18 @@ export async function DELETE(request, { params }) {
   }
 
   const { batchId } = await params;
+  const sandboxed = isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off";
 
-  const { data: items, error: fetchErr } = await supabaseServer
+  const { data: realItems, error: fetchErr } = await supabaseServer
     .from(table("actionItems"))
     .select("id")
     .eq("batch_id", batchId);
   if (fetchErr) return NextResponse.json({ error: fetchErr.message }, { status: 500 });
+
+  let items = realItems;
+  if (sandboxed) {
+    items = await mergeSandboxRows(netID, "actionItems", realItems, (row) => row.batch_id === batchId);
+  }
   if (!items || items.length === 0) {
     return NextResponse.json({ error: "Batch not found" }, { status: 404 });
   }
@@ -114,6 +136,11 @@ export async function DELETE(request, { params }) {
     if (!(await canManageItem(userRole, netID, item.id))) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
     }
+  }
+
+  if (sandboxed) {
+    await Promise.all(items.map((item) => sandboxWrite(netID, "actionItems", "delete", String(item.id), null)));
+    return NextResponse.json({ success: true, count: items.length });
   }
 
   const { error } = await supabaseServer.from(table("actionItems")).delete().eq("batch_id", batchId);
