@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { asRole, asAnonymous } from "../helpers/mockAuth";
 import { makeRequest } from "../helpers/request";
-import { insertUser, clearAllTestTables } from "../helpers/db";
+import { insertUser, insertSandboxOverlay, clearAllTestTables, testClient } from "../helpers/db";
+import { table } from "../../lib/tables";
 
 const { GET, POST, DELETE } = await import("../../app/api/users/route");
 const { PATCH: PATCH_ONE, DELETE: DELETE_ONE } = await import("../../app/api/users/[net_id]/route");
@@ -179,6 +180,66 @@ describe("DELETE /api/users/[net_id]", () => {
       { params: { net_id: "web1" } }
     );
     expect(webRes.status).toBe(403);
+  });
+});
+
+describe("sandbox cleanup on role revocation / user removal", () => {
+  beforeEach(clearAllTestTables);
+
+  it("demoting a web_dev away from the web team clears their sandbox overlay", async () => {
+    await insertUser({ net_id: "web1", role: "WEB", sandbox_mode: "persistent" });
+    await insertSandboxOverlay({ owner_net_id: "web1", table_key: "sprints", row_pk: "s1", op: "insert", row_data: { id: "s1" } });
+    asRole("course_lead", "lead1");
+
+    const res = await PATCH_ONE(
+      makeRequest("http://localhost/api/users/web1", { method: "PATCH", body: { role: "STUDENT" } }),
+      { params: { net_id: "web1" } }
+    );
+    expect(res.status).toBe(200);
+
+    const { data } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", "web1");
+    expect(data).toHaveLength(0);
+  });
+
+  it("moving between WEB and LEAD_WEB (staying on the web team) does not clear the sandbox", async () => {
+    await insertUser({ net_id: "web1", role: "WEB", sandbox_mode: "persistent" });
+    await insertSandboxOverlay({ owner_net_id: "web1", table_key: "sprints", row_pk: "s1", op: "insert", row_data: { id: "s1" } });
+    asRole("lead_web_dev", "leadweb1");
+
+    await PATCH_ONE(
+      makeRequest("http://localhost/api/users/web1", { method: "PATCH", body: { role: "LEAD_WEB" } }),
+      { params: { net_id: "web1" } }
+    );
+
+    const { data } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", "web1");
+    expect(data).toHaveLength(1);
+  });
+
+  it("deleting a web_dev user clears their sandbox overlay", async () => {
+    await insertUser({ net_id: "web1", role: "WEB" });
+    await insertSandboxOverlay({ owner_net_id: "web1", table_key: "sprints", row_pk: "s1", op: "insert", row_data: { id: "s1" } });
+    asRole("course_lead", "lead1");
+
+    const res = await DELETE_ONE(makeRequest("http://localhost/api/users/web1", { method: "DELETE" }), { params: { net_id: "web1" } });
+    expect(res.status).toBe(200);
+
+    const { data } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", "web1");
+    expect(data).toHaveLength(0);
+  });
+
+  it("bulk-deleting all WEB users clears all of their sandbox overlays", async () => {
+    await insertUser({ net_id: "web1", role: "WEB" });
+    await insertUser({ net_id: "web2", role: "WEB" });
+    await insertSandboxOverlay({ owner_net_id: "web1", table_key: "sprints", row_pk: "s1", op: "insert", row_data: { id: "s1" } });
+    await insertSandboxOverlay({ owner_net_id: "web2", table_key: "sprints", row_pk: "s2", op: "insert", row_data: { id: "s2" } });
+    asRole("course_lead", "lead1");
+
+    const res = await DELETE(makeRequest("http://localhost/api/users?role=WEB", { method: "DELETE" }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).deleted).toBe(2);
+
+    const { data } = await testClient().from(table("sandboxOverlay")).select("*").in("owner_net_id", ["web1", "web2"]);
+    expect(data).toHaveLength(0);
   });
 });
 

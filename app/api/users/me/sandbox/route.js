@@ -43,3 +43,19 @@ export async function DELETE() {
   await resetSandbox(netID);
   return NextResponse.json({ reset: true });
 }
+
+// navigator.sendBeacon only supports POST, so the sidebar uses this (instead
+// of DELETE above) for its best-effort clear when the user navigates away
+// from the dashboard while ephemeral. Only ever resets if the caller's mode
+// is currently ephemeral — a stray/malicious beacon call must never be able
+// to wipe a persistent sandbox. Not the safety net (getSandboxMode()'s lazy
+// TTL expiry is); this only helps the clean in-app-navigation case.
+export async function POST() {
+  const { netID, error } = await requireSandboxUser();
+  if (error) return error;
+
+  if ((await getSandboxMode(netID)) === "ephemeral") {
+    await resetSandbox(netID);
+  }
+  return new NextResponse(null, { status: 204 });
+}

@@ -10,6 +10,7 @@ import {
   sandboxWrite,
   getEffectiveRow,
   resetSandbox,
+  EPHEMERAL_TTL_MS,
 } from "../../lib/sandbox";
 
 afterAll(clearAllTestTables);
@@ -48,6 +49,51 @@ describe("getSandboxMode / setSandboxMode", () => {
 
   it("returns off for an unknown netID", async () => {
     expect(await getSandboxMode("nobody-here")).toBe("off");
+  });
+});
+
+describe("getSandboxMode - ephemeral idle expiry", () => {
+  beforeEach(clearAllTestTables);
+
+  it("a recently-written ephemeral overlay is not expired", async () => {
+    const user = await insertUser({ role: "WEB", sandbox_mode: "ephemeral" });
+    await insertSandboxOverlay({ owner_net_id: user.net_id, table_key: "sprints", row_pk: "s1", op: "insert", row_data: { id: "s1" } });
+
+    expect(await getSandboxMode(user.net_id)).toBe("ephemeral");
+    const { data } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", user.net_id);
+    expect(data).toHaveLength(1);
+  });
+
+  it("an idle-past-TTL ephemeral overlay is cleared on the next mode check", async () => {
+    const user = await insertUser({ role: "WEB", sandbox_mode: "ephemeral" });
+    const stale = new Date(Date.now() - EPHEMERAL_TTL_MS - 60_000).toISOString();
+    await insertSandboxOverlay({
+      owner_net_id: user.net_id, table_key: "sprints", row_pk: "s1", op: "insert", row_data: { id: "s1" },
+      updated_at: stale,
+    });
+
+    const mode = await getSandboxMode(user.net_id);
+    expect(mode).toBe("ephemeral"); // mode itself is unchanged, just the overlay
+    const { data } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", user.net_id);
+    expect(data).toHaveLength(0);
+  });
+
+  it("a persistent sandbox never expires, no matter how old", async () => {
+    const user = await insertUser({ role: "WEB", sandbox_mode: "persistent" });
+    const stale = new Date(Date.now() - EPHEMERAL_TTL_MS * 10).toISOString();
+    await insertSandboxOverlay({
+      owner_net_id: user.net_id, table_key: "sprints", row_pk: "s1", op: "insert", row_data: { id: "s1" },
+      updated_at: stale,
+    });
+
+    expect(await getSandboxMode(user.net_id)).toBe("persistent");
+    const { data } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", user.net_id);
+    expect(data).toHaveLength(1);
+  });
+
+  it("an ephemeral user with no overlay rows at all doesn't error", async () => {
+    const user = await insertUser({ role: "WEB", sandbox_mode: "ephemeral" });
+    await expect(getSandboxMode(user.net_id)).resolves.toBe("ephemeral");
   });
 });
 
