@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
+import { isSandboxRole, getSandboxMode, mergeSandboxRows } from "../../../../lib/sandbox";
 
 // Returns the list of event IDs the current user has checked into
 export async function GET() {
@@ -21,5 +22,11 @@ export async function GET() {
     .order("checked_in_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  let rows = data;
+  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
+    rows = await mergeSandboxRows(netID, "eventCheckins", rows, (row) => row.net_id === netID);
+    rows.sort((a, b) => new Date(b.checked_in_at) - new Date(a.checked_in_at));
+  }
+  return NextResponse.json(rows);
 }

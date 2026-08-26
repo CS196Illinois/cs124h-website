@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { asRole, asAnonymous } from "../helpers/mockAuth";
 import { makeRequest } from "../helpers/request";
-import { insertEvent, clearAllTestTables } from "../helpers/db";
+import { insertUser, insertEvent, clearAllTestTables, testClient } from "../helpers/db";
+import { table } from "../../lib/tables";
 
 const { GET, POST } = await import("../../app/api/events/route");
 const { PATCH, DELETE } = await import("../../app/api/events/[id]/route");
@@ -75,6 +76,146 @@ describe("PATCH/DELETE /api/events/[id]", () => {
 
     const del = await DELETE(makeRequest(`http://localhost/api/events/${event.id}`, { method: "DELETE" }), { params: { id: event.id } });
     expect(del.status).toBe(200);
+  });
+});
+
+describe("events - sandbox mode", () => {
+  beforeEach(clearAllTestTables);
+
+  it("a sandboxed create never touches the real table, and shows up in the sandboxed list", async () => {
+    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
+    asRole("web_dev", "webdev1");
+
+    const res = await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "Sandboxed event" } }));
+    expect(res.status).toBe(201);
+
+    const { data: real } = await testClient().from(table("events")).select("*");
+    expect(real).toHaveLength(0);
+
+    const list = await (await GET(makeRequest("http://localhost/api/events"))).json();
+    expect(list.map((e) => e.title)).toEqual(["Sandboxed event"]);
+  });
+
+  it("a sandboxed edit to a real event doesn't touch the real row", async () => {
+    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
+    const real = await insertEvent({ title: "Original", created_by: "webdev1" });
+    asRole("web_dev", "webdev1");
+
+    const res = await PATCH(
+      makeRequest(`http://localhost/api/events/${real.id}`, { method: "PATCH", body: { title: "Edited in sandbox" } }),
+      { params: { id: real.id } }
+    );
+    expect((await res.json()).title).toBe("Edited in sandbox");
+
+    const { data: stillReal } = await testClient().from(table("events")).select("title").eq("id", real.id).single();
+    expect(stillReal.title).toBe("Original");
+  });
+
+  it("a sandboxed delete of a real event doesn't touch the real row, and it disappears from the sandboxed view", async () => {
+    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
+    const real = await insertEvent({ title: "Original", created_by: "webdev1" });
+    asRole("web_dev", "webdev1");
+
+    const res = await DELETE(makeRequest(`http://localhost/api/events/${real.id}`, { method: "DELETE" }), { params: { id: real.id } });
+    expect(res.status).toBe(200);
+
+    const list = await (await GET(makeRequest("http://localhost/api/events"))).json();
+    expect(list).toHaveLength(0);
+
+    const { data: stillReal } = await testClient().from(table("events")).select("id").eq("id", real.id).maybeSingle();
+    expect(stillReal).not.toBeNull();
+  });
+
+  it("the check-in code endpoint respects a sandboxed check_in_open edit", async () => {
+    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
+    const real = await insertEvent({ title: "e", created_by: "webdev1", check_in_open: false });
+    asRole("web_dev", "webdev1");
+
+    const before = await GET_CODE(makeRequest(`http://localhost/api/events/${real.id}/code`), { params: { id: real.id } });
+    expect(before.status).toBe(400);
+
+    await PATCH(
+      makeRequest(`http://localhost/api/events/${real.id}`, { method: "PATCH", body: { check_in_open: true } }),
+      { params: { id: real.id } }
+    );
+
+    const after = await GET_CODE(makeRequest(`http://localhost/api/events/${real.id}/code`), { params: { id: real.id } });
+    expect(after.status).toBe(200);
+    expect((await after.json()).code).toBe(deriveCode(real.id));
+
+    const { data: stillReal } = await testClient().from(table("events")).select("check_in_open").eq("id", real.id).single();
+    expect(stillReal.check_in_open).toBe(false);
+  });
+});
+
+describe("event check-ins - sandbox mode", () => {
+  beforeEach(clearAllTestTables);
+
+  it("a sandboxed check-in writes to the overlay, not the real table, and shows up in the attendee list", async () => {
+    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
+    const event = await insertEvent({ title: "e", created_by: "webdev1", check_in_open: true });
+    asRole("web_dev", "webdev1");
+
+    const res = await POST_CHECKIN(
+      makeRequest(`http://localhost/api/events/${event.id}/checkin`, { method: "POST", body: { code: deriveCode(event.id) } }),
+      { params: { id: event.id } }
+    );
+    expect(res.status).toBe(201);
+
+    const { data: realCheckins } = await testClient().from(table("eventCheckins")).select("*").eq("event_id", event.id);
+    expect(realCheckins).toHaveLength(0);
+
+    const attendees = await (await GET_CHECKIN(makeRequest(`http://localhost/api/events/${event.id}/checkin`), { params: { id: event.id } })).json();
+    expect(attendees.map((a) => a.net_id)).toEqual(["webdev1"]);
+
+    const mine = await (await GET_MY_CHECKINS(makeRequest("http://localhost/api/events/my-checkins"))).json();
+    expect(mine.map((c) => c.event_id)).toEqual([event.id]);
+  });
+
+  it("a sandboxed duplicate check-in still 409s (unique constraint simulated against the overlay)", async () => {
+    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
+    const event = await insertEvent({ title: "e", created_by: "webdev1", check_in_open: true });
+    asRole("web_dev", "webdev1");
+
+    await POST_CHECKIN(
+      makeRequest(`http://localhost/api/events/${event.id}/checkin`, { method: "POST", body: { code: deriveCode(event.id) } }),
+      { params: { id: event.id } }
+    );
+    const dup = await POST_CHECKIN(
+      makeRequest(`http://localhost/api/events/${event.id}/checkin`, { method: "POST", body: { code: deriveCode(event.id) } }),
+      { params: { id: event.id } }
+    );
+    expect(dup.status).toBe(409);
+  });
+
+  it("a sandboxed check-in against a real already-checked-in row also 409s", async () => {
+    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
+    const event = await insertEvent({ title: "e", created_by: "webdev1", check_in_open: true });
+    await testClient().from(table("eventCheckins")).insert({ event_id: event.id, net_id: "webdev1" });
+    asRole("web_dev", "webdev1");
+
+    const res = await POST_CHECKIN(
+      makeRequest(`http://localhost/api/events/${event.id}/checkin`, { method: "POST", body: { code: deriveCode(event.id) } }),
+      { params: { id: event.id } }
+    );
+    expect(res.status).toBe(409);
+  });
+
+  it("a sandboxed check-in works against a sandbox-only event too", async () => {
+    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
+    asRole("web_dev", "webdev1");
+
+    const created = await (await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "sandbox event" } }))).json();
+    await PATCH(
+      makeRequest(`http://localhost/api/events/${created.id}`, { method: "PATCH", body: { check_in_open: true } }),
+      { params: { id: created.id } }
+    );
+
+    const res = await POST_CHECKIN(
+      makeRequest(`http://localhost/api/events/${created.id}/checkin`, { method: "POST", body: { code: deriveCode(created.id) } }),
+      { params: { id: created.id } }
+    );
+    expect(res.status).toBe(201);
   });
 });
 

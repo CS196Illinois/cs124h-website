@@ -4,6 +4,7 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { MANAGEABLE_BY as MANAGEABLE_ROLES } from "../../../lib/roles";
+import { resetSandbox } from "../../../lib/sandbox";
 
 export async function GET(request) {
   const session = await getServerSession(authOptions);
@@ -84,5 +85,13 @@ export async function DELETE(request) {
     .select("net_id");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Hygiene, not a security requirement (a deleted user can never reach a
+  // sandboxed route again either way) - avoid leaving orphaned overlay rows
+  // behind for a whole bulk-deleted role.
+  if (role === "WEB" || role === "LEAD_WEB") {
+    await Promise.all(data.map((u) => resetSandbox(u.net_id)));
+  }
+
   return NextResponse.json({ deleted: data.length });
 }

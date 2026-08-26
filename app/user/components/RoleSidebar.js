@@ -6,7 +6,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRef, useState, useEffect } from "react";
 import styles from "./UserSidebar.module.css";
 
-export default function RoleSidebar({ links, base, roleTitle, ownRole, children }) {
+export default function RoleSidebar({ links, base, roleTitle, ownRole, banner, children }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const linkRefs = useRef([]);
@@ -51,6 +51,7 @@ export default function RoleSidebar({ links, base, roleTitle, ownRole, children 
       <div className={styles.siteTitle}>CS 124H</div>
       <div className={styles.roleTitle}>{roleTitle}</div>
       {session?.user?.name && <div className={styles.userName}>{session.user.name}</div>}
+      {banner}
       {isRoleViewing && (
         <Link
           href={`/user/${sessionRole}`}

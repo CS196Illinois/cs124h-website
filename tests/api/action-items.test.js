@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { asRole } from "../helpers/mockAuth";
 import { makeRequest } from "../helpers/request";
-import { insertUser, insertActionItem, clearAllTestTables } from "../helpers/db";
+import { insertUser, insertActionItem, clearAllTestTables, testClient } from "../helpers/db";
+import { table } from "../../lib/tables";
 
 const { GET, POST } = await import("../../app/api/action_items/route");
 const { PATCH, DELETE } = await import("../../app/api/action_items/[id]/route");
-const { PATCH: PATCH_BATCH } = await import("../../app/api/action_items/batch/[batchId]/route");
+const { PATCH: PATCH_BATCH, DELETE: DELETE_BATCH } = await import("../../app/api/action_items/batch/[batchId]/route");
 
 afterAll(clearAllTestTables);
 
@@ -349,5 +350,126 @@ describe("PATCH /api/action_items/batch/[batchId]", () => {
     expect(json.skipped.length).toBe(1);
     expect(json.skipped[0].id).toBe(b.id);
     expect(json.data[0].grade).toBe(95);
+  });
+});
+
+describe("action items - sandbox mode", () => {
+  beforeEach(async () => {
+    await clearAllTestTables();
+    await seedGroup();
+    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
+  });
+
+  it("a sandboxed single assignment writes to the overlay, not the real table", async () => {
+    asRole("web_dev", "webdev1");
+    const res = await POST(makeRequest("http://localhost/api/action_items", {
+      method: "POST", body: { title: "sandboxed", target_type: "individual", target_net_ids: ["stu1"] },
+    }));
+    expect(res.status).toBe(201);
+
+    const { data: real } = await testClient().from(table("actionItems")).select("*");
+    expect(real).toHaveLength(0);
+
+    const list = await (await GET(makeRequest("http://localhost/api/action_items?scope=mine"))).json();
+    expect(list.map((i) => i.title)).toEqual(["sandboxed"]);
+  });
+
+  it("a sandboxed bulk assignment shares one batch_id across overlay rows", async () => {
+    asRole("web_dev", "webdev1");
+    const res = await POST(makeRequest("http://localhost/api/action_items", {
+      method: "POST", body: { title: "bulk", target_type: "individual", target_net_ids: ["stu1", "stu2"] },
+    }));
+    const json = await res.json();
+    expect(json.count).toBe(2);
+    expect(json.data[0].batch_id).toBeTruthy();
+    expect(json.data[0].batch_id).toBe(json.data[1].batch_id);
+
+    const { data: real } = await testClient().from(table("actionItems")).select("*");
+    expect(real).toHaveLength(0);
+  });
+
+  it("a sandboxed content edit on a real item doesn't touch the real row", async () => {
+    const item = await insertActionItem({ net_id: "stu1", assigned_by: "webdev1", title: "Original" });
+    asRole("web_dev", "webdev1");
+
+    const res = await PATCH(
+      makeRequest(`http://localhost/api/action_items/${item.id}`, { method: "PATCH", body: { title: "Edited in sandbox" } }),
+      { params: { id: item.id } }
+    );
+    expect((await res.json()).title).toBe("Edited in sandbox");
+
+    const { data: stillReal } = await testClient().from(table("actionItems")).select("title").eq("id", item.id).single();
+    expect(stillReal.title).toBe("Original");
+  });
+
+  it("full sandboxed lifecycle: create, complete, grade, all within the overlay", async () => {
+    asRole("web_dev", "webdev1");
+    const created = (await (await POST(makeRequest("http://localhost/api/action_items", {
+      method: "POST", body: { title: "g", target_type: "individual", target_net_ids: ["stu1"], is_gradable: true, max_score: 100 },
+    }))).json()).data[0];
+
+    const completed = await (await PATCH(
+      makeRequest(`http://localhost/api/action_items/${created.id}`, { method: "PATCH", body: { is_done: true } }),
+      { params: { id: created.id } }
+    )).json();
+    expect(completed.is_done).toBe(true);
+
+    const graded = await (await PATCH(
+      makeRequest(`http://localhost/api/action_items/${created.id}`, { method: "PATCH", body: { grade: 88 } }),
+      { params: { id: created.id } }
+    )).json();
+    expect(graded.grade).toBe(88);
+    expect(graded.graded_by).toBe("webdev1");
+
+    const { data: real } = await testClient().from(table("actionItems")).select("*");
+    expect(real).toHaveLength(0);
+  });
+
+  it("a sandboxed delete of a real item doesn't touch the real row", async () => {
+    const item = await insertActionItem({ net_id: "stu1", assigned_by: "webdev1", title: "x" });
+    asRole("web_dev", "webdev1");
+
+    const res = await DELETE(makeRequest(`http://localhost/api/action_items/${item.id}`, { method: "DELETE" }), { params: { id: item.id } });
+    expect(res.status).toBe(200);
+
+    const list = await (await GET(makeRequest("http://localhost/api/action_items?scope=all"))).json();
+    expect(list).toHaveLength(0);
+
+    const { data: stillReal } = await testClient().from(table("actionItems")).select("id").eq("id", item.id).maybeSingle();
+    expect(stillReal).not.toBeNull();
+  });
+
+  it("sandboxed batch grading writes to the overlay, not the real batch", async () => {
+    const a = await insertActionItem({ net_id: "stu1", assigned_by: "webdev1", title: "batch", is_gradable: true, max_score: 100, is_done: true, batch_id: "22222222-2222-2222-2222-222222222222" });
+    asRole("web_dev", "webdev1");
+
+    const res = await PATCH_BATCH(
+      makeRequest("http://localhost/api/action_items/batch/22222222-2222-2222-2222-222222222222", { method: "PATCH", body: { grades: [{ id: a.id, grade: 77 }] } }),
+      { params: { batchId: "22222222-2222-2222-2222-222222222222" } }
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).data[0].grade).toBe(77);
+
+    const { data: stillReal } = await testClient().from(table("actionItems")).select("grade").eq("id", a.id).single();
+    expect(stillReal.grade).toBeNull();
+  });
+
+  it("sandboxed batch delete doesn't touch the real rows", async () => {
+    const a = await insertActionItem({ net_id: "stu1", assigned_by: "webdev1", title: "batch", batch_id: "33333333-3333-3333-3333-333333333333" });
+    const b = await insertActionItem({ net_id: "stu2", assigned_by: "webdev1", title: "batch", batch_id: "33333333-3333-3333-3333-333333333333" });
+    asRole("web_dev", "webdev1");
+
+    const res = await DELETE_BATCH(
+      makeRequest("http://localhost/api/action_items/batch/33333333-3333-3333-3333-333333333333", { method: "DELETE" }),
+      { params: { batchId: "33333333-3333-3333-3333-333333333333" } }
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).count).toBe(2);
+
+    const list = await (await GET(makeRequest("http://localhost/api/action_items?scope=all"))).json();
+    expect(list).toHaveLength(0);
+
+    const { data: stillReal } = await testClient().from(table("actionItems")).select("id").in("id", [a.id, b.id]);
+    expect(stillReal).toHaveLength(2);
   });
 });

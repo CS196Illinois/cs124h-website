@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
+import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
 
 export async function PATCH(request, { params }) {
   const session = await getServerSession(authOptions);
@@ -16,6 +17,16 @@ export async function PATCH(request, { params }) {
   const { id } = await params;
   const body = await request.json();
   const updates = {};
+
+  const sandboxed = isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off";
+  // Fetched once, up front, for sandboxed callers - used both for the grade
+  // validation below and as the merge base when writing the overlay update
+  // at the end. Never fetched for non-sandboxed callers (zero extra cost).
+  let effectiveItem = null;
+  if (sandboxed) {
+    const { data: realItem } = await supabaseServer.from(table("actionItems")).select("*").eq("id", id).maybeSingle();
+    effectiveItem = await getEffectiveRow(netID, "actionItems", id, realItem);
+  }
 
   if (body.is_done !== undefined) {
     updates.is_done = body.is_done;
@@ -67,11 +78,9 @@ export async function PATCH(request, { params }) {
     if (userRole === "student") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
-    const { data: item } = await supabaseServer
-      .from(table("actionItems"))
-      .select("is_gradable, is_done, assigned_by, max_score")
-      .eq("id", id)
-      .maybeSingle();
+    const item = sandboxed
+      ? effectiveItem
+      : (await supabaseServer.from(table("actionItems")).select("is_gradable, is_done, assigned_by, max_score").eq("id", id).maybeSingle()).data;
     if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (!item.is_gradable) {
       return NextResponse.json({ error: "This item is not gradable" }, { status: 400 });
@@ -106,6 +115,15 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
+  if (sandboxed) {
+    // effectiveItem was already resolved above - students are never
+    // sandboxed, so the net_id-scoping the real path needs doesn't apply.
+    if (!effectiveItem) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const merged = { ...effectiveItem, ...updates };
+    await sandboxWrite(netID, "actionItems", "update", id, merged);
+    return NextResponse.json(merged);
+  }
+
   let query = supabaseServer.from(table("actionItems")).update(updates).eq("id", id);
   if (userRole === "student") {
     query = query.eq("net_id", netID);
@@ -129,6 +147,11 @@ export async function DELETE(request, { params }) {
   const allowed = await canManageItem(userRole, netID, id);
   if (!allowed) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+  }
+
+  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
+    await sandboxWrite(netID, "actionItems", "delete", id, null);
+    return NextResponse.json({ success: true });
   }
 
   const { error } = await supabaseServer.from(table("actionItems")).delete().eq("id", id);

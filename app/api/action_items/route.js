@@ -5,6 +5,7 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { MANAGEABLE_BY } from "../../../lib/roles";
+import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../lib/sandbox";
 
 export async function GET(request) {
   const session = await getServerSession(authOptions);
@@ -36,7 +37,16 @@ export async function GET(request) {
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  let rows = data;
+  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
+    const matchesFilter = scope === "mine"
+      ? (row) => row.net_id === netID || row.assigned_by === netID
+      : () => true;
+    rows = await mergeSandboxRows(netID, "actionItems", rows, matchesFilter);
+    rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  }
+  return NextResponse.json(rows);
 }
 
 export async function POST(request) {
@@ -153,6 +163,23 @@ export async function POST(request) {
     batch_id: batchId,
     additional_info: { assigned_by: assignerNetID }, // keep for backward compat
   }));
+
+  if (isSandboxRole(userRole) && (await getSandboxMode(assignerNetID)) !== "off") {
+    const now = new Date().toISOString();
+    const fullRows = records.map((r) => ({
+      id: randomUUID(),
+      created_at: now,
+      is_done: false,
+      completion_date: null,
+      grade: null,
+      grade_note: null,
+      graded_by: null,
+      graded_at: null,
+      ...r,
+    }));
+    await Promise.all(fullRows.map((row) => sandboxWrite(assignerNetID, "actionItems", "insert", row.id, row)));
+    return NextResponse.json({ success: true, count: targetNetIds.length, batch_id: batchId, data: fullRows }, { status: 201 });
+  }
 
   const { data, error } = await supabaseServer.from(table("actionItems")).insert(records).select();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -27,7 +27,12 @@ ALTER TABLE "user-testing" ADD COLUMN IF NOT EXISTS role            text NOT NUL
 ALTER TABLE "user-testing" ADD COLUMN IF NOT EXISTS sub             text UNIQUE;
 ALTER TABLE "user-testing" ADD COLUMN IF NOT EXISTS name            text;
 ALTER TABLE "user-testing" ADD COLUMN IF NOT EXISTS discord_user_id text;
+ALTER TABLE "user-testing" ADD COLUMN IF NOT EXISTS sandbox_mode    text NOT NULL DEFAULT 'off';
 ALTER TABLE "user-testing" ALTER COLUMN role DROP DEFAULT;
+DO $$ BEGIN
+  ALTER TABLE "user-testing" ADD CONSTRAINT user_testing_sandbox_mode_check CHECK (sandbox_mode IN ('off', 'ephemeral', 'persistent'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ── Action items (incl. grading + bulk-batch columns) ────────────────────────
 CREATE TABLE IF NOT EXISTS action_items (
@@ -124,6 +129,36 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ── Dashboard sandbox overlay (web_dev / lead_web_dev) ────────────────────────
+-- One row per real-or-virtual row a sandboxed user has touched in a given
+-- in-scope table. Reads merge this diff onto the real table; writes from a
+-- sandboxed session land here instead of the real table. Deliberately scoped
+-- to content tables only (action_items, events, event_checkins, sprints,
+-- sprint_completions) — users and role_view_requests are never sandboxed.
+CREATE TABLE IF NOT EXISTS sandbox_overlay (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid()
+);
+ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS owner_net_id  text NOT NULL DEFAULT '';
+ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS table_key     text NOT NULL DEFAULT '';
+ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS row_pk        text NOT NULL DEFAULT '';
+ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS op            text NOT NULL DEFAULT 'insert';
+ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS row_data      jsonb;
+ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS created_at    timestamptz NOT NULL DEFAULT now();
+ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS updated_at    timestamptz NOT NULL DEFAULT now();
+ALTER TABLE sandbox_overlay ALTER COLUMN owner_net_id DROP DEFAULT;
+ALTER TABLE sandbox_overlay ALTER COLUMN table_key DROP DEFAULT;
+ALTER TABLE sandbox_overlay ALTER COLUMN row_pk DROP DEFAULT;
+ALTER TABLE sandbox_overlay ALTER COLUMN op DROP DEFAULT;
+DO $$ BEGIN
+  ALTER TABLE sandbox_overlay ADD CONSTRAINT sandbox_overlay_op_check CHECK (op IN ('insert', 'update', 'delete'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE sandbox_overlay ADD CONSTRAINT sandbox_overlay_owner_table_row_key UNIQUE (owner_net_id, table_key, row_pk);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS sandbox_overlay_owner_table_idx ON sandbox_overlay (owner_net_id, table_key);
+
 -- ── Public content (site pages, not auth-scoped) ──────────────────────────────
 -- staff, resources, and projects already exist with the correct shape in
 -- production (verified against the app's actual usage) — included here only
@@ -181,6 +216,7 @@ ALTER TABLE events              DISABLE ROW LEVEL SECURITY;
 ALTER TABLE event_checkins      DISABLE ROW LEVEL SECURITY;
 ALTER TABLE sprints              DISABLE ROW LEVEL SECURITY;
 ALTER TABLE sprint_completions  DISABLE ROW LEVEL SECURITY;
+ALTER TABLE sandbox_overlay     DISABLE ROW LEVEL SECURITY;
 ALTER TABLE staff               DISABLE ROW LEVEL SECURITY;
 ALTER TABLE resources           DISABLE ROW LEVEL SECURITY;
 ALTER TABLE projects            DISABLE ROW LEVEL SECURITY;

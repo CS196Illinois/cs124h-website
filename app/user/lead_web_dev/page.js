@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import styles from "../dashboard.module.css";
+import SandboxPanel from "../components/SandboxPanel";
 
 export default function LeadWebDevDashboard() {
   const { data: session, status } = useSession();
@@ -81,7 +82,7 @@ export default function LeadWebDevDashboard() {
         ))}
       </div>
 
-      <div className={styles.twoCol}>
+      <div className={styles.threeCol}>
         {/* Pending role-view requests */}
         <div className={styles.panel}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
@@ -154,6 +155,8 @@ export default function LeadWebDevDashboard() {
             </div>
           )}
         </div>
+
+        <SandboxPanel />
       </div>
     </div>
   );
