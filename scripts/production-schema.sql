@@ -31,7 +31,7 @@ ALTER TABLE "user-testing" ADD COLUMN IF NOT EXISTS sandbox_mode    text NOT NUL
 ALTER TABLE "user-testing" ALTER COLUMN role DROP DEFAULT;
 DO $$ BEGIN
   ALTER TABLE "user-testing" ADD CONSTRAINT user_testing_sandbox_mode_check CHECK (sandbox_mode IN ('off', 'ephemeral', 'persistent'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 -- ── Action items (incl. grading + bulk-batch columns) ────────────────────────
@@ -103,7 +103,7 @@ ALTER TABLE event_checkins ADD COLUMN IF NOT EXISTS checked_in_at   timestamptz 
 ALTER TABLE event_checkins ALTER COLUMN net_id DROP DEFAULT;
 DO $$ BEGIN
   ALTER TABLE event_checkins ADD CONSTRAINT event_checkins_event_id_net_id_key UNIQUE (event_id, net_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 -- ── Sprints + per-student completions ─────────────────────────────────────────
@@ -126,7 +126,7 @@ ALTER TABLE sprint_completions ADD COLUMN IF NOT EXISTS completed_at      timest
 ALTER TABLE sprint_completions ALTER COLUMN student_net_id DROP DEFAULT;
 DO $$ BEGIN
   ALTER TABLE sprint_completions ADD CONSTRAINT sprint_completions_sprint_id_student_net_id_key UNIQUE (sprint_id, student_net_id);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 -- ── Dashboard sandbox overlay (web_dev / lead_web_dev) ────────────────────────
@@ -151,11 +151,11 @@ ALTER TABLE sandbox_overlay ALTER COLUMN row_pk DROP DEFAULT;
 ALTER TABLE sandbox_overlay ALTER COLUMN op DROP DEFAULT;
 DO $$ BEGIN
   ALTER TABLE sandbox_overlay ADD CONSTRAINT sandbox_overlay_op_check CHECK (op IN ('insert', 'update', 'delete'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 DO $$ BEGIN
   ALTER TABLE sandbox_overlay ADD CONSTRAINT sandbox_overlay_owner_table_row_key UNIQUE (owner_net_id, table_key, row_pk);
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 CREATE INDEX IF NOT EXISTS sandbox_overlay_owner_table_idx ON sandbox_overlay (owner_net_id, table_key);
 
