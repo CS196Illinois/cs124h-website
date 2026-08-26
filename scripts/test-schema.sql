@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS "test_user-testing" (
 ALTER TABLE "test_user-testing" ADD COLUMN IF NOT EXISTS sandbox_mode text NOT NULL DEFAULT 'off';
 DO $$ BEGIN
   ALTER TABLE "test_user-testing" ADD CONSTRAINT test_user_testing_sandbox_mode_check CHECK (sandbox_mode IN ('off', 'ephemeral', 'persistent'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 -- ── Action items (incl. grading + bulk-batch columns) ────────────────────────
