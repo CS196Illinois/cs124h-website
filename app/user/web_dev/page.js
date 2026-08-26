@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import styles from "../dashboard.module.css";
+import SandboxPanel from "../components/SandboxPanel";
 
 function expiryLabel(expires_at) {
   if (!expires_at) return "Permanent";
@@ -124,7 +125,7 @@ export default function WebDevDashboard() {
         }
       </div>
 
-      <div className={styles.twoCol}>
+      <div className={styles.threeCol}>
         {/* Action items panel */}
         <div className={styles.panel}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
@@ -246,6 +247,8 @@ export default function WebDevDashboard() {
             <div className={styles.emptyState} style={{ padding: "1rem 0" }}>All roles requested</div>
           )}
         </div>
+
+        <SandboxPanel />
       </div>
     </div>
   );
