@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RoleSidebar from "../../components/RoleSidebar";
+import SandboxBanner from "../../components/SandboxBanner";
 import styles from "../../components/UserSidebar.module.css";
 
 const links = [
@@ -24,7 +25,7 @@ const TEST_ROLES = [
 export default function LeadWebSidebar() {
   const pathname = usePathname();
   return (
-    <RoleSidebar links={links} base={null} roleTitle="Lead Web Dev" ownRole={null}>
+    <RoleSidebar links={links} base={null} roleTitle="Lead Web Dev" ownRole={null} banner={<SandboxBanner />}>
       <div style={{ marginTop: "1.5rem" }}>
         <div className={styles.roleTitle} style={{ marginBottom: "0.5rem" }}>Test As Role</div>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.1rem" }}>

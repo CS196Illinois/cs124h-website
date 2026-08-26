@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RoleSidebar from "../../components/RoleSidebar";
+import SandboxBanner from "../../components/SandboxBanner";
 import styles from "../../components/UserSidebar.module.css";
 
 const links = [
@@ -42,7 +43,7 @@ export default function WebSidebar() {
   }, [status]);
 
   return (
-    <RoleSidebar links={links} base="/user/web_dev" roleTitle="Web Dev" ownRole="web_dev">
+    <RoleSidebar links={links} base="/user/web_dev" roleTitle="Web Dev" ownRole="web_dev" banner={<SandboxBanner />}>
       {approvedRoles.length > 0 && (
         <div style={{ marginTop: "1.5rem" }}>
           <div className={styles.roleTitle} style={{ marginBottom: "0.5rem" }}>Test As Role</div>
