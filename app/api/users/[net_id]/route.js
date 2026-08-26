@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
+import { resetSandbox } from "../../../../lib/sandbox";
 
 const FULL_USER_ACCESS = ["course_lead", "web_dev"];
 const WEB_TEAM_ROLES   = ["LEAD_WEB", "WEB"];
@@ -58,6 +59,14 @@ export async function PATCH(request, { params }) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // "until their access is revoked" — a role change away from the web team
+  // clears any sandbox (ephemeral or persistent) regardless of the user's
+  // own preference, since they can no longer reach the routes that read it.
+  if (updates.role !== undefined && !WEB_TEAM_ROLES.includes(updates.role)) {
+    await resetSandbox(net_id);
+  }
+
   return NextResponse.json(data);
 }
 
@@ -86,5 +95,10 @@ export async function DELETE(request, { params }) {
     .eq("net_id", net_id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Hygiene: a removed user can never reach a sandboxed route again, so
+  // this is just avoiding an orphaned overlay, not a security requirement.
+  await resetSandbox(net_id);
+
   return NextResponse.json({ success: true });
 }
