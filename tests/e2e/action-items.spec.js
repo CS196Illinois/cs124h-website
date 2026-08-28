@@ -298,3 +298,27 @@ test.describe("role tags on the action items person accordion", () => {
     expect(studentColor).not.toBe(pmColor);
   });
 });
+
+test.describe("regression: People picker checkbox sizing", () => {
+  test.beforeEach(clearAllTestTables);
+
+  // A generic ".formGroup input { width: 100% }" text-input rule was
+  // accidentally winning (by CSS specificity) over ".checkboxInput"'s
+  // width: 18px for any checkbox nested inside a .formGroup wrapper —
+  // stretching the People-picker's per-row checkboxes into full-width
+  // bars instead of small squares.
+  test("checkboxes in the individual-people picker render as small squares, not full-width bars", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-cbk-lead", role: "LEAD" });
+    await insertUser({ net_id: "e2e-cbk-stu", role: "STUDENT", group_number: 1, name: "Checkbox Student" });
+
+    await loginAs({ netID: "e2e-cbk-lead", role: "course_lead" });
+    await page.goto("/user/course_lead/action_items");
+    await page.getByRole("button", { name: "+ Assign Action Item" }).click();
+    await page.getByText("Checkbox Student").waitFor();
+
+    const box = await page.locator('input[type="checkbox"]').first().boundingBox();
+    expect(box.width).toBeLessThan(30);
+    expect(box.height).toBeLessThan(30);
+  });
+});
+

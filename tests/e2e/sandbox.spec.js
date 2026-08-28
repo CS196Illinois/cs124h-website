@@ -80,4 +80,53 @@ test.describe("dashboard sandbox mode", () => {
     expect(overlay).toHaveLength(1);
     expect(overlay[0].row_data.title).toBe("Sandbox-only workshop");
   });
+
+  test("creating a person through the People UI in sandbox mode never touches the real users table, and Reset Sandbox removes it from view", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-leadweb4", role: "LEAD_WEB", sandbox_mode: "persistent" });
+    await loginAs({ netID: "e2e-leadweb4", role: "lead_web_dev" });
+    await page.goto("/user/lead_web_dev/people");
+    await page.getByRole("cell", { name: "e2e-leadweb4" }).waitFor();
+
+    await page.getByRole("button", { name: "+ Add Member" }).click();
+    await page.getByPlaceholder("Jane Doe").fill("John Doe");
+    await page.getByPlaceholder("jdoe2").fill("jdoe2");
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+
+    await expect(page.getByText("jdoe2")).toBeVisible();
+
+    const { data: real } = await testClient().from(table("users")).select("*").eq("net_id", "jdoe2");
+    expect(real).toHaveLength(0);
+
+    const { data: overlay } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", "e2e-leadweb4").eq("table_key", "users").eq("row_pk", "jdoe2");
+    expect(overlay).toHaveLength(1);
+
+    await page.goto("/user/lead_web_dev");
+    await page.getByText("Sandbox Mode").waitFor();
+    await page.getByRole("button", { name: "Reset Sandbox" }).click();
+    await expect(page.getByText("Sandbox reset.")).toBeVisible();
+
+    await page.goto("/user/lead_web_dev/people");
+    await page.getByRole("cell", { name: "e2e-leadweb4" }).waitFor();
+    await expect(page.getByText("jdoe2")).not.toBeVisible();
+
+    const { data: overlayAfterReset } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", "e2e-leadweb4").eq("row_pk", "jdoe2");
+    expect(overlayAfterReset).toHaveLength(0);
+  });
+
+  test("switching sandbox mode to Off hides sandbox-created people from view even without an explicit reset", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-leadweb5", role: "LEAD_WEB", sandbox_mode: "ephemeral" });
+    await insertSandboxOverlay({ owner_net_id: "e2e-leadweb5", table_key: "users", row_pk: "fakeweb5", op: "insert", row_data: { net_id: "fakeweb5", role: "WEB", name: "Fake Person" } });
+    await loginAs({ netID: "e2e-leadweb5", role: "lead_web_dev" });
+    await page.goto("/user/lead_web_dev/people");
+
+    await expect(page.getByText("fakeweb5")).toBeVisible();
+
+    await page.goto("/user/lead_web_dev");
+    await page.getByText("Sandbox Mode").waitFor();
+    await page.getByRole("button", { name: /^Off/ }).click();
+    await expect(page.getByText("Sandbox active")).not.toBeVisible();
+
+    await page.goto("/user/lead_web_dev/people");
+    await expect(page.getByText("fakeweb5")).not.toBeVisible();
+  });
 });
