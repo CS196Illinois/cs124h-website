@@ -507,7 +507,7 @@ select.roleSelect {
   font-weight: 500;
 }
 
-.formGroup input,
+.formGroup input:not([type="checkbox"]):not([type="radio"]),
 .formGroup select,
 .formGroup textarea {
   width: 100%;
@@ -533,7 +533,7 @@ select.roleSelect {
   background-color: rgba(255, 255, 255, 0.08);
 }
 
-.formGroup input:focus,
+.formGroup input:not([type="checkbox"]):not([type="radio"]):focus,
 .formGroup select:focus,
 .formGroup textarea:focus {
   border-color: rgba(255, 255, 255, 0.4);
