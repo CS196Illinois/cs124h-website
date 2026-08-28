@@ -56,7 +56,7 @@ export async function PATCH(request, { params }) {
     if (!item.is_gradable) { skipped.push({ id: entry.id, reason: "Not gradable" }); continue; }
     if (!item.is_done) { skipped.push({ id: entry.id, reason: "Not completed yet" }); continue; }
 
-    // Supabase's .upsert() builds an INSERT ... ON CONFLICT DO UPDATE — Postgres
+    // Supabase's .upsert() builds an INSERT ... ON CONFLICT DO UPDATE - Postgres
     // validates NOT NULL constraints against the row as if it were being
     // inserted even when the conflict path will actually just update it, so
     // every NOT NULL column without a default (net_id, title) must be present
@@ -102,7 +102,7 @@ export async function PATCH(request, { params }) {
 /**
  * Delete every item in a batch at once. Uses the same per-recipient
  * authority check as deleting a single item (canManageItem), not the
- * assigner-only rule PATCH uses above — a course_lead deleting a PM's
+ * assigner-only rule PATCH uses above - a course_lead deleting a PM's
  * batch, or a head_pm deleting one assigned to their students, is exactly
  * as valid as deleting those items one at a time already was.
  */

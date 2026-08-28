@@ -150,7 +150,7 @@ export async function insertSandboxOverlay(overrides = {}) {
 }
 
 // Matches production's actual (mixed-case) column names on
-// event_attendance_sp26 — the leaderboard route resolves them
+// event_attendance_sp26 - the leaderboard route resolves them
 // case-insensitively, so tests exercise that instead of assuming a
 // convenient lowercase schema.
 export async function insertEventAttendance(rows) {
@@ -161,7 +161,7 @@ export async function insertEventAttendance(rows) {
 
 // ── Cleanup ───────────────────────────────────────────────────────────────
 
-// Primary key column per table key — used to build a delete-everything filter
+// Primary key column per table key - used to build a delete-everything filter
 // (`not(pk, "is", null)` matches every row regardless of PK type/name).
 const TABLE_PK = {
   sprintCompletions: "id",

@@ -2,16 +2,16 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 
-// Public route — no auth required. The leaderboard is intentionally visible
+// Public route - no auth required. The leaderboard is intentionally visible
 // to anyone, logged in or not. Runs server-side with the service-role client
 // so it doesn't depend on Supabase RLS/anon-key grants, and only returns the
-// aggregated group standings — never the underlying per-student rows.
+// aggregated group standings - never the underlying per-student rows.
 //
 // Reconciled with cs124h-website (production): the source of truth is a
 // semester-specific attendance table (columns observed as NAME/NETID/GROUP/
-// Total — case varies), not the old net_id+group_number+attendance_sheet
+// Total - case varies), not the old net_id+group_number+attendance_sheet
 // join. Column names are resolved case-insensitively because production hit
-// a real casing mismatch here (see cs124h-website commit 93f9ec3b) — same
+// a real casing mismatch here (see cs124h-website commit 93f9ec3b) - same
 // defensive lookup is kept here rather than assuming exact casing.
 export async function GET() {
   const { data, error } = await supabaseServer
@@ -31,7 +31,7 @@ export async function GET() {
     return NextResponse.json({ error: "Could not resolve group/total columns" }, { status: 500 });
   }
 
-  // Each unit of "total" is worth 10 points — matches production's formula.
+  // Each unit of "total" is worth 10 points - matches production's formula.
   const groupSummaryMap = {};
   for (const row of data) {
     const points = (row[totalKey] || 0) * 10;

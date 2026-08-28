@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 
 /**
  * Small always-visible indicator for the sidebar so it's never ambiguous
- * whether the dashboard is showing real or sandboxed data — the whole
+ * whether the dashboard is showing real or sandboxed data - the whole
  * safety property this feature exists for depends on that never being
  * silent. Renders nothing when sandbox mode is off.
  */
@@ -31,7 +31,7 @@ export default function SandboxBanner() {
     return () => window.removeEventListener("sandbox-mode-changed", onChange);
   }, []);
 
-  // Best-effort clear when this banner unmounts — which only happens on an
+  // Best-effort clear when this banner unmounts - which only happens on an
   // in-app navigation away from the web_dev/lead_web_dev section entirely
   // (sub-route changes within it don't remount the layout/sidebar). Not the
   // safety net for ephemeral mode: a tab close or crash never runs this at

@@ -104,7 +104,7 @@ test.describe("action items: assign, complete, and grade", () => {
     await page.getByRole("button", { name: "Save Grade" }).click();
 
     await expect(page.getByText("Grade cannot exceed 50.")).toBeVisible();
-    // Modal stays open — the bad grade was never saved.
+    // Modal stays open - the bad grade was never saved.
     await expect(page.getByRole("heading", { name: "Grade Item" })).toBeVisible();
   });
 
@@ -129,7 +129,7 @@ test.describe("action items: assign, complete, and grade", () => {
     await page.getByRole("button", { name: "Completed" }).click();
     await expect(page.getByText("Graded Item")).not.toBeVisible();
 
-    // The pm sees it as a normal open item again, not something to grade —
+    // The pm sees it as a normal open item again, not something to grade -
     // reopening clears is_done too, so it drops out of Needs Grading entirely.
     await loginAs({ netID: "e2e-pm", role: "pm" });
     await page.goto("/user/pm/action_items");
@@ -299,7 +299,7 @@ test.describe("role tags on the action items person accordion", () => {
 
   // Regression test: the role tag next to each person's netID used to be a
   // one-off inline style with no font-family, which fell back to the page's
-  // serif display font instead of the app's Inter sans-serif — visibly
+  // serif display font instead of the app's Inter sans-serif - visibly
   // inconsistent with every other role tag in the app (e.g. the People
   // pages), which all go through the shared RoleBadge component/`.badge`
   // CSS class. Now PersonAccordion uses that same shared component, so this
@@ -316,7 +316,7 @@ test.describe("role tags on the action items person accordion", () => {
     await page.goto("/user/course_lead/action_items");
     await page.getByRole("button", { name: "All Items" }).click();
 
-    // Scoped to <span> — "PM" and "STUDENT" also appear as filter-chip button
+    // Scoped to <span> - "PM" and "STUDENT" also appear as filter-chip button
     // labels elsewhere on the page.
     const studentBadge = page.locator("span", { hasText: /^STUDENT$/ });
     const pmBadge = page.locator("span", { hasText: /^PM$/ });
@@ -331,7 +331,7 @@ test.describe("role tags on the action items person accordion", () => {
 
     expect(studentFont).toContain("Inter");
     expect(studentFont).not.toContain("Playfair");
-    // Each role gets a distinct color from the shared badge system — a flat,
+    // Each role gets a distinct color from the shared badge system - a flat,
     // unstyled tag would render both the same.
     expect(studentColor).not.toBe(pmColor);
   });
@@ -342,7 +342,7 @@ test.describe("regression: People picker checkbox sizing", () => {
 
   // A generic ".formGroup input { width: 100% }" text-input rule was
   // accidentally winning (by CSS specificity) over ".checkboxInput"'s
-  // width: 18px for any checkbox nested inside a .formGroup wrapper —
+  // width: 18px for any checkbox nested inside a .formGroup wrapper -
   // stretching the People-picker's per-row checkboxes into full-width
   // bars instead of small squares.
   test("checkboxes in the individual-people picker render as small squares, not full-width bars", async ({ page, loginAs }) => {

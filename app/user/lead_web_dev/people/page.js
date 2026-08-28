@@ -220,7 +220,7 @@ export default function LeadWebDevPeople() {
               <tbody>
                 {filtered.map((u) => (
                   <tr key={u.net_id}>
-                    <td>{u.name || <span style={{ opacity: 0.4 }}>—</span>}</td>
+                    <td>{u.name || <span style={{ opacity: 0.4 }}>-</span>}</td>
                     <td className={styles.cellMono}>{u.net_id}</td>
                     <td><RoleBadge roleId={u.role} /></td>
                     <td>

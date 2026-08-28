@@ -16,7 +16,7 @@ test.describe("course lead: people management", () => {
     await page.getByPlaceholder("Jane Doe").fill("New Student");
     await page.getByPlaceholder("jdoe2").fill("newstu2");
     // "Add Person" is a substring of "+ Add Person" too (Playwright's name
-    // matching is substring by default) — exact match picks the modal's submit button.
+    // matching is substring by default) - exact match picks the modal's submit button.
     await page.getByRole("button", { name: "Add Person", exact: true }).click();
 
     await expect(page.getByText("newstu2")).toBeVisible();
@@ -42,7 +42,7 @@ test.describe("pm: my students + gradebook CSV export", () => {
     await loginAs({ netID: "e2e-pm", role: "pm" });
     await page.goto("/user/pm/students");
 
-    // "Group 7 · N students" is rendered twice (page header + toolbar) — .first() avoids the strict-mode ambiguity.
+    // "Group 7 · N students" is rendered twice (page header + toolbar) - .first() avoids the strict-mode ambiguity.
     await expect(page.getByText("Group 7").first()).toBeVisible();
     await expect(page.getByText("gstu1")).toBeVisible();
     await expect(page.getByText("gstu2")).toBeVisible();

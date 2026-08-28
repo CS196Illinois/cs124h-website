@@ -238,7 +238,7 @@ describe("sandboxWrite", () => {
 
   it("throws a 23505-shaped error on a unique conflict against a real row", async () => {
     const event = await insertEvent({});
-    // A real checkin already exists for (event.id, "stu1") — simulate by
+    // A real checkin already exists for (event.id, "stu1") - simulate by
     // inserting one directly, mirroring what event_checkins would hold.
     await testClient().from(table("eventCheckins")).insert({ event_id: event.id, net_id: "stu1" });
 

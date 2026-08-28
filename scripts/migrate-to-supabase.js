@@ -136,7 +136,7 @@ async function migrateStaff() {
         email: m.email || null,
       });
 
-      if (error) console.error(`  ERROR: ${m.name} — ${error.message}`);
+      if (error) console.error(`  ERROR: ${m.name} - ${error.message}`);
       else console.log(`  ✓ ${m.name}`);
     }
   }
@@ -169,7 +169,7 @@ async function migrateProjects() {
         image_url: imageUrl || null,
       });
 
-      if (error) console.error(`  ERROR: ${p.title} — ${error.message}`);
+      if (error) console.error(`  ERROR: ${p.title} - ${error.message}`);
       else console.log(`  ✓ ${p.title}`);
     }
   }
@@ -198,7 +198,7 @@ async function migrateResources() {
       image_url: imageUrl || null,
     });
 
-    if (error) console.error(`  ERROR: ${p.title} — ${error.message}`);
+    if (error) console.error(`  ERROR: ${p.title} - ${error.message}`);
     else console.log(`  ✓ [blog] ${p.title}`);
   }
 
@@ -217,7 +217,7 @@ async function migrateResources() {
       image_url: imageUrl || null,
     });
 
-    if (error) console.error(`  ERROR: ${p.title} — ${error.message}`);
+    if (error) console.error(`  ERROR: ${p.title} - ${error.message}`);
     else console.log(`  ✓ [pres] ${p.title}`);
   }
 }

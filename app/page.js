@@ -8,7 +8,7 @@ import { getSupabaseServer } from "../lib/supabaseServer";
 import { table } from "../lib/tables";
 
 // Server-rendered from Supabase at build time; without this, roster changes
-// (e.g. a new course lead) would need a full redeploy to ever show up here —
+// (e.g. a new course lead) would need a full redeploy to ever show up here -
 // which is exactly what caused this to go stale after the last deploy.
 export const revalidate = 60;
 

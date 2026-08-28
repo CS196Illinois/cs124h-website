@@ -10,7 +10,7 @@ export default defineConfig({
     // All test files share the same live Supabase test_ tables (no per-file
     // isolation), and each file's beforeEach wipes those tables. Running
     // files in parallel means one file's cleanup can delete rows a different
-    // file's in-flight test still depends on — so files must run sequentially.
+    // file's in-flight test still depends on - so files must run sequentially.
     fileParallelism: false,
   },
 });

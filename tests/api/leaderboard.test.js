@@ -4,7 +4,7 @@ import { makeRequest } from "../helpers/request";
 
 // The aggregation logic lives server-side in the public route handler now
 // (app/leaderboard/leaderboard_supabase.js is just a browser-only fetch()
-// shim with no logic left to unit test — relative URLs aren't valid outside
+// shim with no logic left to unit test - relative URLs aren't valid outside
 // a browser, so it can't be called directly from Node).
 const { GET } = await import("../../app/api/public/leaderboard/route");
 

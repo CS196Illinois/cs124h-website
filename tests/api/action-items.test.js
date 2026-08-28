@@ -287,7 +287,7 @@ describe("DELETE /api/action_items/[id]", () => {
       makeRequest(`http://localhost/api/action_items/${item.id}`, { method: "DELETE" }),
       { params: { id: item.id } }
     );
-    // pm1's role is PM, which IS in head_pm's allowed set — sanity: this should succeed.
+    // pm1's role is PM, which IS in head_pm's allowed set - sanity: this should succeed.
     expect(res.status).toBe(200);
   });
 

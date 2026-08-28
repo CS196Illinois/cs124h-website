@@ -29,7 +29,7 @@ export default async function middleware(req) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // A signed-in user with no roster role — most commonly a student who has
+  // A signed-in user with no roster role - most commonly a student who has
   // enrolled but hasn't been added to the Supabase roster yet (e.g. before
   // kickoff at the start of a semester). This isn't a permissions mismatch
   // like the role-specific checks below, so it gets its own explanation
@@ -43,7 +43,7 @@ export default async function middleware(req) {
   }
 
   // The bare /user root just redirects to /user/<role> (handled by that page
-  // itself, which also gates on an invalid/missing role) — every role needs
+  // itself, which also gates on an invalid/missing role) - every role needs
   // to reach it, so let it through before any role-specific path checks.
   if (path === "/user") {
     return NextResponse.next();
@@ -68,7 +68,7 @@ export default async function middleware(req) {
       const viewRole = ROLE_PATH_MAP[matchedPrefix];
       // Checked live against the DB rather than cached on the JWT: a JWT
       // snapshot only refreshes at sign-in or the periodic reverify window,
-      // which made both directions of this wrong — a freshly *approved* view
+      // which made both directions of this wrong - a freshly *approved* view
       // stayed blocked, and a freshly *revoked* one stayed accessible. This
       // path (a web_dev browsing another role's dashboard) is rare enough
       // that a DB hit here is cheap insurance for an access-control decision.

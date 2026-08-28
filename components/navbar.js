@@ -43,7 +43,7 @@ export default function Navbar() {
   return (
     <div>
       <nav className={styles.navbar}>
-        {/* Logo — left side, links to home */}
+        {/* Logo - left side, links to home */}
         <div className={styles.logoContainer}>
           <Link href="/" className={styles.logoLink} aria-label="Go to home">
             <Image

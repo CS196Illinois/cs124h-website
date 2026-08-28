@@ -13,7 +13,7 @@ test.describe("role view requests: web_dev requests, lead_web_dev approves/denie
     await page.getByText("PM", { exact: true }).locator("..").getByRole("button", { name: "Request" }).click();
 
     await expect(page.getByText("Pending…")).toBeVisible();
-    // The role moves out of the "available to request" list — no more
+    // The role moves out of the "available to request" list - no more
     // Request button for it while a request is already pending.
     await expect(page.getByText("PM", { exact: true }).locator("..").getByRole("button", { name: "Request" })).toHaveCount(0);
   });
