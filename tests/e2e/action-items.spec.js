@@ -254,6 +254,44 @@ test.describe("batch delete: undo a bulk assignment in one shot", () => {
     const { data } = await testClient().from(table("actionItems")).select("id").eq("id", inGroup.id).maybeSingle();
     expect(data).not.toBeNull();
   });
+
+  // Regression test: "Delete Batch" used to only be reachable from the
+  // "Needs Grading" list, so a non-gradable bulk assignment (which never
+  // appears there) had no way to be deleted except one recipient at a time.
+  // It's now offered from every per-recipient row that has a batch_id,
+  // including the default person-grouped "Open" view.
+  test("a non-gradable batch can be deleted from the person-grouped view, not just Needs Grading", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
+    await insertUser({ net_id: "e2e-stu1", role: "STUDENT", name: "Student One", group_number: 1 });
+    await insertUser({ net_id: "e2e-stu2", role: "STUDENT", name: "Student Two", group_number: 1 });
+    const batchId = "33333333-3333-4333-8333-333333333333";
+    const item1 = await insertActionItem({ net_id: "e2e-stu1", assigned_by: "e2e-pm", title: "Join Discord", batch_id: batchId });
+    const item2 = await insertActionItem({ net_id: "e2e-stu2", assigned_by: "e2e-pm", title: "Join Discord", batch_id: batchId });
+
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/action_items");
+    await page.getByText("Student One").waitFor();
+
+    // Not gradable, so it must never show up under Needs Grading.
+    await page.getByRole("button", { name: /Needs Grading/ }).click();
+    await expect(page.getByText("Join Discord")).not.toBeVisible();
+    await page.getByRole("button", { name: /^Open \(/ }).click();
+
+    const deleteBatchBtn = page.getByRole("button", { name: "Delete Batch (2)" }).first();
+    await expect(deleteBatchBtn).toBeVisible();
+    await deleteBatchBtn.click();
+
+    const toast = page.getByText(/Deleted "Join Discord" for 2 people/);
+    await expect(toast).toBeVisible();
+    const [response] = await Promise.all([
+      page.waitForResponse((res) => res.url().includes(`/api/action_items/batch/${batchId}`) && res.request().method() === "DELETE"),
+      expect(toast).not.toBeVisible(),
+    ]);
+    expect(response.ok()).toBe(true);
+
+    const { data } = await testClient().from(table("actionItems")).select("id").in("id", [item1.id, item2.id]);
+    expect(data).toHaveLength(0);
+  });
 });
 
 test.describe("role tags on the action items person accordion", () => {
