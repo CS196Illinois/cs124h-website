@@ -19,6 +19,13 @@
   margin-bottom: 1rem;
 }
 
+/* Icon used for the friendlier "not enrolled yet" state */
+.icon {
+  font-size: 56px;
+  margin-bottom: 1rem;
+  line-height: 1;
+}
+
 /* Heading "Unauthorized" */
 .heading {
   font-size: 24px;
@@ -30,6 +37,16 @@
   color: #76859b;
   margin-bottom: 1.5rem;
   max-width: 480px; /* optional for readability */
+}
+
+.description a {
+  color: #0ea5e9;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.description a:hover {
+  text-decoration: underline;
 }
 
 /* Container for buttons */
