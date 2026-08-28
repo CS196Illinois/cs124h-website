@@ -29,6 +29,19 @@ export default async function middleware(req) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // A signed-in user with no roster role — most commonly a student who has
+  // enrolled but hasn't been added to the Supabase roster yet (e.g. before
+  // kickoff at the start of a semester). This isn't a permissions mismatch
+  // like the role-specific checks below, so it gets its own explanation
+  // rather than the generic "Unauthorized" messaging. Checked before the
+  // /user passthrough so it also covers the bare root.
+  if (!role || role === "error") {
+    const url = new URL("/unauthorized", req.url);
+    url.searchParams.set("reason", "not-enrolled");
+    url.searchParams.set("callbackUrl", path);
+    return NextResponse.redirect(url);
+  }
+
   // The bare /user root just redirects to /user/<role> (handled by that page
   // itself, which also gates on an invalid/missing role) — every role needs
   // to reach it, so let it through before any role-specific path checks.

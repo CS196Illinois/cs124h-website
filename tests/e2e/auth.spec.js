@@ -90,4 +90,32 @@ test.describe("auth + role-gated dashboards", () => {
     await page.goto("/user/pm");
     await expect(page).toHaveURL(/\/unauthorized/);
   });
+
+  // Regression test: a student who has enrolled but hasn't been added to the
+  // roster yet (common right before kickoff) shouldn't see a generic 401 —
+  // they get a friendlier "not on the roster yet" explanation instead, on
+  // both the bare /user root and a specific role path.
+  test("a signed-in user with no roster role sees a friendly 'not enrolled yet' message, not a generic 401", async ({ page, loginAs }) => {
+    await loginAs({ netID: "e2e-not-enrolled", role: "error" });
+
+    await page.goto("/user");
+    await expect(page).toHaveURL(/\/unauthorized\?.*reason=not-enrolled/);
+    await expect(page.getByText(/not on the roster yet/i)).toBeVisible();
+    await expect(page.getByText("401")).not.toBeVisible();
+
+    await page.goto("/user/student");
+    await expect(page).toHaveURL(/\/unauthorized\?.*reason=not-enrolled/);
+    await expect(page.getByText(/not on the roster yet/i)).toBeVisible();
+  });
+
+  // A genuine role mismatch (an enrolled user on the wrong dashboard) should
+  // keep the generic 401 copy — it's a different situation from not being
+  // enrolled yet, and shouldn't be told to "check back after kickoff".
+  test("a genuine role mismatch still shows the generic Unauthorized message", async ({ page, loginAs }) => {
+    await loginAs({ netID: "e2e-student-mismatch", role: "student" });
+    await page.goto("/user/pm");
+    await expect(page).toHaveURL(/\/unauthorized/);
+    await expect(page.getByText("401")).toBeVisible();
+    await expect(page.getByText(/not on the roster yet/i)).not.toBeVisible();
+  });
 });
