@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures";
-import { insertRoleViewRequest, testClient } from "../helpers/db";
+import { insertRoleViewRequest, testClient, clearAllTestTables } from "../helpers/db";
 import { table } from "../../lib/tables";
 
 const ROLE_HOME = {
@@ -12,6 +12,12 @@ const ROLE_HOME = {
 };
 
 test.describe("auth + role-gated dashboards", () => {
+  // Every other spec file clears the test tables before each test; this one
+  // never did, so a role_view_requests row inserted by one run (fixed net_id
+  // "e2e-webdev" etc.) silently persisted into the next run and made an
+  // "access should still be denied" assertion fail against stale data.
+  test.beforeEach(clearAllTestTables);
+
   test("visiting a /user page while signed out redirects to sign-in", async ({ page }) => {
     await page.goto("/user/pm");
     await expect(page).toHaveURL(/\/signin/);

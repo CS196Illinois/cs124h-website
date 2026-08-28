@@ -49,6 +49,13 @@
   text-decoration: underline;
 }
 
+/* Wider variant for the not-enrolled state, whose paragraphs (roster
+   explanation, Discord + course-lead emails) run noticeably longer than the
+   generic 401's - the default 480px wrapped them too tightly. */
+.wideDescription {
+  max-width: 640px;
+}
+
 /* Container for buttons */
 .buttonGroup {
   display: flex;
