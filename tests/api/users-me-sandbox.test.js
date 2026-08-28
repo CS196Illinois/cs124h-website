@@ -139,7 +139,7 @@ describe("POST /api/users/me/sandbox (sendBeacon target)", () => {
     expect(res.status).toBe(401);
   });
 
-  it("clears the overlay when the caller is currently ephemeral", async () => {
+  it("clears the overlay and reverts mode to off when the caller is currently ephemeral", async () => {
     await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "ephemeral" });
     await insertSandboxOverlay({ owner_net_id: "webdev1", table_key: "sprints", row_pk: "s1", op: "insert", row_data: { id: "s1" } });
     asRole("web_dev", "webdev1");
@@ -147,8 +147,10 @@ describe("POST /api/users/me/sandbox (sendBeacon target)", () => {
     const res = await POST();
     expect(res.status).toBe(204);
 
-    const { data } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", "webdev1");
-    expect(data).toHaveLength(0);
+    const { data: overlay } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", "webdev1");
+    expect(overlay).toHaveLength(0);
+    const { data: user } = await testClient().from(table("users")).select("sandbox_mode").eq("net_id", "webdev1").single();
+    expect(user.sandbox_mode).toBe("off");
   });
 
   it("never clears a persistent sandbox, even via this endpoint", async () => {

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
-import { resetSandbox } from "../../../../lib/sandbox";
+import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../../lib/sandbox";
 
 const FULL_USER_ACCESS = ["course_lead", "web_dev"];
 const WEB_TEAM_ROLES   = ["LEAD_WEB", "WEB"];
@@ -12,6 +12,7 @@ const HEAD_PM_ROLES    = ["PM", "STUDENT"];
 export async function PATCH(request, { params }) {
   const session = await getServerSession(authOptions);
   const userRole = session?.user?.role;
+  const callerNetId = session?.user?.netID;
 
   if (!userRole || userRole === "error" || userRole === "student") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -34,10 +35,13 @@ export async function PATCH(request, { params }) {
     updates.role = body.role;
   }
 
+  const sandboxed = isSandboxRole(userRole) && (await getSandboxMode(callerNetId)) !== "off";
+
   // Scope checks: lead_web_dev and head_pm can only edit their own team members
   if (userRole === "lead_web_dev" || userRole === "head_pm") {
     const allowed = userRole === "lead_web_dev" ? WEB_TEAM_ROLES : HEAD_PM_ROLES;
-    const { data: target } = await supabaseServer.from(table("users")).select("role").eq("net_id", net_id).maybeSingle();
+    const { data: realTarget } = await supabaseServer.from(table("users")).select("*").eq("net_id", net_id).maybeSingle();
+    const target = sandboxed ? await getEffectiveRow(callerNetId, "users", net_id, realTarget) : realTarget;
     if (!target || !allowed.includes(target.role)) {
       return NextResponse.json({ error: "Insufficient permissions to edit this user" }, { status: 403 });
     }
@@ -49,6 +53,18 @@ export async function PATCH(request, { params }) {
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+  }
+
+  if (sandboxed) {
+    const { data: realRow } = await supabaseServer.from(table("users")).select("*").eq("net_id", net_id).maybeSingle();
+    const current = await getEffectiveRow(callerNetId, "users", net_id, realRow);
+    if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const merged = { ...current, ...updates };
+    // A sandboxed edit must never trigger a real side effect on the target's
+    // own (real) sandbox — resetSandbox below only ever runs on the real
+    // write path, never here, even though the update shape looks the same.
+    await sandboxWrite(callerNetId, "users", "update", net_id, merged);
+    return NextResponse.json(merged);
   }
 
   const { data, error } = await supabaseServer
@@ -73,6 +89,7 @@ export async function PATCH(request, { params }) {
 export async function DELETE(request, { params }) {
   const session = await getServerSession(authOptions);
   const userRole = session?.user?.role;
+  const callerNetId = session?.user?.netID;
 
   const canDelete = FULL_USER_ACCESS.includes(userRole) || userRole === "lead_web_dev" || userRole === "head_pm";
   if (!canDelete) {
@@ -80,13 +97,23 @@ export async function DELETE(request, { params }) {
   }
 
   const { net_id } = await params;
+  const sandboxed = isSandboxRole(userRole) && (await getSandboxMode(callerNetId)) !== "off";
 
   if (userRole === "lead_web_dev" || userRole === "head_pm") {
     const allowed = userRole === "lead_web_dev" ? WEB_TEAM_ROLES : HEAD_PM_ROLES;
-    const { data: target } = await supabaseServer.from(table("users")).select("role").eq("net_id", net_id).maybeSingle();
+    const { data: realTarget } = await supabaseServer.from(table("users")).select("*").eq("net_id", net_id).maybeSingle();
+    const target = sandboxed ? await getEffectiveRow(callerNetId, "users", net_id, realTarget) : realTarget;
     if (!target || !allowed.includes(target.role)) {
       return NextResponse.json({ error: "Insufficient permissions to remove this user" }, { status: 403 });
     }
+  }
+
+  if (sandboxed) {
+    // Same reasoning as PATCH above: a sandboxed delete must never trigger
+    // the real resetSandbox side effect below, even if net_id happens to
+    // belong to a real web_dev/lead_web_dev.
+    await sandboxWrite(callerNetId, "users", "delete", net_id, null);
+    return NextResponse.json({ success: true });
   }
 
   const { error } = await supabaseServer

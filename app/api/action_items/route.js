@@ -73,8 +73,11 @@ export async function POST(request) {
     maxScore = Number.isFinite(parsed) && parsed > 0 ? parsed : 100;
   }
 
+  const sandboxed = isSandboxRole(userRole) && (await getSandboxMode(assignerNetID)) !== "off";
+
   // A PM may only ever act within their own group — fetch once, used by both
-  // the "individual" and "group" target paths below.
+  // the "individual" and "group" target paths below. PM is never a
+  // sandboxable role, so this read is always real.
   let requesterGroup = null;
   if (userRole === "pm") {
     const { data: me } = await supabaseServer
@@ -94,11 +97,15 @@ export async function POST(request) {
       return NextResponse.json({ error: "Select at least one person" }, { status: 400 });
     }
 
-    const { data: targetUsers, error: targetErr } = await supabaseServer
+    const { data: realTargetUsers, error: targetErr } = await supabaseServer
       .from(table("users"))
       .select("net_id, role, group_number")
       .in("net_id", cleanIds);
     if (targetErr) return NextResponse.json({ error: targetErr.message }, { status: 500 });
+
+    const targetUsers = sandboxed
+      ? await mergeSandboxRows(assignerNetID, "users", realTargetUsers, (row) => cleanIds.includes(row.net_id))
+      : realTargetUsers;
 
     const manageableRoles = MANAGEABLE_BY[userRole] || [];
     for (const id of cleanIds) {
@@ -122,11 +129,14 @@ export async function POST(request) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
     }
 
-    let roleQuery = supabaseServer.from(table("users")).select("net_id").eq("role", role);
+    let roleQuery = supabaseServer.from(table("users")).select("net_id, role, group_number").eq("role", role);
     if (userRole === "pm") roleQuery = roleQuery.eq("group_number", requesterGroup);
-    const { data: roleUsers, error: roleErr } = await roleQuery;
-
+    const { data: realRoleUsers, error: roleErr } = await roleQuery;
     if (roleErr) return NextResponse.json({ error: roleErr.message }, { status: 500 });
+
+    const roleUsers = sandboxed
+      ? await mergeSandboxRows(assignerNetID, "users", realRoleUsers, (row) => row.role === role && (userRole !== "pm" || row.group_number === requesterGroup))
+      : realRoleUsers;
     targetNetIds = (roleUsers || []).map((u) => u.net_id);
   } else if (target_type === "group") {
     if (!target_group) return NextResponse.json({ error: "target_group required" }, { status: 400 });
@@ -134,13 +144,16 @@ export async function POST(request) {
       return NextResponse.json({ error: "You can only assign to your own group" }, { status: 403 });
     }
 
-    const { data: groupUsers, error: groupErr } = await supabaseServer
+    const { data: realGroupUsers, error: groupErr } = await supabaseServer
       .from(table("users"))
-      .select("net_id")
+      .select("net_id, role, group_number")
       .eq("group_number", Number(target_group))
       .eq("role", "STUDENT");
-
     if (groupErr) return NextResponse.json({ error: groupErr.message }, { status: 500 });
+
+    const groupUsers = sandboxed
+      ? await mergeSandboxRows(assignerNetID, "users", realGroupUsers, (row) => row.group_number === Number(target_group) && row.role === "STUDENT")
+      : realGroupUsers;
     targetNetIds = (groupUsers || []).map((u) => u.net_id);
   }
 
@@ -164,7 +177,7 @@ export async function POST(request) {
     additional_info: { assigned_by: assignerNetID }, // keep for backward compat
   }));
 
-  if (isSandboxRole(userRole) && (await getSandboxMode(assignerNetID)) !== "off") {
+  if (sandboxed) {
     const now = new Date().toISOString();
     const fullRows = records.map((r) => ({
       id: randomUUID(),

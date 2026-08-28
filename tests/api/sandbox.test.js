@@ -10,6 +10,7 @@ import {
   sandboxWrite,
   getEffectiveRow,
   resetSandbox,
+  deactivateEphemeral,
   EPHEMERAL_TTL_MS,
 } from "../../lib/sandbox";
 
@@ -64,7 +65,7 @@ describe("getSandboxMode - ephemeral idle expiry", () => {
     expect(data).toHaveLength(1);
   });
 
-  it("an idle-past-TTL ephemeral overlay is cleared on the next mode check", async () => {
+  it("an idle-past-TTL ephemeral session fully deactivates: overlay clears AND mode reverts to off", async () => {
     const user = await insertUser({ role: "WEB", sandbox_mode: "ephemeral" });
     const stale = new Date(Date.now() - EPHEMERAL_TTL_MS - 60_000).toISOString();
     await insertSandboxOverlay({
@@ -72,10 +73,16 @@ describe("getSandboxMode - ephemeral idle expiry", () => {
       updated_at: stale,
     });
 
+    // The very request that discovers the expiry must itself see "off" -
+    // not the stale pre-expiry value - so a caller never sees a
+    // just-deactivated session still reported as ephemeral.
     const mode = await getSandboxMode(user.net_id);
-    expect(mode).toBe("ephemeral"); // mode itself is unchanged, just the overlay
-    const { data } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", user.net_id);
-    expect(data).toHaveLength(0);
+    expect(mode).toBe("off");
+
+    const { data: overlay } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", user.net_id);
+    expect(overlay).toHaveLength(0);
+    const { data: userRow } = await testClient().from(table("users")).select("sandbox_mode").eq("net_id", user.net_id).single();
+    expect(userRow.sandbox_mode).toBe("off");
   });
 
   it("a persistent sandbox never expires, no matter how old", async () => {
@@ -94,6 +101,33 @@ describe("getSandboxMode - ephemeral idle expiry", () => {
   it("an ephemeral user with no overlay rows at all doesn't error", async () => {
     const user = await insertUser({ role: "WEB", sandbox_mode: "ephemeral" });
     await expect(getSandboxMode(user.net_id)).resolves.toBe("ephemeral");
+  });
+});
+
+describe("deactivateEphemeral", () => {
+  beforeEach(clearAllTestTables);
+
+  it("clears the overlay and reverts the mode to off", async () => {
+    const user = await insertUser({ role: "WEB", sandbox_mode: "ephemeral" });
+    await insertSandboxOverlay({ owner_net_id: user.net_id, table_key: "sprints", row_pk: "s1", op: "insert", row_data: { id: "s1" } });
+
+    await deactivateEphemeral(user.net_id);
+
+    const { data: overlay } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", user.net_id);
+    expect(overlay).toHaveLength(0);
+    expect(await getSandboxMode(user.net_id)).toBe("off");
+  });
+
+  it("only ever affects the given owner, never another user", async () => {
+    const a = await insertUser({ role: "WEB", sandbox_mode: "ephemeral" });
+    const b = await insertUser({ role: "WEB", sandbox_mode: "ephemeral" });
+    await insertSandboxOverlay({ owner_net_id: b.net_id, table_key: "sprints", row_pk: "s1", op: "insert", row_data: { id: "s1" } });
+
+    await deactivateEphemeral(a.net_id);
+
+    expect(await getSandboxMode(b.net_id)).toBe("ephemeral");
+    const { data: overlay } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", b.net_id);
+    expect(overlay).toHaveLength(1);
   });
 });
 
@@ -142,6 +176,25 @@ describe("mergeSandboxRows", () => {
     const base = [{ id: "a" }];
     const merged = await mergeSandboxRows("owner1", "actionItems", base);
     expect(merged).toEqual(base);
+  });
+
+  it("keys off net_id, not id, for the users table", async () => {
+    await insertSandboxOverlay({
+      owner_net_id: "owner1", table_key: "users", row_pk: "stu1", op: "update",
+      row_data: { net_id: "stu1", role: "PM", group_number: 5 },
+    });
+    await insertSandboxOverlay({
+      owner_net_id: "owner1", table_key: "users", row_pk: "newperson1", op: "insert",
+      row_data: { net_id: "newperson1", role: "STUDENT", group_number: 1 },
+    });
+    const base = [{ net_id: "stu1", role: "STUDENT", group_number: 5 }, { net_id: "stu2", role: "STUDENT", group_number: 5 }];
+
+    const merged = await mergeSandboxRows("owner1", "users", base, (row) => row.group_number === 1);
+    expect(merged).toEqual([
+      { net_id: "stu1", role: "PM", group_number: 5 },
+      { net_id: "stu2", role: "STUDENT", group_number: 5 },
+      { net_id: "newperson1", role: "STUDENT", group_number: 1 },
+    ]);
   });
 });
 
