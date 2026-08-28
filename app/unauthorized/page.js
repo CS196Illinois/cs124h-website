@@ -1,5 +1,28 @@
 import Link from "next/link";
+import { getSupabaseServer } from "../../lib/supabaseServer";
+import { table } from "../../lib/tables";
+import SignOutButton from "./SignOutButton";
 import styles from "./Unauthorized.module.css";
+
+// Same mechanism the homepage footer uses for "Questions? Contact the course
+// leads" — the real users table's LEAD role, not the course_staff bio page
+// (which is semester-scoped marketing data, not the actual roster). This is
+// the live, current set of people who can actually do something about a
+// locked-out student.
+async function getCourseLeadContacts() {
+  try {
+    const { data } = await getSupabaseServer()
+      .from(table("users"))
+      .select("net_id, name")
+      .eq("role", "LEAD");
+    return (data ?? []).map((u) => ({
+      name: u.name || u.net_id,
+      email: `${u.net_id}@illinois.edu`,
+    }));
+  } catch {
+    return [];
+  }
+}
 
 export default async function UnauthorizedPage({ searchParams }) {
   const params = await searchParams;
@@ -12,6 +35,8 @@ export default async function UnauthorizedPage({ searchParams }) {
   // reassuring explanation instead of a generic 401 that reads like an error
   // on their end.
   if (params?.reason === "not-enrolled") {
+    const leads = await getCourseLeadContacts();
+
     return (
       <div className={styles.pageContainer}>
         <div className={styles.icon} aria-hidden="true">🎓</div>
@@ -19,27 +44,32 @@ export default async function UnauthorizedPage({ searchParams }) {
         <p className={styles.description}>
           We signed you in, but couldn&apos;t find your NetID on the course
           roster. If you just enrolled, this is expected: the roster gets
-          updated around kickoff, and this page will unlock automatically
-          once it is. No need to sign in again.
+          updated around kickoff. Sessions don&apos;t recheck the roster on
+          their own though, so once it&apos;s updated you&apos;ll need to sign
+          out and sign back in for your access to take effect — just
+          revisiting this page won&apos;t be enough.
         </p>
         <p className={styles.description}>
           Questions in the meantime? Reach out on our{" "}
           <a href="https://discord.gg/HBZ2thqde" target="_blank" rel="noopener noreferrer">
             Discord
-          </a>{" "}
-          or contact one of the{" "}
-          <Link href="/course_staff">course leads</Link>.
+          </a>
+          {leads.length > 0 && (
+            <>
+              , or contact{" "}
+              {leads.map((lead, i) => (
+                <span key={lead.email}>
+                  {i > 0 && (i === leads.length - 1 ? " or " : ", ")}
+                  <a href={`mailto:${lead.email}`}>{lead.name}</a>
+                </span>
+              ))}
+            </>
+          )}
+          .
         </p>
 
         <div className={styles.buttonGroup}>
-          <a
-            href="https://discord.gg/HBZ2thqde"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.signInButton}
-          >
-            Join our Discord
-          </a>
+          <SignOutButton />
           <Link href="/" className={styles.homeButton}>
             Home
           </Link>
