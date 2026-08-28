@@ -260,10 +260,10 @@ export default function HeadPMPeople() {
               <tbody>
                 {filteredUsers.map((u) => (
                   <tr key={u.net_id}>
-                    <td>{u.name || <span style={{ opacity: 0.4 }}>—</span>}</td>
+                    <td>{u.name || <span style={{ opacity: 0.4 }}>-</span>}</td>
                     <td className={styles.cellMono}>{u.net_id}</td>
                     <td><RoleBadge roleId={u.role} /></td>
-                    <td>{u.group_number || <span style={{ opacity: 0.4 }}>—</span>}</td>
+                    <td>{u.group_number || <span style={{ opacity: 0.4 }}>-</span>}</td>
                     <td>
                       <div className={styles.cellActions}>
                         <button

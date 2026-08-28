@@ -1,11 +1,11 @@
 import { vi } from "vitest";
 
 // Factory must not reference outer-scope variables (Vitest hoists vi.mock
-// calls), so it just installs a bare mock function — behavior is configured
+// calls), so it just installs a bare mock function - behavior is configured
 // afterwards via getServerSession.mockResolvedValue()/mockReset() below.
 vi.mock("next-auth", () => ({
   // app/api/auth/[...nextauth]/route.js calls NextAuth(authOptions) at
-  // module scope just by being imported (for its authOptions export) —
+  // module scope just by being imported (for its authOptions export) -
   // needs a harmless default export so that doesn't throw.
   default: () => ({}),
   getServerSession: vi.fn(),
@@ -25,7 +25,7 @@ export function asRole(role, netID, extra = {}) {
   });
 }
 
-/** No session — exercises the app's Unauthorized paths. */
+/** No session - exercises the app's Unauthorized paths. */
 export function asAnonymous() {
   getServerSession.mockResolvedValue(null);
 }

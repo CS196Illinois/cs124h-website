@@ -443,7 +443,7 @@
   transition: border-color 0.18s, box-shadow 0.18s;
 }
 
-/* Arrow only for <select> elements — not for <input> with roleSelect */
+/* Arrow only for <select> elements - not for <input> with roleSelect */
 select.roleSelect {
   appearance: none;
   -webkit-appearance: none;

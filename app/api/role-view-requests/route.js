@@ -83,7 +83,7 @@ export async function POST(request) {
         { status: 409 }
       );
     }
-    // Expired approval exists — delete it so they can re-request
+    // Expired approval exists - delete it so they can re-request
     await supabaseServer.from(table("roleViewRequests")).delete().eq("id", existing.id);
   }
 

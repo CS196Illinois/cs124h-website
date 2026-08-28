@@ -58,7 +58,7 @@ export default function NeedsGradingList({ items, allItems, peopleByNetId, onGra
                   </span>
                 ) : (
                   <span>
-                    {peopleByNetId?.[row.item.net_id]?.name || <span style={{ opacity: 0.4 }}>—</span>}
+                    {peopleByNetId?.[row.item.net_id]?.name || <span style={{ opacity: 0.4 }}>-</span>}
                     <span style={{ color: "rgba(249,249,249,0.45)", fontSize: "0.78rem", fontFamily: "monospace", marginLeft: "0.4rem" }}>
                       {row.item.net_id}
                     </span>

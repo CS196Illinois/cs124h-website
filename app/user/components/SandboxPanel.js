@@ -13,7 +13,7 @@ const SANDBOX_MODES = [
 /**
  * Self-contained sandbox mode toggle + reset control, shared by the web_dev
  * and lead_web_dev dashboards. Only ever reads/writes the current user's own
- * setting via /api/users/me/sandbox — never another user's.
+ * setting via /api/users/me/sandbox - never another user's.
  */
 export default function SandboxPanel() {
   const { status } = useSession();
@@ -53,7 +53,7 @@ export default function SandboxPanel() {
   const handleReset = async () => {
     setSaving(true);
     const res = await fetch("/api/users/me/sandbox", { method: "DELETE" });
-    setResetMsg(res.ok ? "Sandbox reset." : "Reset failed — try again.");
+    setResetMsg(res.ok ? "Sandbox reset." : "Reset failed - try again.");
     setSaving(false);
   };
 
@@ -63,7 +63,7 @@ export default function SandboxPanel() {
         <span style={{ color: "#f9f9f9", fontFamily: "Inter", fontWeight: 600 }}>Sandbox Mode</span>
       </div>
       <p style={{ color: "rgba(249,249,249,0.5)", fontFamily: "Inter", fontSize: "0.78rem", lineHeight: 1.5, marginBottom: "0.9rem" }}>
-        When on, your changes to events, sprints, and action items never touch real data — only you see them.
+        When on, your changes to events, sprints, and action items never touch real data - only you see them.
       </p>
 
       {loading ? (

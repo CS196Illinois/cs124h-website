@@ -216,7 +216,7 @@ export default function PMActionItems() {
     if (rows.length === 0) return (
       <EmptyState
         icon={statusFilter === "open" ? "✅" : "📭"}
-        message={statusFilter === "open" ? "No pending items — great work!" : "No items here yet"}
+        message={statusFilter === "open" ? "No pending items - great work!" : "No items here yet"}
       />
     );
 

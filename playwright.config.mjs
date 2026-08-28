@@ -14,7 +14,7 @@ export default defineConfig({
   // All spec files share the same live Supabase test_ tables (no per-file
   // isolation), and each file's beforeEach wipes those tables via
   // clearAllTestTables(). Parallel workers raced each other's cleanup against
-  // other files' in-flight tests — same class of bug as the Vitest suite, fixed
+  // other files' in-flight tests - same class of bug as the Vitest suite, fixed
   // the same way: run everything on one worker, one file at a time.
   fullyParallel: false,
   workers: 1,
@@ -23,7 +23,7 @@ export default defineConfig({
   reporter: "list",
 
   // Next dev-mode compiles each route on-demand on its first hit, which can
-  // take ~10s for a route nobody's visited yet this run — well past the
+  // take ~10s for a route nobody's visited yet this run - well past the
   // default 5s assertion timeout. Bumped so whichever test happens to hit a
   // given route first doesn't fail on cold-compile time alone.
   expect: {

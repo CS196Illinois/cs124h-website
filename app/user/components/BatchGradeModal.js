@@ -87,7 +87,7 @@ export default function BatchGradeModal({ batchId, items, peopleByNetId, onClose
               return (
                 <tr key={item.id}>
                   <td>
-                    {person?.name || <span style={{ opacity: 0.4 }}>—</span>}
+                    {person?.name || <span style={{ opacity: 0.4 }}>-</span>}
                     <span style={{ color: "rgba(249,249,249,0.45)", fontSize: "0.76rem", fontFamily: "monospace", marginLeft: "0.4rem" }}>
                       {item.net_id}
                     </span>

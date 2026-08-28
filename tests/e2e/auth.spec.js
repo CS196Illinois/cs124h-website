@@ -76,7 +76,7 @@ test.describe("auth + role-gated dashboards", () => {
   });
 
   // Mirror-image regression test: revoking access must take effect
-  // immediately too, not just granting it — a JWT-cached "yes" is just as
+  // immediately too, not just granting it - a JWT-cached "yes" is just as
   // wrong as a JWT-cached "no" once the DB has moved on.
   test("revoking an approved view blocks access immediately, without needing a new session", async ({ page, loginAs }) => {
     const req = await insertRoleViewRequest({ requester_net_id: "e2e-webdev-revoke", requested_role: "pm", status: "approved" });
@@ -92,7 +92,7 @@ test.describe("auth + role-gated dashboards", () => {
   });
 
   // Regression test: a student who has enrolled but hasn't been added to the
-  // roster yet (common right before kickoff) shouldn't see a generic 401 —
+  // roster yet (common right before kickoff) shouldn't see a generic 401 -
   // they get a friendlier "not on the roster yet" explanation instead, on
   // both the bare /user root and a specific role path.
   test("a signed-in user with no roster role sees a friendly 'not enrolled yet' message, not a generic 401", async ({ page, loginAs }) => {
@@ -109,7 +109,7 @@ test.describe("auth + role-gated dashboards", () => {
   });
 
   // A genuine role mismatch (an enrolled user on the wrong dashboard) should
-  // keep the generic 401 copy — it's a different situation from not being
+  // keep the generic 401 copy - it's a different situation from not being
   // enrolled yet, and shouldn't be told to "check back after kickoff".
   test("a genuine role mismatch still shows the generic Unauthorized message", async ({ page, loginAs }) => {
     await loginAs({ netID: "e2e-student-mismatch", role: "student" });

@@ -11,7 +11,7 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env.test.local"), quiet: t
 
 if (process.env.USE_TEST_TABLES !== "true") {
   throw new Error(
-    "USE_TEST_TABLES must be true when running the test suite — refusing to start " +
+    "USE_TEST_TABLES must be true when running the test suite - refusing to start " +
     "to avoid ever touching production tables. Check .env.test.local."
   );
 }
