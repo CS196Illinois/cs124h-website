@@ -183,6 +183,8 @@ export default function LeadWebDevActionItems() {
                     onEdit={setEditItem}
                     onDelete={handleDelete}
                     onGrade={setGradeItem}
+                    onDeleteBatch={handleDeleteBatch}
+                    allItems={actionItems}
                   />
                 ))}
               </tbody>
