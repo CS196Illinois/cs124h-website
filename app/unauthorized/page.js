@@ -41,15 +41,14 @@ export default async function UnauthorizedPage({ searchParams }) {
       <div className={styles.pageContainer}>
         <div className={styles.icon} aria-hidden="true">🎓</div>
         <h1 className={styles.heading}>You're not on the roster yet</h1>
-        <p className={styles.description}>
+        <p className={`${styles.description} ${styles.wideDescription}`}>
           We signed you in, but couldn&apos;t find your NetID on the course
           roster. If you just enrolled, this is expected: the roster gets
           updated around kickoff. Sessions don&apos;t recheck the roster on
           their own though, so once it&apos;s updated you&apos;ll need to sign
-          out and sign back in for your access to take effect - just
-          revisiting this page won&apos;t be enough.
+          out and sign back in for your access to take effect.
         </p>
-        <p className={styles.description}>
+        <p className={`${styles.description} ${styles.wideDescription}`}>
           Questions in the meantime? Reach out on our{" "}
           <a href="https://discord.gg/HBZ2thqde" target="_blank" rel="noopener noreferrer">
             Discord
