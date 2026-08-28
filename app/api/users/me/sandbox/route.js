@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "../../../auth/[...nextauth]/route";
-import { isSandboxRole, getSandboxMode, setSandboxMode, resetSandbox } from "../../../../../lib/sandbox";
+import { isSandboxRole, getSandboxMode, setSandboxMode, resetSandbox, deactivateEphemeral } from "../../../../../lib/sandbox";
 
 // Self-service only — a user can only ever change their own sandbox
 // settings, never another user's. Restricted to the roles the sandbox
@@ -46,16 +46,19 @@ export async function DELETE() {
 
 // navigator.sendBeacon only supports POST, so the sidebar uses this (instead
 // of DELETE above) for its best-effort clear when the user navigates away
-// from the dashboard while ephemeral. Only ever resets if the caller's mode
-// is currently ephemeral — a stray/malicious beacon call must never be able
-// to wipe a persistent sandbox. Not the safety net (getSandboxMode()'s lazy
-// TTL expiry is); this only helps the clean in-app-navigation case.
+// from the dashboard while ephemeral. Only ever deactivates if the caller's
+// mode is currently ephemeral — a stray/malicious beacon call must never be
+// able to wipe a persistent sandbox. Not the safety net (getSandboxMode()'s
+// lazy TTL expiry is); this only helps the clean in-app-navigation case.
+// deactivateEphemeral() reverts the mode to "off", not just the data — an
+// ephemeral session that ended but still reads as "ephemeral" is exactly
+// the confusing state ("sandbox active" banner stuck on) this must avoid.
 export async function POST() {
   const { netID, error } = await requireSandboxUser();
   if (error) return error;
 
   if ((await getSandboxMode(netID)) === "ephemeral") {
-    await resetSandbox(netID);
+    await deactivateEphemeral(netID);
   }
   return new NextResponse(null, { status: 204 });
 }

@@ -154,6 +154,7 @@ export default function HeadPMActionItems() {
               const u = userByNetId[item.net_id];
               const assignedBy = item.assigned_by || item.additional_info?.assigned_by;
               const canGrade = assignedBy === myNetId && item.is_gradable && item.is_done;
+              const batchItems = item.batch_id ? actionItems.filter((i) => i.batch_id === item.batch_id) : null;
               return (
                 <tr key={item.id}>
                   <td>{item.title}</td>
@@ -182,6 +183,15 @@ export default function HeadPMActionItems() {
                       )}
                       <button className={styles.btnSmall} style={{ background: "rgba(79,141,222,0.15)", color: "#4f8dde", border: "1px solid rgba(79,141,222,0.25)" }} onClick={() => setEditItem(item)}>Edit</button>
                       <button className={styles.btnDanger} onClick={() => handleDelete(item.id)}>Delete</button>
+                      {batchItems && batchItems.length > 1 && (
+                        <button
+                          className={styles.btnDanger}
+                          title={`Delete this item for all ${batchItems.length} recipients it was assigned to`}
+                          onClick={() => handleDeleteBatch(item.batch_id, batchItems)}
+                        >
+                          Delete Batch ({batchItems.length})
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -232,6 +242,8 @@ export default function HeadPMActionItems() {
                     onEdit={setEditItem}
                     onDelete={handleDelete}
                     onGrade={setGradeItem}
+                    onDeleteBatch={handleDeleteBatch}
+                    allItems={actionItems}
                   />
                 ))}
               </tbody>

@@ -4,10 +4,15 @@ import styles from "../dashboard.module.css";
 import StatusBadge from "./StatusBadge";
 import { gradingStatus } from "../../../lib/grading";
 
-export default function ActionItemRow({ item, myNetId, onToggle, onEdit, onDelete, onGrade }) {
+export default function ActionItemRow({ item, myNetId, onToggle, onEdit, onDelete, onGrade, onDeleteBatch, allItems }) {
   const assignedBy = item.assigned_by || item.additional_info?.assigned_by;
   const canGrade = onGrade && assignedBy === myNetId && item.is_gradable && item.is_done;
   const status = gradingStatus(item);
+  // Items assigned to more than one recipient at once share a batch_id
+  // (see app/api/action_items/route.js). Offer to delete the whole batch
+  // in one shot from any of its per-recipient rows, not just from the
+  // "Needs Grading" view where this was previously the only place it lived.
+  const batchItems = item.batch_id && allItems ? allItems.filter((i) => i.batch_id === item.batch_id) : null;
 
   return (
     <tr>
@@ -47,6 +52,15 @@ export default function ActionItemRow({ item, myNetId, onToggle, onEdit, onDelet
             Edit
           </button>
           <button className={styles.btnDanger} onClick={() => onDelete(item.id)}>Delete</button>
+          {batchItems && batchItems.length > 1 && onDeleteBatch && (
+            <button
+              className={styles.btnDanger}
+              title={`Delete this item for all ${batchItems.length} recipients it was assigned to`}
+              onClick={() => onDeleteBatch(item.batch_id, batchItems)}
+            >
+              Delete Batch ({batchItems.length})
+            </button>
+          )}
         </div>
       </td>
     </tr>

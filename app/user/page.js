@@ -7,7 +7,7 @@ export default async function UserRootPage() {
 
   const role = session?.user?.role;
   
-  if (!role || role === "error") redirect("/unauthorized");
+  if (!role || role === "error") redirect("/unauthorized?reason=not-enrolled");
 
   redirect(`/user/${role}`);
 }

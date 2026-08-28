@@ -4,11 +4,12 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { MANAGEABLE_BY as MANAGEABLE_ROLES } from "../../../lib/roles";
-import { resetSandbox } from "../../../lib/sandbox";
+import { isSandboxRole, getSandboxMode, mergeSandboxRows, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../lib/sandbox";
 
 export async function GET(request) {
   const session = await getServerSession(authOptions);
   const userRole = session?.user?.role;
+  const netID = session?.user?.netID;
 
   if (!userRole || userRole === "error") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -25,12 +26,24 @@ export async function GET(request) {
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  let rows = data;
+  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
+    const matchesFilter = (row) => {
+      if (roleFilter && row.role !== roleFilter) return false;
+      if (groupFilter && row.group_number !== Number(groupFilter)) return false;
+      return true;
+    };
+    rows = await mergeSandboxRows(netID, "users", rows, matchesFilter);
+    rows.sort((a, b) => (a.net_id < b.net_id ? -1 : a.net_id > b.net_id ? 1 : 0));
+  }
+  return NextResponse.json(rows);
 }
 
 export async function POST(request) {
   const session = await getServerSession(authOptions);
   const userRole = session?.user?.role;
+  const netID = session?.user?.netID;
 
   if (!userRole || userRole === "error") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -52,9 +65,25 @@ export async function POST(request) {
     return NextResponse.json({ error: "You cannot add users with that role" }, { status: 403 });
   }
 
+  const cleanNetId = net_id.trim().toLowerCase();
+
+  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
+    const { data: realRow } = await supabaseServer.from(table("users")).select("*").eq("net_id", cleanNetId).maybeSingle();
+    const existing = await getEffectiveRow(netID, "users", cleanNetId, realRow);
+    if (existing) {
+      return NextResponse.json({ error: `duplicate key value violates unique constraint "user-testing_pkey"` }, { status: 500 });
+    }
+    const fullRow = {
+      net_id: cleanNetId, role, name: name?.trim() || null, group_number: group_number || null,
+      sub: null, discord_user_id: null, sandbox_mode: "off",
+    };
+    await sandboxWrite(netID, "users", "insert", cleanNetId, fullRow);
+    return NextResponse.json(fullRow, { status: 201 });
+  }
+
   const { data, error } = await supabaseServer
     .from(table("users"))
-    .insert({ net_id: net_id.trim().toLowerCase(), role, name: name?.trim() || null, group_number: group_number || null })
+    .insert({ net_id: cleanNetId, role, name: name?.trim() || null, group_number: group_number || null })
     .select()
     .single();
 
@@ -66,7 +95,9 @@ const BULK_DELETE_ROLES = ["course_lead", "lead_web_dev", "web_dev"];
 
 export async function DELETE(request) {
   const session = await getServerSession(authOptions);
-  if (!BULK_DELETE_ROLES.includes(session?.user?.role)) {
+  const userRole = session?.user?.role;
+  const netID = session?.user?.netID;
+  if (!BULK_DELETE_ROLES.includes(userRole)) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 
@@ -76,6 +107,13 @@ export async function DELETE(request) {
   const VALID_ROLES = ["LEAD", "LEAD_WEB", "HEAD", "PM", "WEB", "STUDENT"];
   if (!role || !VALID_ROLES.includes(role)) {
     return NextResponse.json({ error: "A valid role query param is required" }, { status: 400 });
+  }
+
+  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
+    const { data: realRows } = await supabaseServer.from(table("users")).select("net_id").eq("role", role);
+    const merged = await mergeSandboxRows(netID, "users", realRows ?? [], (row) => row.role === role);
+    await Promise.all(merged.map((u) => sandboxWrite(netID, "users", "delete", u.net_id, null)));
+    return NextResponse.json({ deleted: merged.length });
   }
 
   const { data, error } = await supabaseServer
