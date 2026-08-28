@@ -44,9 +44,8 @@ export default async function UnauthorizedPage({ searchParams }) {
         <p className={`${styles.description} ${styles.wideDescription}`}>
           We signed you in, but couldn&apos;t find your NetID on the course
           roster. If you just enrolled, this is expected: the roster gets
-          updated around kickoff. Sessions don&apos;t recheck the roster on
-          their own though, so once it&apos;s updated you&apos;ll need to sign
-          out and sign back in for your access to take effect.
+          updated around kickoff. Sign out and back in afterward to pick up
+          your access.
         </p>
         <p className={`${styles.description} ${styles.wideDescription}`}>
           Questions in the meantime? Reach out on our{" "}
