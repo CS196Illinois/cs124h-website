@@ -201,7 +201,7 @@ export default function SprintsManager({ canManage = false }) {
                 <div style={{ color: "rgba(249,249,249,0.4)", fontFamily: "Inter", fontSize: "0.8rem", marginTop: "0.4rem" }}>
                   {selectedSprint.start_date &&
                     new Date(selectedSprint.start_date + "T00:00:00").toLocaleDateString()}
-                  {selectedSprint.start_date && selectedSprint.end_date && " — "}
+                  {selectedSprint.start_date && selectedSprint.end_date && " - "}
                   {selectedSprint.end_date &&
                     new Date(selectedSprint.end_date + "T00:00:00").toLocaleDateString()}
                 </div>
@@ -267,10 +267,10 @@ export default function SprintsManager({ canManage = false }) {
                                 paddingTop: "0.85rem",
                               }}
                             >
-                              {group === "Unassigned" ? "—" : `Group ${group}`}
+                              {group === "Unassigned" ? "-" : `Group ${group}`}
                             </td>
                           )}
-                          <td>{student.name || <span style={{ opacity: 0.4 }}>—</span>}</td>
+                          <td>{student.name || <span style={{ opacity: 0.4 }}>-</span>}</td>
                           <td className={styles.cellMono}>{student.net_id}</td>
                           <td>
                             <span className={done ? styles.statusDone : styles.statusPending}>

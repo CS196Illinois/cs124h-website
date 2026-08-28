@@ -199,7 +199,7 @@ export default function LeadWebRoleRequests() {
                       {new Date(req.created_at).toLocaleDateString()}
                     </td>
                     <td style={{ color: expiryColor(req.expires_at), fontSize: "0.82rem" }}>
-                      {req.status === "approved" ? expiryLabel(req.expires_at) : "—"}
+                      {req.status === "approved" ? expiryLabel(req.expires_at) : "-"}
                     </td>
                     <td>
                       <div className={styles.cellActions}>

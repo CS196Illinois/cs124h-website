@@ -5,7 +5,7 @@ import SignOutButton from "./SignOutButton";
 import styles from "./Unauthorized.module.css";
 
 // Same mechanism the homepage footer uses for "Questions? Contact the course
-// leads" — the real users table's LEAD role, not the course_staff bio page
+// leads" - the real users table's LEAD role, not the course_staff bio page
 // (which is semester-scoped marketing data, not the actual roster). This is
 // the live, current set of people who can actually do something about a
 // locked-out student.
@@ -46,7 +46,7 @@ export default async function UnauthorizedPage({ searchParams }) {
           roster. If you just enrolled, this is expected: the roster gets
           updated around kickoff. Sessions don&apos;t recheck the roster on
           their own though, so once it&apos;s updated you&apos;ll need to sign
-          out and sign back in for your access to take effect — just
+          out and sign back in for your access to take effect - just
           revisiting this page won&apos;t be enough.
         </p>
         <p className={styles.description}>
@@ -60,7 +60,7 @@ export default async function UnauthorizedPage({ searchParams }) {
               {leads.map((lead, i) => (
                 <span key={lead.email}>
                   {i > 0 && (i === leads.length - 1 ? " or " : ", ")}
-                  <a href={`mailto:${lead.email}`}>{lead.name}</a>
+                  {lead.name} (<a href={`mailto:${lead.email}`}>{lead.email}</a>)
                 </span>
               ))}
             </>

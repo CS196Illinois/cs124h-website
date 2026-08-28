@@ -103,11 +103,11 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
 
   // Regression test: the Start Time / End Time row used `flex: 1` on two
   // <input type="datetime-local"> fields, which can't shrink below their
-  // native rendering width in Chromium — on a narrow viewport that pushed
+  // native rendering width in Chromium - on a narrow viewport that pushed
   // the row past the modal's right edge. The modal's `overflow-y: auto`
   // implicitly makes overflow-x `auto` too (CSS spec: one non-visible axis
   // forces the other off `visible`), so this never showed up as
-  // document-level overflow — it was a horizontal scrollbar hidden inside
+  // document-level overflow - it was a horizontal scrollbar hidden inside
   // the modal, with the End Time field clipped off requiring a scroll
   // nobody would think to do. Checking the modal's own scrollWidth (not the
   // document's) is what actually catches it.

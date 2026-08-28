@@ -14,7 +14,7 @@ const MAX_AGE = 30 * 24 * 60 * 60; // 30 days
 
 /**
  * Mints a real NextAuth JWT (signed with the same NEXTAUTH_SECRET the app
- * verifies against) and drops it in as the session cookie — bypasses the
+ * verifies against) and drops it in as the session cookie - bypasses the
  * real CILogon OAuth handshake entirely while still exercising the app's
  * actual session/middleware code, unlike the Vitest mock-based approach.
  *

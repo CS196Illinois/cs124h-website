@@ -26,7 +26,7 @@ export async function PATCH(request, { params }) {
 
   let expires_at = null;
   if (status === "approved") {
-    // duration_days === null explicitly means "Permanent" (see the UI) — only
+    // duration_days === null explicitly means "Permanent" (see the UI) - only
     // a genuinely omitted key falls back to the default. `??` would treat
     // both the same and silently downgrade "Permanent" to 7 days.
     const days = duration_days !== undefined ? duration_days : DEFAULT_DURATION_DAYS;
@@ -55,7 +55,7 @@ export async function PATCH(request, { params }) {
     .single();
 
   // PGRST116 = .single() matched zero rows, which happens whenever the id
-  // doesn't exist OR isn't pending anymore — both are "not found" here, not
+  // doesn't exist OR isn't pending anymore - both are "not found" here, not
   // a server error.
   if (error && error.code !== "PGRST116") {
     return NextResponse.json({ error: error.message }, { status: 500 });

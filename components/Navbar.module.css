@@ -158,7 +158,7 @@
   display: none !important;
 }
 
-/* Matches the isMobile check in navbar.js — below this width the full nav
+/* Matches the isMobile check in navbar.js - below this width the full nav
    row doesn't fit on one line within the bar's fixed height. */
 @media (max-width: 1280px) {
   .navbar {

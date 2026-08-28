@@ -117,7 +117,7 @@ export default function StudentDashboard() {
             {(currentSprint.start_date || currentSprint.end_date) && (
               <div style={{ color: "rgba(249,249,249,0.4)", fontFamily: "Inter", fontSize: "0.78rem", marginTop: "0.3rem" }}>
                 {currentSprint.start_date && new Date(currentSprint.start_date + "T00:00:00").toLocaleDateString()}
-                {currentSprint.start_date && currentSprint.end_date && " — "}
+                {currentSprint.start_date && currentSprint.end_date && " - "}
                 {currentSprint.end_date && new Date(currentSprint.end_date + "T00:00:00").toLocaleDateString()}
               </div>
             )}

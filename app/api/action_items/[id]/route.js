@@ -32,7 +32,7 @@ export async function PATCH(request, { params }) {
     updates.is_done = body.is_done;
     updates.completion_date = body.is_done ? new Date().toISOString() : null;
     if (!body.is_done) {
-      // Reopening resets any existing grade — the work is changing, so it needs a re-review.
+      // Reopening resets any existing grade - the work is changing, so it needs a re-review.
       updates.grade = null;
       updates.graded_by = null;
       updates.graded_at = null;

@@ -1,7 +1,7 @@
 -- Production schema for the tables introduced by the cs124h-dev-site port.
 --
 -- This is the real-table counterpart to test-schema.sql. It never existed
--- before — the production tables (user-testing, action_items, events, etc.)
+-- before - the production tables (user-testing, action_items, events, etc.)
 -- were created by hand at some point during the port, and drifted out of
 -- sync with what the app code actually needs. Confirmed drift as of writing:
 -- action_items was missing is_gradable, max_score, grade, grade_note,
@@ -13,7 +13,7 @@
 --   - CREATE TABLE IF NOT EXISTS handles a table that doesn't exist yet.
 --   - ALTER TABLE ... ADD COLUMN IF NOT EXISTS (run for every column on
 --     every table, regardless of whether the table is brand new or already
---     existed) self-heals any table that exists but is missing columns —
+--     existed) self-heals any table that exists but is missing columns -
 --     which is the actual bug this script was written to fix.
 --
 -- Run this once in the Supabase SQL editor against the production project.
@@ -134,7 +134,7 @@ END $$;
 -- in-scope table. Reads merge this diff onto the real table; writes from a
 -- sandboxed session land here instead of the real table. Deliberately scoped
 -- to content tables only (action_items, events, event_checkins, sprints,
--- sprint_completions) — users and role_view_requests are never sandboxed.
+-- sprint_completions) - users and role_view_requests are never sandboxed.
 CREATE TABLE IF NOT EXISTS sandbox_overlay (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid()
 );
@@ -161,7 +161,7 @@ CREATE INDEX IF NOT EXISTS sandbox_overlay_owner_table_idx ON sandbox_overlay (o
 
 -- ── Public content (site pages, not auth-scoped) ──────────────────────────────
 -- staff, resources, and projects already exist with the correct shape in
--- production (verified against the app's actual usage) — included here only
+-- production (verified against the app's actual usage) - included here only
 -- so a from-scratch bootstrap of this project would still produce them.
 CREATE TABLE IF NOT EXISTS staff (
   id                bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -206,7 +206,7 @@ CREATE TABLE IF NOT EXISTS projects (
 
 -- ── RLS ────────────────────────────────────────────────────────────────────────
 -- Every Supabase call in this app goes through the service-role key
--- (lib/supabaseServer.js) — nothing reads these tables with the anon key —
+-- (lib/supabaseServer.js) - nothing reads these tables with the anon key -
 -- so RLS doesn't gate anything here either way, but disabling it explicitly
 -- avoids surprises if a client-side read is ever added later.
 ALTER TABLE "user-testing"      DISABLE ROW LEVEL SECURITY;

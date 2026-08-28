@@ -3,12 +3,12 @@
 -- These are test_-prefixed twins of every production table, living in the
 -- same Supabase project. lib/tables.js resolves every app query to these
 -- names instead of the real tables whenever USE_TEST_TABLES=true (server)
--- or NEXT_PUBLIC_USE_TEST_TABLES=true (client) is set — see that file for
+-- or NEXT_PUBLIC_USE_TEST_TABLES=true (client) is set - see that file for
 -- the resolver. Tests never touch the real tables as long as every query
 -- goes through table().
 --
 -- Run this once in the Supabase SQL editor. Safe to re-run (IF NOT EXISTS).
--- RLS is left disabled to match Postgres defaults for a fresh CREATE TABLE —
+-- RLS is left disabled to match Postgres defaults for a fresh CREATE TABLE -
 -- fine for a test-only project, since both the service-role key (server)
 -- and anon key (the few client-side reads) need unrestricted access here.
 
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS "test_user-testing" (
 );
 -- ADD COLUMN IF NOT EXISTS rather than inline above: this table already
 -- exists in most environments by the time this line is added, and
--- CREATE TABLE IF NOT EXISTS is a no-op against an existing table — an
+-- CREATE TABLE IF NOT EXISTS is a no-op against an existing table - an
 -- inline column definition would never actually apply. Self-heals instead.
 ALTER TABLE "test_user-testing" ADD COLUMN IF NOT EXISTS sandbox_mode text NOT NULL DEFAULT 'off';
 DO $$ BEGIN
@@ -173,7 +173,7 @@ CREATE TABLE IF NOT EXISTS test_projects (
 -- ── Attendance / leaderboard points ───────────────────────────────────────────
 -- Mirrors cs124h-website's actual current table: mixed-case column names
 -- (quoted here to preserve that, since unquoted CREATE TABLE folds to
--- lowercase) — the app's leaderboard route resolves them case-insensitively
+-- lowercase) - the app's leaderboard route resolves them case-insensitively
 -- anyway, but the test table should reflect prod's real shape, not a
 -- convenient guess. Semester-specific; will need a new table name/twin next
 -- semester (see lib/tables.js).
@@ -188,7 +188,7 @@ CREATE TABLE IF NOT EXISTS test_event_attendance_sp26 (
 -- ── RLS ────────────────────────────────────────────────────────────────────────
 -- This project apparently enables RLS by default on freshly created tables
 -- (confirmed empirically: the anon/publishable key got a clean 200 with zero
--- rows against data that demonstrably existed — RLS silently filtering, not a
+-- rows against data that demonstrably existed - RLS silently filtering, not a
 -- grant error). A few of these tables are read through the anon key directly
 -- from client components (leaderboard, course_staff, hall_of_fame), so leaving
 -- RLS on with no policies would make those pages always render empty during

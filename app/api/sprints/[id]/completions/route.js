@@ -60,7 +60,7 @@ export async function POST(request, { params }) {
 
   if (isSandboxRole(userRole) && (await getSandboxMode(userNetId)) !== "off") {
     // sprint_id + student_net_id is the real upsert key (matches the real
-    // table's unique constraint), not the surrogate id — find any existing
+    // table's unique constraint), not the surrogate id - find any existing
     // row (real or already-sandboxed) under that key first, so a re-mark
     // updates it in place instead of creating a duplicate overlay entry.
     const { data: realRows } = await supabaseServer

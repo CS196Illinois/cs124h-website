@@ -61,7 +61,7 @@ export async function PATCH(request, { params }) {
     if (!current) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const merged = { ...current, ...updates };
     // A sandboxed edit must never trigger a real side effect on the target's
-    // own (real) sandbox — resetSandbox below only ever runs on the real
+    // own (real) sandbox - resetSandbox below only ever runs on the real
     // write path, never here, even though the update shape looks the same.
     await sandboxWrite(callerNetId, "users", "update", net_id, merged);
     return NextResponse.json(merged);
@@ -76,7 +76,7 @@ export async function PATCH(request, { params }) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // "until their access is revoked" — a role change away from the web team
+  // "until their access is revoked" - a role change away from the web team
   // clears any sandbox (ephemeral or persistent) regardless of the user's
   // own preference, since they can no longer reach the routes that read it.
   if (updates.role !== undefined && !WEB_TEAM_ROLES.includes(updates.role)) {

@@ -75,7 +75,7 @@ export async function POST(request) {
 
   const sandboxed = isSandboxRole(userRole) && (await getSandboxMode(assignerNetID)) !== "off";
 
-  // A PM may only ever act within their own group — fetch once, used by both
+  // A PM may only ever act within their own group - fetch once, used by both
   // the "individual" and "group" target paths below. PM is never a
   // sandboxable role, so this read is always real.
   let requesterGroup = null;

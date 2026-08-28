@@ -88,7 +88,7 @@ export default function PeopleMultiSelect({ people, selected, onChange, roleLabe
               >
                 <input type="checkbox" className={styles.checkboxInput} checked={checked} onChange={() => toggle(p.net_id)} />
                 <span style={{ color: "#f9f9f9", fontSize: "0.85rem", fontFamily: "Inter, sans-serif" }}>
-                  {p.name || <span style={{ opacity: 0.4 }}>—</span>}
+                  {p.name || <span style={{ opacity: 0.4 }}>-</span>}
                 </span>
                 <span style={{ color: "rgba(249,249,249,0.45)", fontSize: "0.78rem", fontFamily: "monospace" }}>{p.net_id}</span>
                 {roleLabelFn && p.role && (
