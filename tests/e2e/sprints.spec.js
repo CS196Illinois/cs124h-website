@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures";
-import { insertUser, insertSprint, clearAllTestTables } from "../helpers/db";
+import { insertUser, insertSprint, clearAllTestTables, testClient } from "../helpers/db";
+import { table } from "../../lib/tables";
 
 test.describe("sprints: course lead manages sprints, pm marks completions", () => {
   test.beforeEach(clearAllTestTables);
@@ -27,6 +28,46 @@ test.describe("sprints: course lead manages sprints, pm marks completions", () =
     // Delete is optimistic - an undo toast appears instead of a confirm step.
     await page.getByRole("button", { name: "Delete", exact: true }).click();
     await expect(page.getByText("No sprints yet")).toBeVisible();
+  });
+
+  // Regression coverage for the undo safety net's onCancel path specifically -
+  // handleDelete() in SprintsManager restores not just the sprint row but
+  // also selectedId if the deleted sprint was the selected one, so clicking
+  // Undo has to put the detail panel back exactly where it was, not just
+  // make the chip reappear.
+  test("clicking Undo restores a deleted sprint exactly, including which one is selected", async ({ page, loginAs }) => {
+    const sprint0 = await insertSprint({ number: 0, goal: "Sprint Zero Goal", start_date: "2026-08-01", end_date: "2026-08-14" });
+    await insertSprint({ number: 1, goal: "Sprint One Goal" });
+
+    await loginAs({ netID: "e2e-lead", role: "course_lead" });
+    await page.goto("/user/course_lead/sprints");
+
+    // Select sprint 0 explicitly and delete it while it's the active one.
+    await page.getByRole("button", { name: "Sprint 0" }).click();
+    await expect(page.getByText("Sprint Zero Goal")).toBeVisible();
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+
+    // It's gone from the chip list and the detail panel fell back to the
+    // remaining sprint.
+    await expect(page.getByRole("button", { name: "Sprint 0" })).not.toBeVisible();
+    await expect(page.getByText("Sprint One Goal")).toBeVisible();
+
+    const toast = page.getByText("Deleted Sprint 0");
+    await expect(toast).toBeVisible();
+    await page.getByRole("button", { name: "Undo" }).click();
+
+    // Sprint 0 is back in the chip list, and selection snapped back to it
+    // (not just re-inserted and left unselected) with its exact goal and
+    // date range intact.
+    await expect(page.getByRole("button", { name: "Sprint 0" })).toBeVisible();
+    await expect(page.getByText("Sprint Zero Goal")).toBeVisible();
+
+    // Undo cancels the pending request outright - the row was never touched
+    // server-side, so it's still there with every field as originally inserted.
+    const { data } = await testClient().from(table("sprints")).select("*").eq("id", sprint0.id).single();
+    expect(data.goal).toBe("Sprint Zero Goal");
+    expect(data.start_date).toBe("2026-08-01");
+    expect(data.end_date).toBe("2026-08-14");
   });
 
   test("pm marks a student in their group complete for a sprint, then unmarks them", async ({ page, loginAs }) => {

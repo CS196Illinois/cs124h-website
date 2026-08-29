@@ -169,7 +169,7 @@
   font-family: "Inter", sans-serif;
   font-size: clamp(1rem, 2.5vw, 1.5rem);
   font-weight: 600;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2.5rem;
 }
 
 .enlargeLabel {
@@ -178,7 +178,7 @@
   font-size: clamp(0.75rem, 1.5vw, 0.95rem);
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1.5rem;
 }
 
 .enlargeDigits {
@@ -188,10 +188,10 @@
   color: #f9f9f9;
   letter-spacing: 0.12em;
   line-height: 1;
+  margin-bottom: 2.5rem;
 }
 
 .enlargeTimer {
-  margin-top: 2rem;
   font-family: monospace;
   font-size: clamp(1.25rem, 4vw, 2.5rem);
   font-weight: 700;
