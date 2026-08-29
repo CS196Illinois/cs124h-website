@@ -89,4 +89,34 @@ test.describe("role view requests: web_dev requests, lead_web_dev approves/denie
     const { data } = await testClient().from(table("roleViewRequests")).select("id").eq("id", req.id).maybeSingle();
     expect(data).toBeNull();
   });
+
+  // Regression coverage for the undo safety net's onCancel path specifically -
+  // the test above only exercises letting the window run out and commit.
+  test("clicking Undo on a revoke restores the approval exactly, including its expiry", async ({ page, loginAs }) => {
+    const expiresAt = new Date(Date.now() + 7 * 86400_000).toISOString();
+    const req = await insertRoleViewRequest({
+      requester_net_id: "e2e-webdev4", requested_role: "student", status: "approved", expires_at: expiresAt,
+    });
+
+    await loginAs({ netID: "e2e-leadweb", role: "lead_web_dev" });
+    await page.goto("/user/lead_web_dev/role_requests");
+    await page.getByRole("button", { name: "Approved" }).click();
+    await expect(page.getByText("e2e-webdev4", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Revoke" }).click();
+    await expect(page.getByText("e2e-webdev4", { exact: true })).not.toBeVisible();
+
+    const toast = page.getByText(/Revoked e2e-webdev4's/);
+    await expect(toast).toBeVisible();
+    await page.getByRole("button", { name: "Undo" }).click();
+
+    // Back in the Approved list, still showing as approved.
+    await expect(page.getByText("e2e-webdev4", { exact: true })).toBeVisible();
+
+    // Undo cancels the pending request outright - the row was never touched
+    // server-side, so status and expiry are exactly as they were.
+    const { data } = await testClient().from(table("roleViewRequests")).select("status, expires_at").eq("id", req.id).single();
+    expect(data.status).toBe("approved");
+    expect(new Date(data.expires_at).getTime()).toBe(new Date(expiresAt).getTime());
+  });
 });

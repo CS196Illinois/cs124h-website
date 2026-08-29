@@ -147,6 +147,18 @@ export default async function Home() {
 
           <br />
           <br />
+
+          <h3>Step 4:</h3>
+          <p>
+            Set up your Google Apps @ Illinois account with your NetID@illinois.edu
+            email:{" "}
+            <a href="https://answers.uillinois.edu/illinois/page.php?id=47599">
+              https://answers.uillinois.edu/illinois/page.php?id=47599
+            </a>
+          </p>
+
+          <br />
+          <br />
           <hr />
           <br />
           <br />
