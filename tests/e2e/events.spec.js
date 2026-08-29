@@ -1,6 +1,7 @@
 import { test, expect } from "./fixtures";
-import { insertUser, insertEvent, clearAllTestTables } from "../helpers/db";
+import { insertUser, insertEvent, clearAllTestTables, testClient } from "../helpers/db";
 import { deriveCode } from "../../app/api/events/[id]/code/route";
+import { table } from "../../lib/tables";
 
 test.describe("events: create, check-in toggle, and creator-scoped permissions", () => {
   test.beforeEach(clearAllTestTables);
@@ -62,6 +63,50 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await page.goto("/user/pm/events");
     await page.getByRole("button", { name: "Attendees" }).click();
     await expect(page.getByText("No check-ins yet.")).toBeVisible();
+  });
+
+  // Regression coverage for the undo safety net's onCancel path specifically
+  // (the other undo test in this file only exercises the auto-restore-on-403
+  // path). Covers that Undo puts back every field, not just the visible
+  // title - including check-in being open again, with its live code back.
+  test("clicking Undo restores a deleted event exactly, including its open check-in", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
+    const event = await insertEvent({
+      title: "Guest Lecture", description: "Bring a laptop", location: "Siebel 1404",
+      presenter: "Dr. Smith", created_by: "e2e-pm", check_in_open: true,
+    });
+
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/events");
+
+    await expect(page.getByText("Events (1)")).toBeVisible();
+    await expect(page.getByText("Guest Lecture", { exact: true })).toBeVisible();
+    await expect(page.getByText("● Open")).toBeVisible();
+    const code = deriveCode(event.id);
+    await expect(page.getByText(code, { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByText("Events (0)")).toBeVisible();
+    await expect(page.getByText("Guest Lecture", { exact: true })).not.toBeVisible();
+
+    const toast = page.getByText(/Deleted "Guest Lecture"/);
+    await expect(toast).toBeVisible();
+    await page.getByRole("button", { name: "Undo" }).click();
+
+    // Back in full, including the open check-in state and its live code.
+    await expect(page.getByText("Events (1)")).toBeVisible();
+    await expect(page.getByText("Guest Lecture", { exact: true })).toBeVisible();
+    await expect(page.getByText("● Open")).toBeVisible();
+    await expect(page.getByText(code, { exact: true })).toBeVisible();
+
+    // Undo cancels the pending request outright - nothing was ever sent
+    // server-side, so every field is exactly as originally inserted.
+    const { data } = await testClient().from(table("events")).select("*").eq("id", event.id).single();
+    expect(data.title).toBe("Guest Lecture");
+    expect(data.description).toBe("Bring a laptop");
+    expect(data.location).toBe("Siebel 1404");
+    expect(data.presenter).toBe("Dr. Smith");
+    expect(data.check_in_open).toBe(true);
   });
 
   test("a pm cannot delete another pm's event, but course_lead (full access) can", async ({ page, loginAs }) => {
