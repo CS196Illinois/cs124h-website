@@ -1,9 +1,10 @@
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../../lib/sandbox";
+import { syncSheetAccessForRole } from "../../../../lib/sheetAccess";
 
 const FULL_USER_ACCESS = ["course_lead", "web_dev"];
 const WEB_TEAM_ROLES   = ["LEAD_WEB", "WEB"];
@@ -83,6 +84,13 @@ export async function PATCH(request, { params }) {
     await resetSandbox(net_id);
   }
 
+  // Keep the shared attendance sheet's access list in sync with the roster -
+  // grants course_lead/head_pm/lead_web_dev, revokes everyone else. Fire and
+  // forget: a slow/failed Drive API call should never hold up the People UI.
+  if (updates.role !== undefined) {
+    after(() => syncSheetAccessForRole(net_id, updates.role).catch((e) => console.error(`sheet access sync failed for ${net_id}:`, e.message)));
+  }
+
   return NextResponse.json(data);
 }
 
@@ -126,6 +134,10 @@ export async function DELETE(request, { params }) {
   // Hygiene: a removed user can never reach a sandboxed route again, so
   // this is just avoiding an orphaned overlay, not a security requirement.
   await resetSandbox(net_id);
+
+  // A deleted user is gone from the roster entirely - revoke sheet access
+  // the same as any other role change away from a privileged role.
+  after(() => syncSheetAccessForRole(net_id, null).catch((e) => console.error(`sheet access revoke failed for ${net_id}:`, e.message)));
 
   return NextResponse.json({ success: true });
 }
