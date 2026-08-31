@@ -204,10 +204,48 @@
 }
 
 .chip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 20px;
-  padding: 0.2rem 0.75rem;
+  padding: 0.2rem 0.5rem 0.2rem 0.75rem;
   font-family: monospace;
   font-size: 0.82rem;
   color: #f9f9f9;
+}
+
+.chipRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: rgba(249, 249, 249, 0.4);
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.chipRemove:hover {
+  background: rgba(248, 113, 113, 0.25);
+  color: #fca5a5;
+}
+
+/* ─── Manual add attendee ─────────────────────────────────────── */
+.addAttendeeRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.addAttendeeError {
+  color: #fca5a5;
+  font-family: "Inter", sans-serif;
+  font-size: 0.78rem;
+  margin-top: 0.4rem;
 }

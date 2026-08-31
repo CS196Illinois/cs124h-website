@@ -23,6 +23,9 @@ export default function EventsPanel() {
   const [sheetSync, setSheetSync]   = useState({});   // eventId → "syncing" | "synced" | "failed"
   const [enlargedId, setEnlargedId] = useState(null);  // event whose code is shown full-screen
   const [sheetUrl, setSheetUrl]     = useState(null);  // shared attendance sheet, if this role has access
+  const [roster, setRoster]         = useState([]);   // full roster, for the add-attendee autocomplete
+  const [addInputs, setAddInputs]   = useState({});   // eventId → in-progress net_id text
+  const [addErrors, setAddErrors]   = useState({});   // eventId → error message from the last add attempt
 
   // Create-event modal
   const [showModal, setShowModal]   = useState(false);
@@ -45,6 +48,15 @@ export default function EventsPanel() {
   }, []);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
+
+  // Roster, for the add-attendee autocomplete - fetched once since this
+  // panel is staff-only and GET /api/users is available to any signed-in
+  // role.
+  useEffect(() => {
+    fetch("/api/users").then(async (res) => {
+      if (res.ok) setRoster(await res.json());
+    });
+  }, []);
 
   // Only roles with standing Editor access to the sheet get a link to it -
   // ask the server (which knows the real signed-in role, not just which
@@ -159,6 +171,41 @@ export default function EventsPanel() {
     setSheetSync((prev) => ({ ...prev, [eventId]: "syncing" }));
     const res = await fetch(`/api/events/${eventId}/sync-sheet`, { method: "POST" });
     setSheetSync((prev) => ({ ...prev, [eventId]: res.ok ? "synced" : "failed" }));
+  };
+
+  const addAttendee = async (eventId) => {
+    const netId = (addInputs[eventId] || "").trim().toLowerCase();
+    if (!netId) return;
+    setAddErrors((prev) => ({ ...prev, [eventId]: "" }));
+    const res = await fetch(`/api/events/${eventId}/checkin/manual`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ net_id: netId }),
+    });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({}));
+      setAddErrors((prev) => ({ ...prev, [eventId]: error || "Failed to add attendee." }));
+      return;
+    }
+    setAddInputs((prev) => ({ ...prev, [eventId]: "" }));
+    setAttendees((prev) => ({
+      ...prev,
+      [eventId]: [...(prev[eventId] || []), { net_id: netId, checked_in_at: new Date().toISOString() }],
+    }));
+  };
+
+  const removeAttendee = (eventId, netId) => {
+    const removed = attendees[eventId]?.find((a) => a.net_id === netId);
+    if (!removed) return;
+    setAttendees((prev) => ({
+      ...prev,
+      [eventId]: prev[eventId].filter((a) => a.net_id !== netId),
+    }));
+    scheduleUndo({
+      message: `Removed ${netId} from attendees`,
+      onExpire: () => fetch(`/api/events/${eventId}/checkin/manual?net_id=${encodeURIComponent(netId)}`, { method: "DELETE" }),
+      onCancel: () => setAttendees((prev) => ({ ...prev, [eventId]: [...prev[eventId], removed] })),
+    });
   };
 
   const handleCreate = async () => {
@@ -340,9 +387,46 @@ export default function EventsPanel() {
                               {attendees[event.id].map(a => (
                                 <span key={a.net_id} className={panelStyles.chip}>
                                   {a.net_id}
+                                  <button
+                                    className={panelStyles.chipRemove}
+                                    onClick={() => removeAttendee(event.id, a.net_id)}
+                                    aria-label={`Remove ${a.net_id}`}
+                                    title="Remove attendee"
+                                  >
+                                    <X size={10} weight="bold" />
+                                  </button>
                                 </span>
                               ))}
                             </div>
+                          )}
+                          <form
+                            className={panelStyles.addAttendeeRow}
+                            onSubmit={(e) => { e.preventDefault(); addAttendee(event.id); }}
+                          >
+                            <input
+                              className={styles.searchBar}
+                              style={{ flex: "0 1 220px" }}
+                              list={`roster-${event.id}`}
+                              placeholder="NetID to add…"
+                              value={addInputs[event.id] || ""}
+                              onChange={(e) => setAddInputs((prev) => ({ ...prev, [event.id]: e.target.value }))}
+                            />
+                            <datalist id={`roster-${event.id}`}>
+                              {roster.map((p) => (
+                                <option key={p.net_id} value={p.net_id}>{p.name}</option>
+                              ))}
+                            </datalist>
+                            <button
+                              type="submit"
+                              className={styles.btnSecondary}
+                              style={{ padding: "0.2rem 0.6rem", fontSize: "0.8rem" }}
+                              disabled={!addInputs[event.id]?.trim()}
+                            >
+                              Add
+                            </button>
+                          </form>
+                          {addErrors[event.id] && (
+                            <p className={panelStyles.addAttendeeError}>{addErrors[event.id]}</p>
                           )}
                         </div>
                       </td>
