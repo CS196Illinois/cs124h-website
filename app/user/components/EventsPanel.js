@@ -1,19 +1,28 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { MagnifyingGlassIcon, X } from "@phosphor-icons/react";
+import { useSession } from "next-auth/react";
+import { MagnifyingGlassIcon, ArrowSquareOutIcon, X } from "@phosphor-icons/react";
 import { useUndo } from "../../../components/UndoProvider";
 import styles from "../dashboard.module.css";
 import panelStyles from "./EventsPanel.module.css";
 
+// Roles with standing Editor access to the shared attendance sheet (kept in
+// sync with lib/sheetAccess.js's SHEET_ACCESS_PATH_ROLES) - only these see
+// the "Open Attendance Sheet" button, since it 404s/prompts for access for
+// everyone else.
+const SHEET_ACCESS_ROLES = new Set(["course_lead", "head_pm", "lead_web_dev"]);
+
 export default function EventsPanel() {
   const { scheduleUndo } = useUndo();
+  const { data: session } = useSession();
   const [events, setEvents]         = useState([]);
   const [loading, setLoading]       = useState(true);
   const [expandedId, setExpandedId] = useState(null); // event whose attendees are shown
   const [attendees, setAttendees]   = useState({});   // eventId → [{ net_id, checked_in_at }]
   const [sheetSync, setSheetSync]   = useState({});   // eventId → "syncing" | "synced" | "failed"
   const [enlargedId, setEnlargedId] = useState(null);  // event whose code is shown full-screen
+  const [sheetUrl, setSheetUrl]     = useState(null);  // shared attendance sheet, if this role has access
 
   // Create-event modal
   const [showModal, setShowModal]   = useState(false);
@@ -36,6 +45,17 @@ export default function EventsPanel() {
   }, []);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
+
+  // Only roles with standing Editor access to the sheet get a link to it -
+  // ask the server (which knows the real signed-in role, not just which
+  // dashboard directory this happens to be rendered under - a lead_web_dev
+  // or web_dev with an approved view can land here from another role's path).
+  useEffect(() => {
+    if (!SHEET_ACCESS_ROLES.has(session?.user?.role)) { setSheetUrl(null); return; }
+    fetch("/api/sheet-link").then(async (res) => {
+      if (res.ok) setSheetUrl((await res.json()).url);
+    });
+  }, [session?.user?.role]);
 
   // ── Code polling: start/stop per open event ────────────────────
 
@@ -167,9 +187,23 @@ export default function EventsPanel() {
         <span style={{ color: "#f9f9f9", fontFamily: "Inter", fontWeight: 600 }}>
           Events ({events.length})
         </span>
-        <button className={styles.btnPrimary} onClick={() => setShowModal(true)}>
-          + New Event
-        </button>
+        <div style={{ display: "flex", gap: "0.6rem" }}>
+          {sheetUrl && (
+            <a
+              href={sheetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.btnSecondary}
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", textDecoration: "none" }}
+            >
+              <ArrowSquareOutIcon size={16} weight="bold" />
+              Attendance Sheet
+            </a>
+          )}
+          <button className={styles.btnPrimary} onClick={() => setShowModal(true)}>
+            + New Event
+          </button>
+        </div>
       </div>
 
       {/* Event list */}
