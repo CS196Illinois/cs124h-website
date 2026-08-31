@@ -124,6 +124,18 @@ export default async function Home() {
 
           <h3>Step 2:</h3>
           <p>
+            Set up your Google Apps @ Illinois account with your NetID@illinois.edu
+            email:{" "}
+            <a href="https://answers.uillinois.edu/illinois/page.php?id=47599">
+              https://answers.uillinois.edu/illinois/page.php?id=47599
+            </a>
+          </p>
+
+          <br />
+          <br />
+
+          <h3>Step 3:</h3>
+          <p>
             Please fill in the enrollment confirmation form:{" "}
             <a href="https://forms.gle/mqTVoWHZyCsHbCT58">
               https://forms.gle/mqTVoWHZyCsHbCT58.
@@ -137,23 +149,11 @@ export default async function Home() {
           <br />
           <br />
 
-          <h3>Step 3:</h3>
+          <h3>Step 4:</h3>
           <p>
             Join the Discord:{" "}
             <a href="https://discord.gg/HBZ2thqde">
               https://discord.gg/HBZ2thqde
-            </a>
-          </p>
-
-          <br />
-          <br />
-
-          <h3>Step 4:</h3>
-          <p>
-            Set up your Google Apps @ Illinois account with your NetID@illinois.edu
-            email:{" "}
-            <a href="https://answers.uillinois.edu/illinois/page.php?id=47599">
-              https://answers.uillinois.edu/illinois/page.php?id=47599
             </a>
           </p>
 
