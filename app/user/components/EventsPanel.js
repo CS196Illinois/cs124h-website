@@ -12,6 +12,7 @@ export default function EventsPanel() {
   const [loading, setLoading]       = useState(true);
   const [expandedId, setExpandedId] = useState(null); // event whose attendees are shown
   const [attendees, setAttendees]   = useState({});   // eventId → [{ net_id, checked_in_at }]
+  const [sheetSync, setSheetSync]   = useState({});   // eventId → "syncing" | "synced" | "failed"
   const [enlargedId, setEnlargedId] = useState(null);  // event whose code is shown full-screen
 
   // Create-event modal
@@ -132,6 +133,12 @@ export default function EventsPanel() {
       setAttendees((prev) => ({ ...prev, [eventId]: data }));
     }
     setExpandedId(eventId);
+  };
+
+  const syncSheet = async (eventId) => {
+    setSheetSync((prev) => ({ ...prev, [eventId]: "syncing" }));
+    const res = await fetch(`/api/events/${eventId}/sync-sheet`, { method: "POST" });
+    setSheetSync((prev) => ({ ...prev, [eventId]: res.ok ? "synced" : "failed" }));
   };
 
   const handleCreate = async () => {
@@ -268,13 +275,29 @@ export default function EventsPanel() {
                             <span>
                               {attendees[event.id]?.length ?? 0} attendee{attendees[event.id]?.length !== 1 ? "s" : ""}
                             </span>
-                            <button
-                              className={styles.btnSecondary}
-                              style={{ padding: "0.2rem 0.6rem", fontSize: "0.8rem" }}
-                              onClick={() => setExpandedId(null)}
-                            >
-                              Close
-                            </button>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                              {sheetSync[event.id] === "synced" && (
+                                <span style={{ color: "#4ade80", fontSize: "0.78rem" }}>Synced ✓</span>
+                              )}
+                              {sheetSync[event.id] === "failed" && (
+                                <span style={{ color: "#f87171", fontSize: "0.78rem" }}>Sync failed</span>
+                              )}
+                              <button
+                                className={styles.btnSecondary}
+                                style={{ padding: "0.2rem 0.6rem", fontSize: "0.8rem" }}
+                                onClick={() => syncSheet(event.id)}
+                                disabled={sheetSync[event.id] === "syncing"}
+                              >
+                                {sheetSync[event.id] === "syncing" ? "Syncing…" : "Sync to Sheet"}
+                              </button>
+                              <button
+                                className={styles.btnSecondary}
+                                style={{ padding: "0.2rem 0.6rem", fontSize: "0.8rem" }}
+                                onClick={() => setExpandedId(null)}
+                              >
+                                Close
+                              </button>
+                            </div>
                           </div>
                           {!attendees[event.id]?.length ? (
                             <p className={panelStyles.attendeeEmpty}>No check-ins yet.</p>

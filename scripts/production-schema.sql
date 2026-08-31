@@ -92,6 +92,10 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at            timestamptz NO
 ALTER TABLE events ADD COLUMN IF NOT EXISTS check_in_open         boolean NOT NULL DEFAULT false;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS check_in_opened_at    timestamptz;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS created_by            text;
+-- Tracks which tab (by Sheets gid) in the shared attendance spreadsheet
+-- belongs to this event, so renaming an event updates its existing tab
+-- instead of creating a duplicate, and re-syncing is idempotent.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS sheet_tab_gid         integer;
 ALTER TABLE events ALTER COLUMN title DROP DEFAULT;
 
 CREATE TABLE IF NOT EXISTS event_checkins (

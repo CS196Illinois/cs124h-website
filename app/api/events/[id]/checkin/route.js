@@ -1,11 +1,12 @@
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { randomUUID } from "crypto";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
 import { deriveCode } from "../code/route";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, mergeSandboxRows, sandboxWrite } from "../../../../../lib/sandbox";
+import { syncEventAttendance } from "../../../../../lib/eventAttendanceSync";
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 
@@ -113,6 +114,13 @@ export async function POST(request, { params }) {
     }
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
+
+  // Fire-and-forget: after() keeps this running past the response instead of
+  // getting killed the instant NextResponse.json() returns (which a bare
+  // un-awaited promise would risk on serverless). Never blocks the student's
+  // check-in on Sheets being slow or down - a failed sync just means the
+  // sheet is stale until the next check-in or a manual "Sync now".
+  after(() => syncEventAttendance(id).catch((e) => console.error(`checkin sheet sync failed for event ${id}:`, e.message)));
 
   return NextResponse.json({ success: true, event_title: event.title }, { status: 201 });
 }
