@@ -87,6 +87,61 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await expect(page.getByText("No check-ins yet.")).not.toBeVisible();
   });
 
+  test("staff can manually check in a student who didn't use the code", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
+    await insertUser({ net_id: "e2e-stu1", role: "STUDENT", group_number: 1, name: "Forgot Their Phone" });
+    const event = await insertEvent({ title: "Workshop", created_by: "e2e-pm" });
+
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/events");
+    await page.getByRole("button", { name: "Attendees" }).click();
+    await expect(page.getByText("No check-ins yet.")).toBeVisible();
+
+    await page.getByPlaceholder("NetID to add…").fill("e2e-stu1");
+    await page.getByRole("button", { name: "Add" }).click();
+
+    await expect(page.getByText("1 attendee", { exact: true })).toBeVisible();
+    await expect(page.getByText("e2e-stu1", { exact: true })).toBeVisible();
+    await expect(page.getByText("No check-ins yet.")).not.toBeVisible();
+
+    const { data } = await testClient()
+      .from(table("eventCheckins"))
+      .select("net_id")
+      .eq("event_id", event.id)
+      .single();
+    expect(data.net_id).toBe("e2e-stu1");
+  });
+
+  test("removing an attendee clears the chip immediately, and Undo restores it without ever hitting the server", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
+    const event = await insertEvent({ title: "Workshop", created_by: "e2e-pm" });
+    await insertEventCheckin({ event_id: event.id, net_id: "e2e-stu1" });
+
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/events");
+    await page.getByRole("button", { name: "Attendees" }).click();
+    await expect(page.getByText("1 attendee", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Remove e2e-stu1" }).click();
+    await expect(page.getByText("No check-ins yet.")).toBeVisible();
+
+    const toast = page.getByText("Removed e2e-stu1 from attendees");
+    await expect(toast).toBeVisible();
+    await page.getByRole("button", { name: "Undo" }).click();
+
+    await expect(page.getByText("1 attendee", { exact: true })).toBeVisible();
+    await expect(page.getByText("e2e-stu1", { exact: true })).toBeVisible();
+
+    // Undo cancels the pending request outright - the checkin was never
+    // actually deleted server-side.
+    const { data } = await testClient()
+      .from(table("eventCheckins"))
+      .select("net_id")
+      .eq("event_id", event.id)
+      .single();
+    expect(data.net_id).toBe("e2e-stu1");
+  });
+
   // Regression coverage for the undo safety net's onCancel path specifically
   // (the other undo test in this file only exercises the auto-restore-on-403
   // path). Covers that Undo puts back every field, not just the visible
