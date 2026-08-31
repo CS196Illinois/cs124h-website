@@ -127,7 +127,10 @@ export default function EventsPanel() {
   const viewAttendees = async (eventId) => {
     if (expandedId === eventId) { setExpandedId(null); return; }
     const res = await fetch(`/api/events/${eventId}/checkin`);
-    if (res.ok) setAttendees(async (prev) => ({ ...prev, [eventId]: await res.json() }));
+    if (res.ok) {
+      const data = await res.json();
+      setAttendees((prev) => ({ ...prev, [eventId]: data }));
+    }
     setExpandedId(eventId);
   };
 

@@ -103,6 +103,18 @@ export async function insertEvent(overrides = {}) {
   return data;
 }
 
+export async function insertEventCheckin(overrides = {}) {
+  const row = {
+    net_id: "e2e-stu",
+    checked_in_at: new Date().toISOString(),
+    ...overrides,
+  };
+  if (!row.event_id) throw new Error("insertEventCheckin requires event_id");
+  const { data, error } = await client().from(table("eventCheckins")).insert(row).select().single();
+  if (error) throw new Error(`insertEventCheckin: ${error.message}`);
+  return data;
+}
+
 export async function insertStaff(overrides = {}) {
   const row = {
     semester: "Test Semester",
