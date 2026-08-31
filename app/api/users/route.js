@@ -1,10 +1,11 @@
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { MANAGEABLE_BY as MANAGEABLE_ROLES } from "../../../lib/roles";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../lib/sandbox";
+import { syncSheetAccessForRole, SHEET_ACCESS_ROLES } from "../../../lib/sheetAccess";
 
 export async function GET(request) {
   const session = await getServerSession(authOptions);
@@ -88,6 +89,11 @@ export async function POST(request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (SHEET_ACCESS_ROLES.has(role)) {
+    after(() => syncSheetAccessForRole(cleanNetId, role).catch((e) => console.error(`sheet access sync failed for ${cleanNetId}:`, e.message)));
+  }
+
   return NextResponse.json(data, { status: 201 });
 }
 
@@ -129,6 +135,12 @@ export async function DELETE(request) {
   // behind for a whole bulk-deleted role.
   if (role === "WEB" || role === "LEAD_WEB") {
     await Promise.all(data.map((u) => resetSandbox(u.net_id)));
+  }
+
+  if (SHEET_ACCESS_ROLES.has(role)) {
+    after(() => Promise.all(
+      data.map((u) => syncSheetAccessForRole(u.net_id, null).catch((e) => console.error(`sheet access revoke failed for ${u.net_id}:`, e.message)))
+    ));
   }
 
   return NextResponse.json({ deleted: data.length });

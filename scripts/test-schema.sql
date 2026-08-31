@@ -83,7 +83,8 @@ CREATE TABLE IF NOT EXISTS test_events (
   updated_at            timestamptz NOT NULL DEFAULT now(),
   check_in_open         boolean NOT NULL DEFAULT false,
   check_in_opened_at    timestamptz,
-  created_by            text
+  created_by            text,
+  sheet_tab_gid         integer
 );
 
 CREATE TABLE IF NOT EXISTS test_event_checkins (

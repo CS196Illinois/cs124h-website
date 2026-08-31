@@ -1,8 +1,9 @@
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
+import { syncSheetAccessForRole, SHEET_ACCESS_ROLES } from "../../../../lib/sheetAccess";
 
 // GET: proxy-fetch a Google Sheets CSV to avoid CORS
 export async function GET(request) {
@@ -92,6 +93,10 @@ export async function POST(request) {
   const importSet = new Set(validRows.map((r) => r.net_id));
 
   let inserted = 0, updated = 0, deleted = 0, skipped = 0;
+  // { net_id, newRole } for every user whose role change could cross the
+  // sheet-access boundary (either side was course_lead/head_pm/lead_web_dev).
+  // Collected across both modes below and synced once, after the response.
+  const roleSyncTargets = [];
 
   if (mode === "replace") {
     // Upsert all rows, preserving sub and existing name
@@ -112,6 +117,10 @@ export async function POST(request) {
     for (const r of validRows) {
       if (existingMap.has(r.net_id)) updated++;
       else inserted++;
+      const oldRole = existingMap.get(r.net_id)?.role;
+      if (SHEET_ACCESS_ROLES.has(oldRole) || SHEET_ACCESS_ROLES.has(r.role)) {
+        roleSyncTargets.push({ net_id: r.net_id, newRole: r.role });
+      }
     }
 
     // Remove everyone not in the import (scoped to roleScope if provided)
@@ -123,6 +132,11 @@ export async function POST(request) {
         .in("net_id", toDelete);
       if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
       deleted = toDelete.length;
+      for (const net_id of toDelete) {
+        if (SHEET_ACCESS_ROLES.has(existingMap.get(net_id)?.role)) {
+          roleSyncTargets.push({ net_id, newRole: null });
+        }
+      }
     }
   } else {
     // Append mode
@@ -146,6 +160,9 @@ export async function POST(request) {
       const { error: insErr } = await supabaseServer.from(table("users")).insert(toInsert);
       if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
       inserted = toInsert.length;
+      for (const row of toInsert) {
+        if (SHEET_ACCESS_ROLES.has(row.role)) roleSyncTargets.push({ net_id: row.net_id, newRole: row.role });
+      }
     }
 
     for (const row of toUpdate) {
@@ -156,7 +173,19 @@ export async function POST(request) {
       // note: row.name is already the preserved DB name (set above when building toUpdate)
       if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
       updated++;
+      const oldRole = existingMap.get(row.net_id)?.role;
+      if (SHEET_ACCESS_ROLES.has(oldRole) || SHEET_ACCESS_ROLES.has(row.role)) {
+        roleSyncTargets.push({ net_id: row.net_id, newRole: row.role });
+      }
     }
+  }
+
+  // Fire and forget: a CSV import can touch hundreds of rows, and Sheets/Drive
+  // API calls should never hold up the response for that long.
+  if (roleSyncTargets.length > 0) {
+    after(() => Promise.all(
+      roleSyncTargets.map((t) => syncSheetAccessForRole(t.net_id, t.newRole).catch((e) => console.error(`sheet access sync failed for ${t.net_id}:`, e.message)))
+    ));
   }
 
   return NextResponse.json({ inserted, updated, deleted, skipped, errors });
