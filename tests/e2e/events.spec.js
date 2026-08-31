@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures";
-import { insertUser, insertEvent, clearAllTestTables, testClient } from "../helpers/db";
+import { insertUser, insertEvent, insertEventCheckin, clearAllTestTables, testClient } from "../helpers/db";
 import { deriveCode } from "../../app/api/events/[id]/code/route";
 import { table } from "../../lib/tables";
 
@@ -55,7 +55,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await expect(page.getByRole("button", { name: "Enlarge check-in code" })).toBeVisible();
   });
 
-  test("attendee list shows who checked in, and is empty for an event nobody has", async ({ page, loginAs }) => {
+  test("attendee list is empty for an event nobody has checked in to", async ({ page, loginAs }) => {
     await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
     await insertEvent({ title: "Workshop", created_by: "e2e-pm" });
 
@@ -63,6 +63,28 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await page.goto("/user/pm/events");
     await page.getByRole("button", { name: "Attendees" }).click();
     await expect(page.getByText("No check-ins yet.")).toBeVisible();
+  });
+
+  // Regression test: viewAttendees() in EventsPanel used to pass an async
+  // function directly as the setAttendees updater
+  // (`setAttendees(async (prev) => ...)`), which React calls synchronously -
+  // the updater's return value (a pending Promise, since it's async) became
+  // the new state instead of the resolved attendee list. The PM would always
+  // see "0 attendees" no matter how many students had actually checked in.
+  test("attendee list shows students who actually checked in", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
+    const event = await insertEvent({ title: "Workshop", created_by: "e2e-pm" });
+    await insertEventCheckin({ event_id: event.id, net_id: "e2e-stu1" });
+    await insertEventCheckin({ event_id: event.id, net_id: "e2e-stu2" });
+
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/events");
+    await page.getByRole("button", { name: "Attendees" }).click();
+
+    await expect(page.getByText("2 attendees")).toBeVisible();
+    await expect(page.getByText("e2e-stu1", { exact: true })).toBeVisible();
+    await expect(page.getByText("e2e-stu2", { exact: true })).toBeVisible();
+    await expect(page.getByText("No check-ins yet.")).not.toBeVisible();
   });
 
   // Regression coverage for the undo safety net's onCancel path specifically
