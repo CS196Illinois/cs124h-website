@@ -12,6 +12,7 @@ const links = [
   { href: "/role_requests", label: "Role Requests" },
   { href: "/action_items",  label: "Action Items"  },
   { href: "/events",        label: "Events"        },
+  { href: "/user/checkin",  label: "Attendance", absolute: true },
 ];
 
 const TEST_ROLES = [

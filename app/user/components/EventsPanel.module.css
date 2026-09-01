@@ -198,6 +198,59 @@
   transition: color 0.3s;
 }
 
+/* ─── QR check-in link, below the projected code ──────────────── */
+.enlargeDivider {
+  width: min(280px, 70vw);
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 2.5rem 0 1.75rem;
+}
+
+.qrSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.qrLabel {
+  color: rgba(249, 249, 249, 0.4);
+  font-family: "Inter", sans-serif;
+  font-size: clamp(0.7rem, 1.3vw, 0.85rem);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-bottom: 1rem;
+}
+
+.qrCard {
+  background: #f9f9f9;
+  border-radius: 14px;
+  padding: 1rem;
+  line-height: 0;
+}
+
+.qrImage {
+  display: block;
+  width: clamp(120px, 16vw, 180px);
+  height: clamp(120px, 16vw, 180px);
+}
+
+.qrUrl {
+  display: block;
+  margin-top: 1rem;
+  color: rgba(249, 249, 249, 0.55);
+  font-family: monospace;
+  font-size: clamp(0.72rem, 1.4vw, 0.9rem);
+  text-align: center;
+  word-break: break-all;
+  max-width: min(320px, 80vw);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.qrUrl:hover {
+  color: #ecb557;
+}
+
 @keyframes enlargeFadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

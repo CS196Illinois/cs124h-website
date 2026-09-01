@@ -46,6 +46,11 @@ export async function GET(request, { params }) {
   }
 
   const code = deriveCode(id);
-  const expiresIn = Math.ceil((WINDOW_MS - (Date.now() % WINDOW_MS)) / 1000);
-  return NextResponse.json({ code, expiresIn });
+  // Handed over up front so the client can swap to it the instant the
+  // window rotates, with no round trip (and therefore no visible gap) at
+  // the exact moment the current code stops being valid.
+  const nextCode = deriveCode(id, 1);
+  const expiresInMs = WINDOW_MS - (Date.now() % WINDOW_MS);
+  const expiresIn = Math.ceil(expiresInMs / 1000);
+  return NextResponse.json({ code, nextCode, expiresIn, expiresInMs });
 }

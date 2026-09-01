@@ -3,7 +3,7 @@ import RoleSidebar from "../../components/RoleSidebar";
 const links = [
   { href: "/",             label: "Dashboard"    },
   { href: "/action_items", label: "Action Items" },
-  { href: "/attendance",   label: "Attendance"   },
+  { href: "/user/checkin", label: "Attendance", absolute: true },
 ];
 
 export default function StudentSidebar() {
