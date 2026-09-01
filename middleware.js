@@ -49,6 +49,15 @@ export default async function middleware(req) {
     return NextResponse.next();
   }
 
+  // Role-agnostic shared routes - any enrolled role can reach these, checked
+  // before the role-specific gating below (web_dev's branch in particular is
+  // an allowlist of its own known paths, so without this a web_dev would be
+  // bounced from a page that isn't actually role-restricted at all).
+  const SHARED_PATHS = ["/user/checkin"];
+  if (SHARED_PATHS.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
+    return NextResponse.next();
+  }
+
   // Lead web devs have full admin-level access and can navigate any dashboard
   if (role === "lead_web_dev") {
     return NextResponse.next();

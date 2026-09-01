@@ -37,4 +37,45 @@ test.describe("event check-in", () => {
 
     await expect(page.getByText(/Incorrect code/)).toBeVisible();
   });
+
+  // Regression coverage: check-in used to only be reachable at
+  // /user/student/attendance, which middleware restricted to role ===
+  // "student" - staff had no way to check themselves into an event they
+  // attended. /user/checkin is the shared, role-agnostic route every role's
+  // sidebar now links to instead.
+  test("any role - not just students - can check in via the shared /user/checkin page", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
+    const event = await insertEvent({ title: "All-Staff Social", check_in_open: true });
+
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/checkin");
+
+    await expect(page.getByText("All-Staff Social")).toBeVisible();
+    await page.getByPlaceholder("6-digit code").fill(deriveCode(event.id));
+    await page.getByRole("button", { name: "Check In" }).click();
+    await expect(page.getByText(/Checked in to "All-Staff Social"/)).toBeVisible();
+
+    const { data } = await testClient().from(table("eventCheckins")).select("net_id").eq("event_id", event.id);
+    expect(data.map((r) => r.net_id)).toEqual(["e2e-pm"]);
+  });
+
+  // Regression coverage for the QR-code deep link (?event=<id>, generated
+  // behind an event's magnifying-glass view) - scanning it should drop
+  // someone straight onto that one event's code entry, not a full list they
+  // have to search through.
+  test("?event=<id> deep-links straight to that one event, focused and ready to type", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-stu", role: "STUDENT" });
+    const target = await insertEvent({ title: "Target Talk", check_in_open: true });
+    await insertEvent({ title: "Other Talk", check_in_open: true });
+
+    await loginAs({ netID: "e2e-stu", role: "student" });
+    await page.goto(`/user/checkin?event=${target.id}`);
+
+    await expect(page.getByText("Target Talk")).toBeVisible();
+    await expect(page.getByText("Other Talk")).not.toBeVisible();
+    await expect(page.getByPlaceholder("6-digit code")).toBeFocused();
+
+    await page.getByRole("button", { name: "See all open events" }).click();
+    await expect(page.getByText("Other Talk")).toBeVisible();
+  });
 });

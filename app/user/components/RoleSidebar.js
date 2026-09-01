@@ -30,10 +30,14 @@ export default function RoleSidebar({ links, base, roleTitle, ownRole, banner, c
     setSidebarOpen(false);
   }, [pathname]);
 
+  // `absolute: true` links (shared, role-agnostic pages like /user/checkin)
+  // use their href as-is instead of being prefixed with this role's base.
+  const resolveHref = (link) => (link.absolute ? link.href : link.href === "/" ? effectiveBase : `${effectiveBase}${link.href}`);
+
   useEffect(() => {
     if (!effectiveBase) return;
     const activeIdx = links.findIndex((link) => {
-      const fullHref = link.href === "/" ? effectiveBase : `${effectiveBase}${link.href}`;
+      const fullHref = resolveHref(link);
       return link.href === "/"
         ? pathname === fullHref
         : pathname === fullHref || pathname.startsWith(`${fullHref}/`);
@@ -71,7 +75,7 @@ export default function RoleSidebar({ links, base, roleTitle, ownRole, banner, c
           }}
         />
         {links.map((link, i) => {
-          const fullHref = link.href === "/" ? effectiveBase : `${effectiveBase}${link.href}`;
+          const fullHref = resolveHref(link);
           const isActive = link.href === "/"
             ? pathname === fullHref
             : pathname === fullHref || pathname.startsWith(`${fullHref}/`);
