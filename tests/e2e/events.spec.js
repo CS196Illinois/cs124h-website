@@ -49,6 +49,12 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await expect(enlarged.getByText("Live Workshop", { exact: true })).toBeVisible();
     await expect(enlarged.getByText(code, { exact: true })).toBeVisible();
 
+    // Regression coverage: the enlarged view also has a QR code + URL for
+    // the shared, role-agnostic check-in route, deep-linked to this event.
+    const checkInUrl = `${new URL(page.url()).origin}/user/checkin?event=${event.id}`;
+    await expect(enlarged.getByRole("link", { name: checkInUrl })).toBeVisible();
+    await expect(enlarged.getByAltText("QR code to the check-in link for this event")).toBeVisible();
+
     await page.getByRole("button", { name: "Close enlarged code" }).click();
     await expect(page.getByRole("button", { name: "Close enlarged code" })).not.toBeVisible();
     // Still on the events page, code still showing normally.

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
+import QRCode from "qrcode";
 import { MagnifyingGlassIcon, ArrowSquareOutIcon, X } from "@phosphor-icons/react";
 import { useUndo } from "../../../components/UndoProvider";
 import styles from "../dashboard.module.css";
@@ -22,6 +23,7 @@ export default function EventsPanel() {
   const [attendees, setAttendees]   = useState({});   // eventId → [{ net_id, checked_in_at }]
   const [sheetSync, setSheetSync]   = useState({});   // eventId → "syncing" | "synced" | "failed"
   const [enlargedId, setEnlargedId] = useState(null);  // event whose code is shown full-screen
+  const [qrDataUrl, setQrDataUrl]   = useState(null);  // QR code for the enlarged event's check-in link
   const [sheetUrl, setSheetUrl]     = useState(null);  // shared attendance sheet, if this role has access
   const [roster, setRoster]         = useState([]);   // full roster, for the add-attendee autocomplete
   const [addInputs, setAddInputs]   = useState({});   // eventId → in-progress net_id text
@@ -33,9 +35,9 @@ export default function EventsPanel() {
   const [formError, setFormError]   = useState("");
   const [formLoading, setFormLoading] = useState(false);
 
-  // Live rotating codes: eventId → { code, expiresIn }
+  // Live rotating codes: eventId → { code, nextCode, expiresAt, expiresIn }
   const [liveCodes, setLiveCodes]   = useState({});
-  const pollRef                     = useRef({});
+  const rotateTimers                = useRef({}); // eventId → pending rotation setTimeout id
   const tickRef                     = useRef(null);
 
   // ── Data fetching ──────────────────────────────────────────────
@@ -69,47 +71,71 @@ export default function EventsPanel() {
     });
   }, [session?.user?.role]);
 
-  // ── Code polling: start/stop per open event ────────────────────
+  // ── Code rotation: precisely scheduled, not polled ──────────────
+  //
+  // The server hands over the *next* window's code along with the current
+  // one, so the client already knows what to swap to before the rotation
+  // happens. A setTimeout fires right at the rotation boundary (from the
+  // server's own expiresInMs, not a client guess) and swaps the displayed
+  // code instantly - no network round trip, so no visible gap at 0s. A
+  // quiet re-fetch right after primes the *next* nextCode and corrects for
+  // any small timer drift, and self-schedules the following rotation.
 
   const fetchCode = useCallback(async (eventId) => {
     const res = await fetch(`/api/events/${eventId}/code`);
-    if (res.ok) {
-      const { code, expiresIn } = await res.json();
-      setLiveCodes(prev => ({ ...prev, [eventId]: { code, expiresIn } }));
-    }
+    if (!res.ok) return;
+    const { code, nextCode, expiresInMs } = await res.json();
+    setLiveCodes(prev => ({
+      ...prev,
+      [eventId]: { code, nextCode, expiresAt: Date.now() + expiresInMs, expiresIn: Math.round(expiresInMs / 1000) },
+    }));
+
+    clearTimeout(rotateTimers.current[eventId]);
+    rotateTimers.current[eventId] = setTimeout(() => {
+      setLiveCodes(prev => {
+        const cur = prev[eventId];
+        if (!cur) return prev;
+        return { ...prev, [eventId]: { ...cur, code: cur.nextCode } };
+      });
+      fetchCode(eventId);
+    }, expiresInMs);
   }, []);
 
   useEffect(() => {
     const openIds = events.filter(e => e.check_in_open).map(e => e.id);
-    const prevIds = Object.keys(pollRef.current);
+    const trackedIds = Object.keys(rotateTimers.current);
 
-    // Stop polling for events that closed
-    prevIds.forEach(id => {
+    // Stop tracking events that closed
+    trackedIds.forEach(id => {
       if (!openIds.includes(id)) {
-        clearInterval(pollRef.current[id]);
-        delete pollRef.current[id];
+        clearTimeout(rotateTimers.current[id]);
+        delete rotateTimers.current[id];
         setLiveCodes(prev => { const n = { ...prev }; delete n[id]; return n; });
       }
     });
 
-    // Start polling for newly opened events
+    // Start tracking newly opened events - mark as tracked synchronously so
+    // a re-render before the fetch resolves can't start it a second time.
     openIds.forEach(id => {
-      if (!pollRef.current[id]) {
+      if (!(id in rotateTimers.current)) {
+        rotateTimers.current[id] = null;
         fetchCode(id);
-        pollRef.current[id] = setInterval(() => fetchCode(id), 5_000);
       }
     });
   }, [events, fetchCode]);
 
-  // Tick-down the expiresIn counters every second
+  // Cosmetic per-second countdown display only - derived fresh from the
+  // authoritative expiresAt each tick (not decremented independently), so
+  // it can never drift out of sync with the actual scheduled rotation above.
   useEffect(() => {
     tickRef.current = setInterval(() => {
       setLiveCodes(prev => {
         const next = { ...prev };
         let changed = false;
         Object.keys(next).forEach(id => {
-          if (next[id].expiresIn > 0) {
-            next[id] = { ...next[id], expiresIn: next[id].expiresIn - 1 };
+          const remaining = Math.max(Math.round((next[id].expiresAt - Date.now()) / 1000), 0);
+          if (next[id].expiresIn !== remaining) {
+            next[id] = { ...next[id], expiresIn: remaining };
             changed = true;
           }
         });
@@ -122,7 +148,7 @@ export default function EventsPanel() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      Object.values(pollRef.current).forEach(clearInterval);
+      Object.values(rotateTimers.current).forEach(clearTimeout);
       clearInterval(tickRef.current);
     };
   }, []);
@@ -133,6 +159,26 @@ export default function EventsPanel() {
     const onKeyDown = (e) => { if (e.key === "Escape") setEnlargedId(null); };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  }, [enlargedId]);
+
+  const checkInUrl = (eventId) =>
+    `${typeof window !== "undefined" ? window.location.origin : ""}/user/checkin?event=${eventId}`;
+
+  // The QR points at /user/checkin?event=<id> - the one role-agnostic
+  // check-in route (see middleware.js's SHARED_PATHS), so it works no
+  // matter who scans it. Generated client-side (no third-party QR service)
+  // so it never depends on an external service being up during a live event.
+  useEffect(() => {
+    if (!enlargedId) { setQrDataUrl(null); return; }
+    let cancelled = false;
+    QRCode.toDataURL(checkInUrl(enlargedId), {
+      margin: 1,
+      width: 360,
+      color: { dark: "#112a67", light: "#f9f9f9" },
+    })
+      .then((dataUrl) => { if (!cancelled) setQrDataUrl(dataUrl); })
+      .catch((e) => { console.error("QR code generation failed:", e.message); if (!cancelled) setQrDataUrl(null); });
+    return () => { cancelled = true; };
   }, [enlargedId]);
 
   // ── Actions ────────────────────────────────────────────────────
@@ -528,6 +574,24 @@ export default function EventsPanel() {
               style={{ color: liveCodes[enlargedId].expiresIn <= 5 ? "#f87171" : "rgba(249,249,249,0.55)" }}
             >
               Rotates in {liveCodes[enlargedId].expiresIn}s
+            </div>
+
+            <div className={panelStyles.enlargeDivider} />
+
+            <div className={panelStyles.qrSection}>
+              <span className={panelStyles.qrLabel}>Or Scan To Check In</span>
+              <div className={panelStyles.qrCard}>
+                {qrDataUrl && (
+                  <img className={panelStyles.qrImage} src={qrDataUrl} alt="QR code to the check-in link for this event" />
+                )}
+              </div>
+              <a
+                href={checkInUrl(enlargedId)}
+                className={panelStyles.qrUrl}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {checkInUrl(enlargedId)}
+              </a>
             </div>
           </div>
         </div>

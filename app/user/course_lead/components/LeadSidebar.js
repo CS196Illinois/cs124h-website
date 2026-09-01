@@ -7,6 +7,7 @@ const links = [
   { href: "/gradebook",    label: "Gradebook"    },
   { href: "/events",       label: "Events"       },
   { href: "/sprints",      label: "Sprints"      },
+  { href: "/user/checkin", label: "Attendance", absolute: true },
 ];
 
 export default function LeadSidebar() {
