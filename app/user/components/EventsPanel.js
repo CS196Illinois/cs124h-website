@@ -14,6 +14,16 @@ import panelStyles from "./EventsPanel.module.css";
 // everyone else.
 const SHEET_ACCESS_ROLES = new Set(["course_lead", "head_pm", "lead_web_dev"]);
 
+function timeAgo(isoString) {
+  const seconds = Math.max(Math.round((Date.now() - new Date(isoString).getTime()) / 1000), 0);
+  if (seconds < 60) return "just now";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
+
 export default function EventsPanel() {
   const { scheduleUndo } = useUndo();
   const { data: session } = useSession();
@@ -50,6 +60,14 @@ export default function EventsPanel() {
   }, []);
 
   useEffect(() => { fetchEvents(); }, [fetchEvents]);
+
+  // Same as fetchEvents but without the loading-spinner flash - for
+  // refreshing sync-status fields in the background without hiding the
+  // table the user is currently looking at.
+  const refreshEvents = useCallback(async () => {
+    const res = await fetch("/api/events");
+    if (res.ok) setEvents(await res.json());
+  }, []);
 
   // Roster, for the add-attendee autocomplete - fetched once since this
   // panel is staff-only and GET /api/users is available to any signed-in
@@ -217,6 +235,10 @@ export default function EventsPanel() {
     setSheetSync((prev) => ({ ...prev, [eventId]: "syncing" }));
     const res = await fetch(`/api/events/${eventId}/sync-sheet`, { method: "POST" });
     setSheetSync((prev) => ({ ...prev, [eventId]: res.ok ? "synced" : "failed" }));
+    // Refresh so the persistent status below (driven by the event row's own
+    // sheet_synced_at/sheet_sync_error) reflects what actually happened,
+    // not just this click's transient flash.
+    await refreshEvents();
   };
 
   const addAttendee = async (eventId) => {
@@ -403,12 +425,18 @@ export default function EventsPanel() {
                               {attendees[event.id]?.length ?? 0} attendee{attendees[event.id]?.length !== 1 ? "s" : ""}
                             </span>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                              {sheetSync[event.id] === "synced" && (
-                                <span style={{ color: "#4ade80", fontSize: "0.78rem" }}>Synced ✓</span>
-                              )}
-                              {sheetSync[event.id] === "failed" && (
-                                <span style={{ color: "#f87171", fontSize: "0.78rem" }}>Sync failed</span>
-                              )}
+                              {/* Persistent, DB-backed status - reflects the real
+                                  outcome of the last sync attempt (manual or
+                                  automatic), not just this session's own clicks. */}
+                              {event.sheet_sync_error ? (
+                                <span style={{ color: "#f87171", fontSize: "0.78rem" }} title={event.sheet_sync_error}>
+                                  ⚠ Sync failed
+                                </span>
+                              ) : event.sheet_synced_at ? (
+                                <span style={{ color: "rgba(249,249,249,0.45)", fontSize: "0.78rem" }}>
+                                  Synced {timeAgo(event.sheet_synced_at)}
+                                </span>
+                              ) : null}
                               <button
                                 className={styles.btnSecondary}
                                 style={{ padding: "0.2rem 0.6rem", fontSize: "0.8rem" }}

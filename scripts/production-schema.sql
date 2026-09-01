@@ -96,7 +96,35 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS created_by            text;
 -- belongs to this event, so renaming an event updates its existing tab
 -- instead of creating a duplicate, and re-syncing is idempotent.
 ALTER TABLE events ADD COLUMN IF NOT EXISTS sheet_tab_gid         integer;
+-- Sync status, surfaced in the PM UI so a stuck/failing sync is visible
+-- instead of only ever showing up in server logs.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS sheet_synced_at       timestamptz;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS sheet_sync_error      text;
+-- Monotonic ticket, incremented once per sync attempt via
+-- increment_sheet_sync_version() below - lets a sync detect it's been
+-- superseded by a newer one (e.g. two check-ins landing close together)
+-- and skip writing stale data over a fresher write. See
+-- lib/eventAttendanceSync.js.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS sheet_sync_version    integer NOT NULL DEFAULT 0;
 ALTER TABLE events ALTER COLUMN title DROP DEFAULT;
+
+-- Atomically increments and returns an event's sheet_sync_version. Takes
+-- the table name as a parameter so the same function works against both
+-- `events` and `test_events` (see lib/tables.js) - only ever called with
+-- one of those two literal, internal names, so the dynamic identifier is
+-- safe from injection.
+CREATE OR REPLACE FUNCTION increment_sheet_sync_version(p_table text, p_event_id uuid)
+RETURNS integer AS $$
+DECLARE
+  new_version integer;
+BEGIN
+  EXECUTE format(
+    'UPDATE %I SET sheet_sync_version = sheet_sync_version + 1 WHERE id = $1 RETURNING sheet_sync_version',
+    p_table
+  ) INTO new_version USING p_event_id;
+  RETURN new_version;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE TABLE IF NOT EXISTS event_checkins (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid()

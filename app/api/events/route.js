@@ -19,7 +19,7 @@ export async function GET() {
 
   const { data, error } = await supabaseServer
     .from(table("events"))
-    .select("id, title, description, location, presenter, start_time, check_in_open, check_in_opened_at, created_by, created_at, point_value")
+    .select("id, title, description, location, presenter, start_time, check_in_open, check_in_opened_at, created_by, created_at, point_value, sheet_synced_at, sheet_sync_error")
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
