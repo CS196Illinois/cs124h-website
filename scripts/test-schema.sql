@@ -84,7 +84,10 @@ CREATE TABLE IF NOT EXISTS test_events (
   check_in_open         boolean NOT NULL DEFAULT false,
   check_in_opened_at    timestamptz,
   created_by            text,
-  sheet_tab_gid         integer
+  sheet_tab_gid         integer,
+  sheet_synced_at       timestamptz,
+  sheet_sync_error      text,
+  sheet_sync_version    integer NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS test_event_checkins (
