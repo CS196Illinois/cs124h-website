@@ -7,6 +7,7 @@ import ImportModal from "../../../../components/ImportModal";
 import Modal from "../../components/Modal";
 import RoleBadge from "../../components/RoleBadge";
 import { downloadCsv } from "../../../../lib/csvExport";
+import { STAFF_ROLE_IDS } from "../../../../lib/roles";
 
 function sortUsers(users, roleOrder, key, dir) {
   const mul = dir === "asc" ? 1 : -1;
@@ -70,7 +71,8 @@ export default function CourseLeadPeople() {
 
   const filteredUsers = sortUsers(
     users.filter((u) => {
-      const matchRole = roleFilter === "ALL" || u.role === roleFilter;
+      const matchRole = roleFilter === "ALL"
+        || (roleFilter === "STAFF" ? STAFF_ROLE_IDS.includes(u.role) : u.role === roleFilter);
       const q = search.toLowerCase();
       const matchSearch = !q || u.net_id.toLowerCase().includes(q) || (u.name && u.name.toLowerCase().includes(q));
       return matchRole && matchSearch;
@@ -139,7 +141,7 @@ export default function CourseLeadPeople() {
   };
 
   const handleExport = () => {
-    const scope = roleFilter === "ALL" ? "people" : roleLabel(roleFilter).toLowerCase().replace(/\s+/g, "-");
+    const scope = roleFilter === "ALL" ? "people" : roleFilter === "STAFF" ? "staff" : roleLabel(roleFilter).toLowerCase().replace(/\s+/g, "-");
     downloadCsv(
       `${scope}-${new Date().toISOString().slice(0, 10)}.csv`,
       [
@@ -163,13 +165,13 @@ export default function CourseLeadPeople() {
         <div className={styles.toolbar}>
           <div className={styles.toolbarLeft}>
             <div className={styles.filterChips}>
-              {["ALL", ...roles.map((r) => r.id)].map((id) => (
+              {["ALL", "STAFF", ...roles.map((r) => r.id)].map((id) => (
                 <button
                   key={id}
                   className={`${styles.chip} ${roleFilter === id ? styles.activeChip : ""}`}
                   onClick={() => setRoleFilter(id)}
                 >
-                  {id === "ALL" ? "All" : roleLabel(id)}
+                  {id === "ALL" ? "All" : id === "STAFF" ? "Staff" : roleLabel(id)}
                 </button>
               ))}
             </div>
@@ -186,7 +188,7 @@ export default function CourseLeadPeople() {
             </div>
           </div>
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            {roleFilter !== "ALL" && (
+            {roleFilter !== "ALL" && roleFilter !== "STAFF" && (
               <>
                 <button
                   className={styles.btnSecondary}
