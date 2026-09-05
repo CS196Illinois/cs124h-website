@@ -520,7 +520,7 @@ export default function EventsPanel() {
             <h2>New Event</h2>
             {formError && <div className={styles.alertError}>{formError}</div>}
             <div className={styles.formGroup}>
-              <label>Title *</label>
+              <label>Title <span className={styles.required}>*</span></label>
               <input
                 value={form.title}
                 onChange={e => setForm({ ...form, title: e.target.value })}

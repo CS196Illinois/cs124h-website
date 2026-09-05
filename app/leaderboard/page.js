@@ -4,16 +4,6 @@ import React, { useState, useEffect } from "react";
 import styles from "./Leaderboard.module.css";
 import { getGroupPointsSummary } from "./leaderboard_supabase";
 
-// const groups = [
-//   { rank: 1, name: "Group 1: DOMinators", points: 90 },
-//   { rank: 2, name: "Group 10: Swift & Steady", points: 80 },
-//   { rank: 3, name: "Group 7: The Dev-iators", points: 65 },
-//   { rank: 4, name: "Group 13: Hack Overflow", points: 40 },
-//   { rank: 5, name: "Group 3: Cookie Bytes", points: 30 },
-//   { rank: 6, name: "Group 8: Stack Breakers", points: 25 },
-//   { rank: 7, name: "Group 2: HiHihihi", points: 20 },
-// ];
-
 export default function LeaderboardPage() {
   const [visibleCount, setVisibleCount] = useState(4);
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -28,7 +18,6 @@ export default function LeaderboardPage() {
 
     fetchData();
   }, []);
-  
 
   const handleToggle = () => {
     if (visibleCount === leaderboardData.length) {

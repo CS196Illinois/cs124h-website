@@ -1,6 +1,7 @@
 "use client";
 
 import SprintsManager from "../../../../components/SprintsManager";
+import UnderstandingCheckPanel from "../../../../components/UnderstandingCheckPanel";
 import styles from "../../dashboard.module.css";
 
 export default function CourseLeadSprints() {
@@ -10,7 +11,7 @@ export default function CourseLeadSprints() {
         <h1>Sprints</h1>
         <p>Manage sprint goals and track student completion</p>
       </div>
-      <SprintsManager canManage />
+      <SprintsManager canManage renderExtra={(sprint) => <UnderstandingCheckPanel sprint={sprint} scope="all-groups" />} />
     </div>
   );
 }

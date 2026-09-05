@@ -41,7 +41,7 @@ export default function EditActionItemModal({ item, onClose, onSaved }) {
       <h2>Edit Action Item</h2>
       {error && <div className={styles.alertError}>{error}</div>}
       <div className={styles.formGroup}>
-        <label>Title *</label>
+        <label>Title <span className={styles.required}>*</span></label>
         <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
       </div>
       <div className={styles.formGroup}>

@@ -338,7 +338,7 @@ export default function PMActionItems() {
           {formError && <div className={styles.alertError}>{formError}</div>}
           {formSuccess && <div className={styles.alertSuccess}>{formSuccess}</div>}
           <div className={styles.formGroup}>
-            <label>Title *</label>
+            <label>Title <span className={styles.required}>*</span></label>
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Action item…" />
           </div>
           <div className={styles.formGroup}>
@@ -358,7 +358,7 @@ export default function PMActionItems() {
           </div>
           {form.target_type === "individual" && (
             <div className={styles.formGroup}>
-              <label>Students</label>
+              <label>Students <span className={styles.required}>*</span></label>
               <PeopleMultiSelect
                 people={students}
                 selected={form.target_net_ids}
