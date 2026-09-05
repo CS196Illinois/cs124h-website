@@ -44,6 +44,14 @@ export default function GradeActionItemModal({ item, onClose, onSaved }) {
         {item.title} · <span style={{ fontFamily: "monospace" }}>{item.net_id}</span>
       </p>
       {error && <div className={styles.alertError}>{error}</div>}
+      {item.description && (
+        <div
+          className={styles.formGroup}
+          style={{ whiteSpace: "pre-wrap", color: "rgba(249,249,249,0.75)", fontSize: "0.85rem", background: "rgba(255,255,255,0.04)", borderRadius: "8px", padding: "0.75rem" }}
+        >
+          {item.description}
+        </div>
+      )}
       <div className={styles.formGroup}>
         <label>Grade <span className={styles.required}>*</span>{item.max_score != null ? ` (out of ${item.max_score})` : ""}</label>
         <input

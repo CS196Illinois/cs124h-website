@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useUndo } from "./UndoProvider";
 import styles from "../app/user/dashboard.module.css";
+import { DEFAULT_CHECK_QUESTIONS } from "../lib/sprintChecks";
 
 function getCurrentSprint(sprints) {
   if (!sprints.length) return null;
@@ -13,7 +14,7 @@ function getCurrentSprint(sprints) {
   return active || sprints[0];
 }
 
-export default function SprintsManager({ canManage = false }) {
+export default function SprintsManager({ canManage = false, renderExtra }) {
   const { scheduleUndo } = useUndo();
   const [sprints, setSprints] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -23,7 +24,7 @@ export default function SprintsManager({ canManage = false }) {
   const [loadingComp, setLoadingComp] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingSprint, setEditingSprint] = useState(null);
-  const [form, setForm] = useState({ number: "", goal: "", start_date: "", end_date: "" });
+  const [form, setForm] = useState({ number: "", goal: "", start_date: "", end_date: "", check_questions: [], check_max_score: "" });
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState(null);
 
@@ -77,7 +78,7 @@ export default function SprintsManager({ canManage = false }) {
 
   const openCreate = () => {
     const nextNum = sprints.length ? Math.max(...sprints.map((s) => s.number)) + 1 : 0;
-    setForm({ number: String(nextNum), goal: "", start_date: "", end_date: "" });
+    setForm({ number: String(nextNum), goal: "", start_date: "", end_date: "", check_questions: [], check_max_score: "" });
     setEditingSprint(null);
     setModalError(null);
     setShowModal(true);
@@ -89,6 +90,8 @@ export default function SprintsManager({ canManage = false }) {
       goal: sprint.goal,
       start_date: sprint.start_date ?? "",
       end_date: sprint.end_date ?? "",
+      check_questions: sprint.check_questions ?? [],
+      check_max_score: sprint.check_max_score ? String(sprint.check_max_score) : "",
     });
     setEditingSprint(sprint);
     setModalError(null);
@@ -104,6 +107,8 @@ export default function SprintsManager({ canManage = false }) {
       goal: form.goal.trim(),
       start_date: form.start_date || null,
       end_date: form.end_date || null,
+      check_questions: form.check_questions,
+      check_max_score: form.check_max_score || null,
     };
     const res = editingSprint
       ? await fetch(`/api/sprints/${editingSprint.id}`, {
@@ -229,6 +234,10 @@ export default function SprintsManager({ canManage = false }) {
         </div>
       )}
 
+      {!loading && selectedSprint && renderExtra && (
+        <div style={{ marginBottom: "1rem" }}>{renderExtra(selectedSprint)}</div>
+      )}
+
       {/* Completion table */}
       {!loading && selectedSprint && (
         <div className={styles.panel}>
@@ -331,6 +340,63 @@ export default function SprintsManager({ canManage = false }) {
                 onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))}
               />
             </div>
+            {canManage && (
+              <div className={styles.formGroup}>
+                <label>Understanding Check Questions (optional)</label>
+                {form.check_questions.length === 0 ? (
+                  <button
+                    type="button"
+                    className={styles.btnSecondary}
+                    onClick={() => setForm((f) => ({ ...f, check_questions: [...DEFAULT_CHECK_QUESTIONS] }))}
+                  >
+                    + Add Understanding Check
+                  </button>
+                ) : (
+                  <>
+                    {form.check_questions.map((q, i) => (
+                      <div key={i} style={{ display: "flex", gap: "0.4rem", marginBottom: "0.5rem" }}>
+                        <textarea
+                          rows={2}
+                          value={q}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setForm((f) => ({
+                              ...f,
+                              check_questions: f.check_questions.map((x, xi) => (xi === i ? value : x)),
+                            }));
+                          }}
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          className={styles.btnDanger}
+                          onClick={() => setForm((f) => ({ ...f, check_questions: f.check_questions.filter((_, xi) => xi !== i) }))}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      className={styles.btnSecondary}
+                      onClick={() => setForm((f) => ({ ...f, check_questions: [...f.check_questions, ""] }))}
+                    >
+                      + Add Question
+                    </button>
+                    <div style={{ marginTop: "0.75rem" }}>
+                      <label>Max Score (optional, defaults to 100)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={form.check_max_score}
+                        onChange={(e) => setForm((f) => ({ ...f, check_max_score: e.target.value }))}
+                        placeholder="100"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <div className={styles.modalActions}>
               <button className={styles.btnSecondary} onClick={() => setShowModal(false)}>
                 Cancel

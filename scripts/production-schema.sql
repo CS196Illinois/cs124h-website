@@ -54,9 +54,12 @@ ALTER TABLE action_items ADD COLUMN IF NOT EXISTS grade_note        text;
 ALTER TABLE action_items ADD COLUMN IF NOT EXISTS graded_by         text;
 ALTER TABLE action_items ADD COLUMN IF NOT EXISTS graded_at         timestamptz;
 ALTER TABLE action_items ADD COLUMN IF NOT EXISTS batch_id          uuid;
+ALTER TABLE action_items ADD COLUMN IF NOT EXISTS sprint_id         uuid;
 ALTER TABLE action_items ALTER COLUMN net_id DROP DEFAULT;
 ALTER TABLE action_items ALTER COLUMN title DROP DEFAULT;
 CREATE INDEX IF NOT EXISTS action_items_batch_id_idx ON action_items (batch_id);
+-- One understanding-check submission per student per sprint.
+CREATE UNIQUE INDEX IF NOT EXISTS action_items_sprint_id_net_id_key ON action_items (sprint_id, net_id) WHERE sprint_id IS NOT NULL;
 
 -- ── Web-dev role-view requests ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS role_view_requests (
@@ -147,6 +150,12 @@ ALTER TABLE sprints ADD COLUMN IF NOT EXISTS goal          text;
 ALTER TABLE sprints ADD COLUMN IF NOT EXISTS start_date    date;
 ALTER TABLE sprints ADD COLUMN IF NOT EXISTS end_date      date;
 ALTER TABLE sprints ADD COLUMN IF NOT EXISTS created_at    timestamptz NOT NULL DEFAULT now();
+-- Weekly understanding-check questions (course_lead/head_pm authored).
+-- check_questions is a jsonb array of question strings; empty/null means no
+-- check is configured for that sprint. See sprint_check_windows below for
+-- the per-group open/close gate a PM controls during their own meeting.
+ALTER TABLE sprints ADD COLUMN IF NOT EXISTS check_questions  jsonb;
+ALTER TABLE sprints ADD COLUMN IF NOT EXISTS check_max_score  numeric;
 
 CREATE TABLE IF NOT EXISTS sprint_completions (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid()
@@ -158,6 +167,26 @@ ALTER TABLE sprint_completions ADD COLUMN IF NOT EXISTS completed_at      timest
 ALTER TABLE sprint_completions ALTER COLUMN student_net_id DROP DEFAULT;
 DO $$ BEGIN
   ALTER TABLE sprint_completions ADD CONSTRAINT sprint_completions_sprint_id_student_net_id_key UNIQUE (sprint_id, student_net_id);
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
+-- Per-(sprint, group) open/closed gate for the understanding check. A PM
+-- flips this for their own group at the start/end of their weekly meeting;
+-- a student can only see check_questions/submit an answer while it's open
+-- (see app/api/sprints/[id]/check/*).
+CREATE TABLE IF NOT EXISTS sprint_check_windows (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid()
+);
+ALTER TABLE sprint_check_windows ADD COLUMN IF NOT EXISTS sprint_id     uuid REFERENCES sprints(id) ON DELETE CASCADE;
+ALTER TABLE sprint_check_windows ADD COLUMN IF NOT EXISTS group_number  integer NOT NULL DEFAULT 0;
+ALTER TABLE sprint_check_windows ADD COLUMN IF NOT EXISTS is_open       boolean NOT NULL DEFAULT false;
+ALTER TABLE sprint_check_windows ADD COLUMN IF NOT EXISTS opened_at     timestamptz;
+ALTER TABLE sprint_check_windows ADD COLUMN IF NOT EXISTS opened_by     text;
+ALTER TABLE sprint_check_windows ADD COLUMN IF NOT EXISTS closed_at     timestamptz;
+ALTER TABLE sprint_check_windows ADD COLUMN IF NOT EXISTS closed_by     text;
+ALTER TABLE sprint_check_windows ALTER COLUMN group_number DROP DEFAULT;
+DO $$ BEGIN
+  ALTER TABLE sprint_check_windows ADD CONSTRAINT sprint_check_windows_sprint_id_group_number_key UNIQUE (sprint_id, group_number);
 EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
@@ -248,6 +277,7 @@ ALTER TABLE events              DISABLE ROW LEVEL SECURITY;
 ALTER TABLE event_checkins      DISABLE ROW LEVEL SECURITY;
 ALTER TABLE sprints              DISABLE ROW LEVEL SECURITY;
 ALTER TABLE sprint_completions  DISABLE ROW LEVEL SECURITY;
+ALTER TABLE sprint_check_windows DISABLE ROW LEVEL SECURITY;
 ALTER TABLE sandbox_overlay     DISABLE ROW LEVEL SECURITY;
 ALTER TABLE staff               DISABLE ROW LEVEL SECURITY;
 ALTER TABLE resources           DISABLE ROW LEVEL SECURITY;
