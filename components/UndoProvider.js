@@ -5,9 +5,8 @@ import styles from "./UndoToast.module.css";
 
 /**
  * Deferred-execution undo for destructive actions (deletes, revokes, bulk
- * removals). The caller optimistically removes something from its own UI
- * state immediately, then calls scheduleUndo() instead of firing the real
- * request right away:
+ * removals). Update UI state optimistically, then schedule the real request
+ * instead of firing it immediately:
  *
  *   setItems(prev => prev.filter(i => i.id !== item.id));
  *   scheduleUndo({
@@ -16,12 +15,9 @@ import styles from "./UndoToast.module.css";
  *     onCancel: () => setItems(prev => [...prev, item]),
  *   });
  *
- * If the user clicks Undo before the countdown ends, onCancel() restores the
- * UI and the real request is never sent - the action never happened. If the
- * countdown runs out, onExpire() fires the real request. Mounted at the root
- * layout so the toast (and its timer) survive client-side navigation between
- * pages; only a hard reload/close loses a pending undo, which is the safe
- * failure mode - the item just never actually got deleted.
+ * Mounted at the root layout so the toast survives client-side navigation;
+ * only a hard reload loses a pending undo, which just means the delete never
+ * actually happened - the safe failure mode.
  */
 const UndoContext = createContext(null);
 
@@ -43,11 +39,9 @@ export function UndoProvider({ children }) {
       remove(id);
       try {
         const result = await onExpire();
-        // Every call site's onExpire is `() => fetch(...)`, so the resolved
-        // value is a Response - a non-2xx here (e.g. a permission check that
-        // only the server can make, like deleting someone else's event)
-        // means the action never actually happened server-side, so treat it
-        // like any other failure and put the UI back the way it was.
+        // onExpire is always `() => fetch(...)` - a non-2xx Response (e.g. a
+        // server-side permission check) means the delete didn't really
+        // happen, so treat it as a failure and restore the UI.
         if (result && typeof result.ok === "boolean" && !result.ok) {
           throw new Error(`Request failed (${result.status})`);
         }

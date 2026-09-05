@@ -23,8 +23,6 @@ export default function Navbar() {
       // mobile hamburger menu takes over well before the old 768px cutoff.
       setIsMobile(window.innerWidth <= 1280);
     };
-    
-    console.log(session);
 
     checkScreenSize();
     window.addEventListener("resize", checkScreenSize);
