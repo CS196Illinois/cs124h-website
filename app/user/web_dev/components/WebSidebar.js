@@ -10,8 +10,11 @@ import styles from "../../components/UserSidebar.module.css";
 
 const links = [
   { href: "/",             label: "Dashboard"    },
+  { href: "/students",     label: "My Students"  },
   { href: "/action_items", label: "Action Items" },
+  { href: "/gradebook",    label: "Gradebook"    },
   { href: "/events",       label: "Events"       },
+  { href: "/sprints",      label: "Sprints"      },
   { href: "/user/checkin", label: "Attendance", absolute: true },
 ];
 
