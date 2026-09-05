@@ -128,15 +128,26 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  /* `safe` keeps content reachable by scroll instead of being clipped when
+     it's taller/wider than the viewport (small screens, zoomed text). The
+     unprefixed rule above is the fallback for browsers that don't support it. */
+  align-items: safe center;
+  justify-content: safe center;
+  overflow: auto;
+  padding: 2rem 1rem;
+  box-sizing: border-box;
   background: #05070f;
   cursor: pointer;
   animation: enlargeFadeIn 0.15s ease-out;
 }
 
 .enlargeCloseBtn {
-  position: absolute;
+  /* fixed, not absolute, so it stays put if `.enlargeOverlay` has to scroll
+     to show oversized content on a small/zoomed screen */
+  position: fixed;
   top: 1.5rem;
   right: 1.5rem;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -162,6 +173,10 @@
   cursor: default;
   padding: 1.5rem;
   text-align: center;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: auto;
 }
 
 .enlargeEventTitle {
@@ -170,6 +185,8 @@
   font-size: clamp(1rem, 2.5vw, 1.5rem);
   font-weight: 600;
   margin-bottom: 2.5rem;
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 
 .enlargeLabel {
@@ -183,12 +200,19 @@
 
 .enlargeDigits {
   font-family: "Kufam", monospace;
-  font-size: clamp(4rem, 16vw, 13rem);
+  /* Lower floor (was 4rem) so this can actually shrink to fit narrow
+     viewports instead of forcing a fixed minimum width; the wrap/word-break
+     rules below are the fallback if it's still too wide (e.g. with browser
+     text-size zoom, which scales the rem floor but not vw). */
+  font-size: clamp(2.25rem, 16vw, 13rem);
   font-weight: 700;
   color: #f9f9f9;
   letter-spacing: 0.12em;
-  line-height: 1;
+  line-height: 1.1;
   margin-bottom: 2.5rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .enlargeTimer {
