@@ -507,6 +507,12 @@ select.roleSelect {
   font-weight: 500;
 }
 
+/* Marks a required field's label - use as <span className={styles.required}>*</span> */
+.required {
+  color: #f87171;
+  margin-left: 0.15rem;
+}
+
 .formGroup input:not([type="checkbox"]):not([type="radio"]),
 .formGroup select,
 .formGroup textarea {

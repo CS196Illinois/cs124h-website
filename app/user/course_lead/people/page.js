@@ -316,11 +316,11 @@ export default function CourseLeadPeople() {
               <input value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} placeholder="Jane Doe" />
             </div>
             <div className={styles.formGroup}>
-              <label>NetID *</label>
+              <label>NetID <span className={styles.required}>*</span></label>
               <input value={addForm.net_id} onChange={(e) => setAddForm({ ...addForm, net_id: e.target.value })} placeholder="jdoe2" />
             </div>
             <div className={styles.formGroup}>
-              <label>Role *</label>
+              <label>Role <span className={styles.required}>*</span></label>
               <select value={addForm.role} onChange={(e) => setAddForm({ ...addForm, role: e.target.value })}>
                 {roles.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
               </select>

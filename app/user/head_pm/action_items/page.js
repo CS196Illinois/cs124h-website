@@ -120,6 +120,9 @@ export default function HeadPMActionItems() {
     if (form.target_type === "individual" && form.target_net_ids.length === 0) {
       setFormError("Select at least one person."); return;
     }
+    if (form.target_type === "group" && !form.target_group) {
+      setFormError("Select a group."); return;
+    }
     setFormLoading(true);
     const res = await fetch("/api/action_items", {
       method: "POST",
@@ -326,7 +329,7 @@ export default function HeadPMActionItems() {
           {formError && <div className={styles.alertError}>{formError}</div>}
           {formSuccess && <div className={styles.alertSuccess}>{formSuccess}</div>}
           <div className={styles.formGroup}>
-            <label>Title *</label>
+            <label>Title <span className={styles.required}>*</span></label>
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Action item title…" />
           </div>
           <div className={styles.formGroup}>
@@ -348,7 +351,7 @@ export default function HeadPMActionItems() {
           </div>
           {form.target_type === "individual" && (
             <div className={styles.formGroup}>
-              <label>People</label>
+              <label>People <span className={styles.required}>*</span></label>
               <PeopleMultiSelect
                 people={[...pms, ...students]}
                 selected={form.target_net_ids}
@@ -359,7 +362,7 @@ export default function HeadPMActionItems() {
           )}
           {form.target_type === "group" && (
             <div className={styles.formGroup}>
-              <label>Group Number</label>
+              <label>Group Number <span className={styles.required}>*</span></label>
               <select value={form.target_group} onChange={(e) => setForm({ ...form, target_group: e.target.value })}>
                 <option value="">Select a group…</option>
                 {groups.map((g) => <option key={g} value={g}>Group {g}</option>)}

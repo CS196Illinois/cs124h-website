@@ -264,7 +264,7 @@ export default function LeadWebDevActionItems() {
           <h2>Assign Action Item</h2>
           {formError && <div className={styles.alertError}>{formError}</div>}
           {formSuccess && <div className={styles.alertSuccess}>{formSuccess}</div>}
-          <div className={styles.formGroup}><label>Title *</label><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Task title" /></div>
+          <div className={styles.formGroup}><label>Title <span className={styles.required}>*</span></label><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Task title" /></div>
           <div className={styles.formGroup}><label>Description</label><textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional details…" /></div>
           <div className={styles.formGroup}><label>Due Date</label><input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} /></div>
           <div className={styles.formGroup}>
@@ -276,7 +276,7 @@ export default function LeadWebDevActionItems() {
           </div>
           {form.target_type === "individual" && (
             <div className={styles.formGroup}>
-              <label>People</label>
+              <label>People <span className={styles.required}>*</span></label>
               <PeopleMultiSelect
                 people={webDevs}
                 selected={form.target_net_ids}

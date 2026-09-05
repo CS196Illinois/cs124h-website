@@ -45,7 +45,7 @@ export default function GradeActionItemModal({ item, onClose, onSaved }) {
       </p>
       {error && <div className={styles.alertError}>{error}</div>}
       <div className={styles.formGroup}>
-        <label>Grade{item.max_score != null ? ` (out of ${item.max_score})` : ""}</label>
+        <label>Grade <span className={styles.required}>*</span>{item.max_score != null ? ` (out of ${item.max_score})` : ""}</label>
         <input
           type="number"
           min="0"
