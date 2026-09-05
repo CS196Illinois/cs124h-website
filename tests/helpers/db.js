@@ -85,6 +85,23 @@ export async function insertSprint(overrides = {}) {
   return data;
 }
 
+export async function insertSprintCheckWindow(overrides = {}) {
+  const row = {
+    is_open: false,
+    opened_at: null,
+    opened_by: null,
+    closed_at: null,
+    closed_by: null,
+    ...overrides,
+  };
+  if (!row.sprint_id || row.group_number == null) {
+    throw new Error("insertSprintCheckWindow requires sprint_id and group_number");
+  }
+  const { data, error } = await client().from(table("sprintCheckWindows")).insert(row).select().single();
+  if (error) throw new Error(`insertSprintCheckWindow: ${error.message}`);
+  return data;
+}
+
 export async function insertEvent(overrides = {}) {
   const row = {
     title: "Test event",
@@ -177,6 +194,7 @@ export async function insertEventAttendance(rows) {
 // (`not(pk, "is", null)` matches every row regardless of PK type/name).
 const TABLE_PK = {
   sprintCompletions: "id",
+  sprintCheckWindows: "id",
   eventCheckins: "id",
   actionItems: "id",
   roleViewRequests: "id",
@@ -192,7 +210,7 @@ const TABLE_PK = {
 
 // Children before parents, though FKs are ON DELETE CASCADE anyway.
 const CLEAR_ORDER = [
-  "sprintCompletions", "eventCheckins", "actionItems", "roleViewRequests",
+  "sprintCompletions", "sprintCheckWindows", "eventCheckins", "actionItems", "roleViewRequests",
   "sprints", "events", "eventAttendanceSp26", "staff", "resources", "projects",
   "sandboxOverlay", "users",
 ];

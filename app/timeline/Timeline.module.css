@@ -21,19 +21,6 @@
   color: black;
 }
 
-.whiteBoxMini {
-  background-color: white;
-  border-radius: 1rem;
-  padding: 1rem;
-  flex: 3;
-  color: black;
-  margin-bottom: 1.5rem;
-}
-
-.eventBoxText {
-  color: black;
-}
-
 @media (max-width: 768px) {
   .boxWrapper {
     flex-direction: column;

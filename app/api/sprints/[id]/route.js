@@ -4,6 +4,7 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
+import { normalizeQuestions } from "../../../../lib/sprintChecks";
 
 const MANAGE_ROLES = ["course_lead", "head_pm", "lead_web_dev", "web_dev"];
 
@@ -18,7 +19,7 @@ export async function PATCH(request, { params }) {
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
 
-  const allowed = ["number", "goal", "start_date", "end_date"];
+  const allowed = ["number", "goal", "start_date", "end_date", "check_questions", "check_max_score"];
   const updates = {};
   for (const key of allowed) {
     if (key in body) {
@@ -26,6 +27,8 @@ export async function PATCH(request, { params }) {
     }
   }
   if (updates.goal != null) updates.goal = String(updates.goal).trim();
+  if ("check_questions" in updates) updates.check_questions = normalizeQuestions(updates.check_questions);
+  if (updates.check_max_score != null) updates.check_max_score = Number(updates.check_max_score) || null;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });

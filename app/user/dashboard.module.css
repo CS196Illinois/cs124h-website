@@ -52,11 +52,6 @@
     flex-direction: column;
     align-items: stretch;
   }
-
-  .toolbarRight {
-    width: 100%;
-    justify-content: flex-end;
-  }
 }
 
 @keyframes pageEnter {
@@ -165,12 +160,6 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.toolbarRight {
-  display: flex;
-  align-items: center;
   gap: 0.75rem;
 }
 
@@ -505,6 +494,12 @@ select.roleSelect {
   font-family: "Inter", sans-serif;
   margin-bottom: 0.35rem;
   font-weight: 500;
+}
+
+/* Marks a required field's label - use as <span className={styles.required}>*</span> */
+.required {
+  color: #f87171;
+  margin-left: 0.15rem;
 }
 
 .formGroup input:not([type="checkbox"]):not([type="radio"]),

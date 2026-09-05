@@ -3,6 +3,7 @@ import RoleSidebar from "../../components/RoleSidebar";
 const links = [
   { href: "/",             label: "Dashboard"    },
   { href: "/action_items", label: "Action Items" },
+  { href: "/sprints",      label: "Sprints"      },
   { href: "/user/checkin", label: "Attendance", absolute: true },
 ];
 

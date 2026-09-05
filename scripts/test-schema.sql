@@ -49,9 +49,11 @@ CREATE TABLE IF NOT EXISTS test_action_items (
   grade_note        text,
   graded_by         text,
   graded_at         timestamptz,
-  batch_id          uuid
+  batch_id          uuid,
+  sprint_id         uuid
 );
 CREATE INDEX IF NOT EXISTS test_action_items_batch_id_idx ON test_action_items (batch_id);
+CREATE UNIQUE INDEX IF NOT EXISTS test_action_items_sprint_id_net_id_key ON test_action_items (sprint_id, net_id) WHERE sprint_id IS NOT NULL;
 
 -- ── Web-dev role-view requests ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS test_role_view_requests (
@@ -100,12 +102,14 @@ CREATE TABLE IF NOT EXISTS test_event_checkins (
 
 -- ── Sprints + per-student completions ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS test_sprints (
-  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  number        integer NOT NULL,
-  goal          text,
-  start_date    date,
-  end_date      date,
-  created_at    timestamptz NOT NULL DEFAULT now()
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  number            integer NOT NULL,
+  goal              text,
+  start_date        date,
+  end_date          date,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  check_questions   jsonb,
+  check_max_score   numeric
 );
 
 CREATE TABLE IF NOT EXISTS test_sprint_completions (
@@ -115,6 +119,19 @@ CREATE TABLE IF NOT EXISTS test_sprint_completions (
   marked_by         text,
   completed_at      timestamptz NOT NULL DEFAULT now(),
   UNIQUE (sprint_id, student_net_id)
+);
+
+-- Per-(sprint, group) open/closed gate for the understanding check.
+CREATE TABLE IF NOT EXISTS test_sprint_check_windows (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  sprint_id       uuid REFERENCES test_sprints(id) ON DELETE CASCADE,
+  group_number    integer NOT NULL,
+  is_open         boolean NOT NULL DEFAULT false,
+  opened_at       timestamptz,
+  opened_by       text,
+  closed_at       timestamptz,
+  closed_by       text,
+  UNIQUE (sprint_id, group_number)
 );
 
 -- ── Dashboard sandbox overlay (web_dev / lead_web_dev) ────────────────────────
@@ -204,6 +221,7 @@ ALTER TABLE test_events              DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_event_checkins      DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_sprints             DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_sprint_completions  DISABLE ROW LEVEL SECURITY;
+ALTER TABLE test_sprint_check_windows DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_sandbox_overlay     DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_staff               DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_resources           DISABLE ROW LEVEL SECURITY;

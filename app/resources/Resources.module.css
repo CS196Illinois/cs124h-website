@@ -43,22 +43,6 @@
   }
 }
 
-.description {
-  font-size: 1.125rem; /* text-lg */
-  line-height: 1.75rem;
-  color: #dbeafe; /* text-blue-200 */
-  max-width: 56rem; /* max-w-3xl */
-  margin-left: auto;
-  margin-right: auto;
-}
-
-@media (min-width: 768px) {
-  .description {
-    font-size: 1.25rem; /* md:text-xl */
-    line-height: 1.75rem;
-  }
-}
-
 /* Project Grid */
 .projectGrid {
   display: grid;
@@ -84,11 +68,3 @@
     gap: 2rem; /* md:gap-8 */
   }
 }
-
-/* No Projects Message */
-.noProjects {
-  text-align: center;
-  color: #dbeafe; /* text-blue-200 */
-  margin-top: 2rem; /* mt-8 */
-}
-

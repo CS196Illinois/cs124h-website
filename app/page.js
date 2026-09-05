@@ -1,7 +1,6 @@
 import React from "react";
 import "./global.css";
 import styles from "./home.module.css";
-import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { getSupabaseServer } from "../lib/supabaseServer";

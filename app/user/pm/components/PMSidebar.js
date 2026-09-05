@@ -6,6 +6,7 @@ const links = [
   { href: "/action_items", label: "Action Items" },
   { href: "/gradebook",    label: "Gradebook"    },
   { href: "/events",       label: "Events"       },
+  { href: "/sprints",      label: "Sprints"      },
   { href: "/user/checkin", label: "Attendance", absolute: true },
 ];
 
