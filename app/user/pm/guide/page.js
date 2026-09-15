@@ -1,36 +1,56 @@
 import styles from "../../dashboard.module.css";
+import guide from "./Guide.module.css";
 
 export const metadata = { title: "PM Guide" };
 
-const Section = ({ title, children }) => (
-  <section style={{ marginTop: "2rem" }}>
-    <h2>{title}</h2>
-    {children}
-  </section>
-);
-
 export default function PMGuidePage() {
-  return <main className={styles.container}>
-    <div className={styles.header}><h1>Project Manager Guide</h1><p>Everything you need to run your group in CS 124H. Use this page as your weekly checklist and troubleshooting reference.</p></div>
-    <section className={styles.panel} style={{ maxWidth: 900, lineHeight: 1.65 }}>
-      <div style={{ padding: "1rem 1.1rem", borderRadius: 10, background: "rgba(236,181,87,.12)", border: "1px solid rgba(236,181,87,.3)" }}><strong>Your scope:</strong> You manage your assigned group’s students and work. Course Leads and authorized managers can see or change records across groups. If your roster or permissions look wrong, ask a Course Lead to correct them.</div>
-      <Section title="Your weekly routine"><ol>
-        <li><strong>Check your roster:</strong> Open <strong>My Students</strong> and confirm names, NetIDs, and group membership.</li>
-        <li><strong>Review work:</strong> Check <strong>Action Items</strong> for overdue, incomplete, and completed work.</li>
-        <li><strong>Prepare the sprint:</strong> Review the goal and selected understanding-check questions. Future sprints are hidden from PMs and students until their start date.</li>
-        <li><strong>Run the check:</strong> Open your group’s check during the meeting, answer questions with students, and close it when the response period ends.</li>
-        <li><strong>Run attendance:</strong> Create or open the appropriate <strong>Event</strong>, confirm its audience, display the code or QR code, and review attendees afterward.</li>
-        <li><strong>Grade and follow up:</strong> Grade completed gradable items, leave useful feedback, and create follow-up action items where needed.</li>
-        <li><strong>Close the week:</strong> Confirm no intended student is missing from the check or event, no incorrect attendee remains, and no unresolved alert is visible.</li>
-      </ol></Section>
-      <Section title="My Students and permissions"><p>My Students is your roster view. Use the student’s displayed name and NetID when checking a submission, assigning work, or correcting attendance. A wrong group number, missing student, or unexpected role is a roster problem; do not create a duplicate account to work around it.</p><ul><li>You can work with students in your assigned group.</li><li>Course Leads and authorized managers may manage multiple groups.</li><li>Your view of sprints, check windows, action items, and grades follows your group scope.</li><li>Never share a student’s login, private information, or another group’s grade data.</li></ul></Section>
-      <Section title="Action Items: assign and follow through"><p>Create an Action Item when a person needs to own a piece of work, follow-up, or deliverable.</p><ol><li>Choose the correct recipient: one student or the permitted group audience.</li><li>Write a short, specific title and describe the expected result in the body.</li><li>Add a realistic due date.</li><li>Turn on <strong>Gradable</strong> only when the item should receive a score, and verify the maximum score.</li><li>Save once, then check that the item appears for the intended student.</li></ol><p>Students mark work complete. Only the person who assigned a gradable item can grade it. If completed work is reopened, its existing grade is cleared so it can be reviewed again. Deleting an item removes its record, so edit it when you need to preserve history.</p></Section>
-      <Section title="Sprints and understanding checks"><p>Sprints organize the weekly goal and understanding check. A sprint before its start date is intentionally hidden from PMs and students; ask a Course Lead to check the dates if a sprint is missing.</p><ol><li>Open the current sprint and read the goal before your group meeting.</li><li>Choose one or more shared question-bank questions for the week.</li><li>Add a custom question when your group needs a specific follow-up.</li><li>Open the check only for your group and only when students are ready.</li><li>Watch the submission count, then close the window when the period ends.</li></ol><p>PMs may add questions but cannot remove shared question-bank questions. Course Leads own the shared bank and can add, edit, or remove its questions. Students can see questions while their window is open and can still view their own submitted response afterward.</p></Section>
-      <Section title="Events and attendance"><p>Create an event whenever attendance is needed. Before saving, check the event name, time, and audience. An event can be shared with everyone, selected roles, one or more groups, or selected people. The audience controls both event visibility and check-in access.</p><ol><li>Create the event with the correct audience and start/end times.</li><li>At the event, open check-in and show the rotating code or QR code.</li><li>Tell attendees to use Attendance while the window is open.</li><li>Review <strong>Attendees</strong> after the event.</li><li>Manually add someone only after confirming they attended in person; remove an accidental check-in immediately.</li><li>Close check-in when attendance is complete.</li></ol><p>Do not reuse a code from another event or share it outside the intended audience. If someone cannot check in, verify that the event is open, they are in the audience, and they entered the current code.</p></Section>
-      <Section title="Gradebook and feedback"><p>Gradebook is the record of completed gradable work. Use its filters to focus on a student, assignment, or group, then open the detail view for history and feedback.</p><ul><li>Grade only work that is marked complete.</li><li>Scores must be between 0 and the assignment maximum. A zero is valid.</li><li>Explain what was done well and what the student should change next.</li><li>Use student history to avoid grading the same work twice.</li><li>Export a CSV when you need to share a snapshot with the teaching team.</li></ul><p>If an item is missing, verify its recipient, assigned-by field, completion state, gradable setting, and group scope before escalating.</p></Section>
-      <Section title="Errors and recovery"><ol><li>Read the entire alert, including any field name or support code.</li><li>Correct the named issue: recipient, group, date, question, audience, score, or required field.</li><li>Retry once after confirming the page is still current.</li><li>Refresh if the record looks stale. Do not create a duplicate while a save is processing.</li><li>If it still fails, send a Course Lead the page, record or student, action attempted, time, and exact error/support code.</li></ol><p>Common examples: a future sprint is hidden by design; a check cannot be submitted while its window is closed; a grade cannot be saved until the item is complete; and an event cannot be checked into by someone outside its audience.</p></Section>
-      <Section title="End-of-week checklist"><ul><li>Roster and group membership are correct.</li><li>Every action item has a clear owner, description, and due date.</li><li>The intended understanding-check questions were selected.</li><li>The check was opened and closed for the correct group.</li><li>Event audience and attendee records are correct.</li><li>Completed gradable items have scores and actionable feedback.</li><li>No unresolved error alert remains.</li></ul></Section>
-      <p style={{ marginTop: "2rem", color: "rgba(249,249,249,.65)" }}>When in doubt, preserve the existing record, capture the exact error, and ask a Course Lead before deleting or recreating data.</p>
-    </section>
-  </main>;
+  return (
+    <main className={`${styles.container} ${guide.page}`}>
+      <div className={guide.content}>
+        <header className={guide.header}>
+          <h1>Project Manager Guide</h1>
+          <p>Your weekly checklist and quick reference.</p>
+        </header>
+
+        <div className={guide.panel}>
+          <p className={guide.note}>
+            <strong>Your scope:</strong> Manage your assigned group. Ask a Course Lead to fix missing students, group assignments, or permissions; don’t create duplicate accounts.
+          </p>
+
+          <section className={guide.section}>
+            <h2>Each week</h2>
+            <ol>
+              <li><strong>Prepare:</strong> Confirm your roster in My Students, review Action Items, and select the current sprint’s check questions.</li>
+              <li><strong>Meet:</strong> Open your group’s understanding check, review submissions, then close it.</li>
+              <li><strong>Take attendance:</strong> Check the event’s audience, open check-in, and display the current code or QR code. Review attendees and close check-in afterward.</li>
+              <li><strong>Follow up:</strong> Grade completed work, leave feedback, and assign next steps with an owner and due date.</li>
+            </ol>
+          </section>
+
+          <section className={guide.section}>
+            <h2>Quick reference</h2>
+            <dl className={guide.reference}>
+              <div>
+                <dt>Action Items & grades</dt>
+                <dd>Enable Gradable and set a maximum when assigning scored work. Only the assigner can grade completed items; scores range from 0 to the maximum. Reopening clears the grade. Edit instead of deleting to preserve history.</dd>
+              </div>
+              <div>
+                <dt>Sprints & checks</dt>
+                <dd>Future sprints stay hidden until their start date. Select shared questions or add your own; Course Leads manage the shared bank. Students can answer only while their group’s check is open.</dd>
+              </div>
+              <div>
+                <dt>Attendance</dt>
+                <dd>Students need an open event, the correct audience, and the current code. Add a missed attendee only after confirming attendance; remove accidental check-ins. Keep codes within the intended audience.</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section className={guide.section}>
+            <h2>Something wrong?</h2>
+            <p>Check the alert and the record’s recipient, group, dates, or completion status. Refresh and retry once. If it still fails, send a Course Lead the page, affected record or student, time, and exact error or support code.</p>
+          </section>
+        </div>
+      </div>
+    </main>
+  );
 }
