@@ -336,8 +336,16 @@ export default function EventsPanel() {
 
   const myGroup = roster.find((person) => person.net_id === session?.user?.netID)?.group_number ?? null;
   const openCreate = () => {
-    const groupDefault = isPmViewRole(session?.user?.role);
-    setForm({ title: "", description: "", location: "", presenter: "", start_time: "", end_time: "", audience_type: groupDefault ? "groups" : "all", audience_values: groupDefault && myGroup != null ? [String(myGroup)] : [] });
+    const role = session?.user?.role;
+    let audience = { audience_type: "all", audience_values: [] };
+    if (role === "lead_web_dev" || (role === "web_dev" && myGroup == null)) {
+      audience = { audience_type: "roles", audience_values: ["WEB", "LEAD_WEB"] };
+    } else if (role === "head_pm") {
+      audience = { audience_type: "roles", audience_values: ["PM"] };
+    } else if (isPmViewRole(role)) {
+      audience = { audience_type: "groups", audience_values: myGroup != null ? [String(myGroup)] : [] };
+    }
+    setForm({ title: "", description: "", location: "", presenter: "", start_time: "", end_time: "", ...audience });
     setFormError("");
     setShowModal(true);
   };
