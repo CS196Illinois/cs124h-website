@@ -6,6 +6,8 @@ import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../../../lib/sandbox";
 import { isSprintVisibleToRole } from "../../../../../lib/sprintVisibility";
+import { isPmViewRole } from "../../../../../lib/roles";
+import { groupStudentIds } from "../../../../../lib/groupScope";
 
 export async function GET(request, { params }) {
   const session = await getServerSession(authOptions);
@@ -27,6 +29,11 @@ export async function GET(request, { params }) {
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
     rows = await mergeSandboxRows(netID, "sprintCompletions", rows, (row) => row.sprint_id === id);
   }
+  if (userRole === "student") rows = rows.filter((row) => row.student_net_id === netID);
+  if (isPmViewRole(userRole)) {
+    const visible = new Set(await groupStudentIds(netID, userRole));
+    rows = rows.filter((row) => visible.has(row.student_net_id));
+  }
   return NextResponse.json(rows);
 }
 
@@ -47,18 +54,8 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: "Please choose a student." }, { status: 400 });
   }
 
-  if (userRole === "pm") {
-    const { data: pm } = await supabaseServer
-      .from(table("users"))
-      .select("group_number")
-      .eq("net_id", userNetId)
-      .single();
-    const { data: student } = await supabaseServer
-      .from(table("users"))
-      .select("group_number")
-      .eq("net_id", body.student_net_id)
-      .single();
-    if (!pm || !student || pm.group_number !== student.group_number) {
+  if (isPmViewRole(userRole)) {
+    if (!(await groupStudentIds(userNetId, userRole)).includes(body.student_net_id)) {
       return NextResponse.json({ error: "Student not in your group" }, { status: 403 });
     }
   }
@@ -112,18 +109,8 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: "Please choose a student to remove." }, { status: 400 });
   }
 
-  if (userRole === "pm") {
-    const { data: pm } = await supabaseServer
-      .from(table("users"))
-      .select("group_number")
-      .eq("net_id", userNetId)
-      .single();
-    const { data: student } = await supabaseServer
-      .from(table("users"))
-      .select("group_number")
-      .eq("net_id", studentNetId)
-      .single();
-    if (!pm || !student || pm.group_number !== student.group_number) {
+  if (isPmViewRole(userRole)) {
+    if (!(await groupStudentIds(userNetId, userRole)).includes(studentNetId)) {
       return NextResponse.json({ error: "Student not in your group" }, { status: 403 });
     }
   }

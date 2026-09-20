@@ -4,7 +4,7 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
-import { normalizeQuestions } from "../../../../lib/sprintChecks";
+import { normalizeQuestions, resolveMaxScore } from "../../../../lib/sprintChecks";
 import { isSprintVisibleToRole, validateSprintDates } from "../../../../lib/sprintVisibility";
 
 const MANAGE_ROLES = ["course_lead", "head_pm", "lead_web_dev", "web_dev", "pm"];
@@ -23,13 +23,12 @@ export async function PATCH(request, { params }) {
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Please check the information you entered and try again." }, { status: 400 });
 
-  // PMs can maintain the understanding-check content, but cannot change the
-  // sprint schedule or goal from their group-management view.
+  // PMs may append questions, but saved questions and scoring are protected.
   const allowed = userRole === "pm"
     ? ["check_questions", "check_max_score"]
     : ["number", "goal", "start_date", "end_date", "check_questions", "check_max_score"];
   if (userRole === "pm" && ["number", "goal", "start_date", "end_date"].some((key) => key in body)) {
-    return NextResponse.json({ error: "PMs can edit understanding-check questions and max score, but not the sprint number, goal, or dates." }, { status: 403 });
+    return NextResponse.json({ error: "PMs can add questions, but cannot change the sprint number, goal, or dates." }, { status: 403 });
   }
   const updates = {};
   for (const key of allowed) {
@@ -46,13 +45,14 @@ export async function PATCH(request, { params }) {
   }
   if ("check_questions" in updates) updates.check_questions = normalizeQuestions(updates.check_questions);
   if (userRole === "pm" && "check_questions" in updates) {
-    const [{ data: current }, { data: bank }] = await Promise.all([
-      supabaseServer.from(table("sprints")).select("check_questions").eq("id", id).maybeSingle(),
-      supabaseServer.from(table("sprintQuestionBank")).select("question"),
-    ]);
-    const bankQuestions = new Set((bank ?? []).map((row) => row.question));
-    const removedBankQuestion = (current?.check_questions ?? []).some((question) => bankQuestions.has(question) && !(updates.check_questions ?? []).includes(question));
-    if (removedBankQuestion) return NextResponse.json({ error: "PMs can add custom questions and select bank questions, but cannot remove a shared question. Ask a course lead to change the question bank." }, { status: 403 });
+    const changedSavedQuestion = (existingSprint.check_questions ?? []).some((question, index) => updates.check_questions?.[index] !== question);
+    if (changedSavedQuestion) return NextResponse.json({ error: "Saved sprint questions cannot be edited, reordered, or disabled by PMs. Ask a course lead to change them." }, { status: 403 });
+  }
+  if (userRole === "pm" && "check_max_score" in updates) {
+    if (resolveMaxScore({ check_max_score: updates.check_max_score }) !== resolveMaxScore(existingSprint)) {
+      return NextResponse.json({ error: "Only sprint managers can change the maximum score." }, { status: 403 });
+    }
+    delete updates.check_max_score;
   }
   if (updates.check_max_score != null && updates.check_max_score !== "") {
     const maxScore = Number(updates.check_max_score);
@@ -75,13 +75,17 @@ export async function PATCH(request, { params }) {
     return NextResponse.json(merged);
   }
 
-  const { data, error } = await supabaseServer
+  let query = supabaseServer
     .from(table("sprints"))
     .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
+    .eq("id", id);
+  // Compare-and-swap prevents an old PM form overwriting a newly added lead question.
+  if (userRole === "pm") query = existingSprint.check_questions == null
+    ? query.is("check_questions", null)
+    : query.eq("check_questions", JSON.stringify(existingSprint.check_questions));
+  const { data, error } = await query.select().maybeSingle();
   if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "This sprint changed while you were editing. Reload it and try again." }, { status: 409 });
   return NextResponse.json(data);
 }
 
@@ -89,6 +93,7 @@ export async function DELETE(request, { params }) {
   const session = await getServerSession(authOptions);
   const userRole = session?.user?.role;
   const netID = session?.user?.netID;
+  if (userRole === "pm") return NextResponse.json({ error: "PMs cannot delete sprints." }, { status: 403 });
   if (!MANAGE_ROLES.includes(userRole)) {
     return NextResponse.json({ error: "You do not have permission to do that." }, { status: 403 });
   }

@@ -8,6 +8,8 @@ import { useUndo } from "../../../components/UndoProvider";
 import { formatLocalDateTime, datetimeLocalToISO } from "../../../lib/dateFormat";
 import styles from "../dashboard.module.css";
 import panelStyles from "./EventsPanel.module.css";
+import EventAudiencePicker from "./EventAudiencePicker";
+import { isPmViewRole, roleLabel } from "../../../lib/roles";
 
 // Roles with standing Editor access to the shared attendance sheet (kept in
 // sync with lib/sheetAccess.js's SHEET_ACCESS_PATH_ROLES) - only these see
@@ -27,9 +29,9 @@ function timeAgo(isoString) {
 
 function audienceSummary(event) {
   const values = Array.isArray(event.audience_values) ? event.audience_values : [];
-  if (!event.audience_type || event.audience_type === "all") return "Everyone can see and check in";
+  if (!event.audience_type || event.audience_type === "all") return "Open to everyone in the course";
   if (event.audience_type === "people") return `${values.length} selected ${values.length === 1 ? "person" : "people"}`;
-  if (event.audience_type === "roles") return `Roles: ${values.join(", ")}`;
+  if (event.audience_type === "roles") return `Open to: ${values.map(roleLabel).join(", ")}`;
   if (event.audience_type === "groups") return `Groups: ${values.join(", ")}`;
   return "Restricted audience";
 }
@@ -46,11 +48,13 @@ export default function EventsPanel() {
   const [qrDataUrl, setQrDataUrl]   = useState(null);  // QR code for the enlarged event's check-in link
   const [sheetUrl, setSheetUrl]     = useState(null);  // shared attendance sheet, if this role has access
   const [roster, setRoster]         = useState([]);   // full roster, for the add-attendee autocomplete
+  const [rosterLoading, setRosterLoading] = useState(true);
   const [addInputs, setAddInputs]   = useState({});   // eventId → in-progress net_id text
   const [addErrors, setAddErrors]   = useState({});   // eventId → error message from the last add attempt
 
   // Create-event modal
   const [showModal, setShowModal]   = useState(false);
+  const [audienceEvent, setAudienceEvent] = useState(null);
   const [form, setForm]             = useState({ title: "", description: "", location: "", presenter: "", start_time: "", end_time: "", audience_type: "all", audience_values: [] });
   const [formError, setFormError]   = useState("");
   const [formLoading, setFormLoading] = useState(false);
@@ -92,7 +96,7 @@ export default function EventsPanel() {
   useEffect(() => {
     fetch("/api/users").then(async (res) => {
       if (res.ok) setRoster(await res.json());
-    });
+    }).catch(() => {}).finally(() => setRosterLoading(false));
   }, []);
 
   // Only roles with standing Editor access to the sheet get a link to it -
@@ -296,23 +300,46 @@ export default function EventsPanel() {
   const handleCreate = async () => {
     setFormError("");
     if (!form.title.trim()) { setFormError("Title is required."); return; }
+    if (form.audience_type !== "all" && !form.audience_values.length) { setFormError("Choose who this event is for before creating it."); return; }
     setFormLoading(true);
-    const res = await fetch("/api/events", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        start_time: datetimeLocalToISO(form.start_time),
-        end_time: datetimeLocalToISO(form.end_time),
-        audience_values: form.audience_values.map(String),
-      }),
-    });
-    const json = await res.json();
-    if (!res.ok) { setFormError(json.error || "Failed to create event."); setFormLoading(false); return; }
-    setShowModal(false);
-    setForm({ title: "", description: "", location: "", presenter: "", start_time: "", end_time: "", audience_type: "all", audience_values: [] });
-    setFormLoading(false);
-    await fetchEvents();
+    try {
+      const res = await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          start_time: datetimeLocalToISO(form.start_time),
+          end_time: datetimeLocalToISO(form.end_time),
+          audience_values: form.audience_values.map(String),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setFormError(json.error || "Failed to create event."); return; }
+      setShowModal(false);
+      setForm({ title: "", description: "", location: "", presenter: "", start_time: "", end_time: "", audience_type: "all", audience_values: [] });
+      await fetchEvents();
+    } catch { setFormError("The event could not be saved. Check your connection and try again."); }
+    finally { setFormLoading(false); }
+  };
+
+  const saveAudience = async () => {
+    setFormLoading(true); setFormError("");
+    try {
+      const response = await fetch(`/api/events/${audienceEvent.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ audience_type: form.audience_type, audience_values: form.audience_values }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setAudienceEvent(null);
+      await fetchEvents();
+    } catch (error) { setFormError(error.message || "The audience could not be updated."); }
+    finally { setFormLoading(false); }
+  };
+
+  const myGroup = roster.find((person) => person.net_id === session?.user?.netID)?.group_number ?? null;
+  const openCreate = () => {
+    const groupDefault = isPmViewRole(session?.user?.role);
+    setForm({ title: "", description: "", location: "", presenter: "", start_time: "", end_time: "", audience_type: groupDefault ? "groups" : "all", audience_values: groupDefault && myGroup != null ? [String(myGroup)] : [] });
+    setFormError("");
+    setShowModal(true);
   };
 
   // ── Render ─────────────────────────────────────────────────────
@@ -337,12 +364,13 @@ export default function EventsPanel() {
               Attendance Sheet
             </a>
           )}
-          <button data-tour="event-new" className={styles.btnPrimary} onClick={() => setShowModal(true)}>
+          <button data-tour="event-new" className={styles.btnPrimary} disabled={rosterLoading || !session} onClick={openCreate}>
             + New Event
           </button>
         </div>
       </div>
 
+      <p style={{ color: "#c0cbe0", fontSize: ".85rem", marginBottom: "1rem" }}>{session?.user?.role === "lead_web_dev" ? "All course events. Only the creator can manage an event." : "Events you created or joined. Visit Attendance to join an event that is open to you."}</p>
       {/* Event list */}
       {loading ? (
         <div className={styles.loading}>Loading events…</div>
@@ -398,6 +426,7 @@ export default function EventsPanel() {
                         >
                           Attendees
                         </button>}
+                        {event.created_by === session?.user?.netID && <button className={styles.btnSmall} disabled={rosterLoading} onClick={() => { setAudienceEvent(event); setForm({ ...event, audience_type: event.audience_type || "all", audience_values: (event.audience_values || []).map(String) }); setFormError(""); }}>Edit audience</button>}
                         {event.created_by === session?.user?.netID && <button className={styles.btnDanger} onClick={() => deleteEvent(event.id)}>
                           Delete
                         </button>}
@@ -595,41 +624,24 @@ export default function EventsPanel() {
                 />
               </div>
             </div>
-            <div className={styles.formGroup}>
-              <label htmlFor="event-audience">Who can see and check in? <span className={styles.required}>*</span></label>
-              <select id="event-audience" value={form.audience_type} onChange={e => setForm({ ...form, audience_type: e.target.value, audience_values: [] })}>
-                <option value="all">Everyone</option>
-                <option value="people">Specific people</option>
-                <option value="roles">Role(s)</option>
-                <option value="groups">Group(s)</option>
-              </select>
-            </div>
-            {form.audience_type !== "all" && (
-              <fieldset className={styles.audienceChoices}>
-                <legend>{form.audience_type === "roles" ? "Roles" : form.audience_type === "groups" ? "Groups" : "People"} <span className={styles.required}>*</span></legend>
-                {(form.audience_type === "roles"
-                  ? [["LEAD", "Course Leads"], ["LEAD_WEB", "Lead Web Devs"], ["HEAD", "Head PMs"], ["PM", "PMs"], ["WEB", "Web Devs"], ["STUDENT", "Students"]]
-                  : form.audience_type === "groups"
-                    ? [...new Set(roster.map(p => p.group_number).filter(g => g != null))].sort((a, b) => a - b).map(g => [String(g), `Group ${g}`])
-                    : roster.map(p => [p.net_id, p.name ? `${p.name} (${p.net_id})` : p.net_id])
-                ).map(([value, label]) => (
-                  <label key={value} className={styles.checkboxLabel}>
-                    <input className={styles.checkboxInput} type="checkbox" checked={form.audience_values.includes(value)}
-                      onChange={e => setForm(f => ({ ...f, audience_values: e.target.checked ? [...f.audience_values, value] : f.audience_values.filter(v => v !== value) }))} />
-                    {label}
-                  </label>
-                ))}
-              </fieldset>
-            )}
+            <EventAudiencePicker value={form} roster={roster} groupNumber={myGroup} onChange={(audience) => setForm((previous) => ({ ...previous, ...audience }))} />
             <div className={styles.modalActions}>
               <button className={styles.btnSecondary} onClick={() => setShowModal(false)}>Cancel</button>
-              <button className={styles.btnPrimary} onClick={handleCreate} disabled={formLoading}>
+              <button className={styles.btnPrimary} onClick={handleCreate} disabled={formLoading || (form.audience_type !== "all" && !form.audience_values.length)}>
                 {formLoading ? "Creating…" : "Create Event"}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {audienceEvent && <div className={styles.overlay}><div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="edit-audience-title">
+        <h2 id="edit-audience-title">Audience for {audienceEvent.title}</h2>
+        <EventAudiencePicker value={form} roster={roster} groupNumber={myGroup} onChange={(audience) => setForm((previous) => ({ ...previous, ...audience }))} />
+        <p style={{ color: "#c0cbe0", marginTop: "1rem", fontSize: ".85rem" }}>Changes apply to future check-ins. Existing attendance records are kept.</p>
+        {formError && <p role="alert" className={styles.alertError}>{formError}</p>}
+        <div className={styles.modalActions}><button className={styles.btnSecondary} onClick={() => setAudienceEvent(null)}>Cancel</button><button className={styles.btnPrimary} onClick={saveAudience} disabled={formLoading || (form.audience_type !== "all" && !form.audience_values.length)}>{formLoading ? "Saving…" : "Save audience"}</button></div>
+      </div></div>}
 
       {/* Enlarged check-in code, for projecting - closes itself if check-in
           closes (liveCodes entry disappears) or the event is deleted. */}

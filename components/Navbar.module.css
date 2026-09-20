@@ -55,6 +55,8 @@
   text-align: center;
 }
 
+.supportLink { width: auto; flex-shrink: 0; align-self: center; font-family: Inter, sans-serif; text-decoration: none; }
+
 .nav-button:hover {
   color: white;
   background-color: #112a67;
@@ -160,7 +162,7 @@
 
 /* Matches the isMobile check in navbar.js - below this width the full nav
    row doesn't fit on one line within the bar's fixed height. */
-@media (max-width: 1280px) {
+@media (max-width: 1400px) {
   .navbar {
     justify-content: space-between;
     padding: 0 1em;

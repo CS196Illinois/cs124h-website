@@ -19,7 +19,7 @@ export async function resolveActorGroup(userRole, netID, bodyGroupNumber) {
   if (isPmViewRole(userRole)) {
     const { data: me } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
     if (me?.group_number != null) return { groupNumber: me.group_number };
-    if (userRole === "pm") return { error: "You are not assigned to a group yet." };
+    return { error: "You are not assigned to a group yet." };
   }
   if (MANAGE_ROLES.includes(userRole)) {
     const g = Number(bodyGroupNumber);
@@ -93,9 +93,8 @@ export async function GET(request, { params }) {
   if (isPmViewRole(userRole)) {
     const { data: me } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
     const groupNumber = me?.group_number;
-    // A web dev with no group isn't acting as a PM - fall through to the
-    // manager all-groups view below.
-    if (userRole === "pm" || groupNumber != null) {
+    // No assigned group means no group roster, never course-wide access.
+    {
       const [windows, submissions] = await Promise.all([fetchWindows(id, netID, userRole), fetchSubmissions(id, netID, userRole)]);
       const myWindow = windows.find((w) => w.group_number === groupNumber);
       let roster = [];

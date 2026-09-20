@@ -20,6 +20,10 @@ Grading behavior checked by the suite:
 
 Passing these checks does not establish zero defects. Real CILogon login, live Google Sheets synchronization, production configuration/data, other browser engines, and large-scale concurrent traffic need separate verification.
 
+Login regression checks cover same-identity concurrent roster claims, alternate Illinois identity claims, session-cookie consistency, stale-cookie reset, and explicit single-attempt sign-in. Sprint tests cover PM append-only question changes and prohibit deleting a sprint or changing its scoring. The public support API has mocked storage/SMTP tests for validation, access control, email formatting, and failure recovery; browser tests cover the signed-out form and student grade view. See `SUPPORT_SETUP.md` for the required support-table migration, mailbox setup, and live email verification.
+
 The onboarding tour is skipped in browser automation with `NEXT_PUBLIC_E2E=true`; real users see it once per net ID and role, with a local completion marker and a skip option.
+
+Event lists show created or joined events; only lead web developers receive the full list. Attendance shows eligible open events and joined history. PM and web developer event creation defaults to their assigned group, with explicit audience selection required when no group is assigned. Browser tests cover audience selection and editing. Sprint completion reads and writes are restricted to the assigned group for both PMs and web developers; an unassigned manager gets an empty roster. Developer PM screens request `group_scope=true` for action items while developer previews retain their existing tools.
 
 The dependency lockfile includes compatible security updates. Next.js's PostCSS dependency is overridden within the PostCSS 8 release line to avoid its older vulnerable pin; verify this override whenever upgrading Next.js. Run `npm audit` along with the build after dependency updates.

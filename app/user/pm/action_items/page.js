@@ -45,7 +45,7 @@ export default function PMActionItems() {
     setLoading(true);
     const [meRes, itemsRes] = await Promise.all([
       fetch("/api/users/me"),
-      fetch(`/api/action_items?scope=${currentScope}`),
+      fetch(`/api/action_items?scope=${currentScope}&group_scope=true`),
     ]);
     if (meRes.ok) {
       const me = await meRes.json();

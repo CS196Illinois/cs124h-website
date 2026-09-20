@@ -6,6 +6,33 @@ import { table } from "../../lib/tables";
 test.describe("events: create, check-in toggle, and creator-scoped permissions", () => {
   test.beforeEach(clearAllTestTables);
 
+  for (const [role, dbRole] of [["pm", "PM"], ["web_dev", "WEB"]]) {
+    test(`${role} defaults to their group and can change the audience`, async ({ page, loginAs }) => {
+      await insertUser({ net_id: "audience-owner", role: dbRole, group_number: 3 });
+      await insertUser({ net_id: "audience-student", role: "STUDENT", group_number: 3 });
+      await loginAs({ netID: "audience-owner", role });
+      await page.goto(`/user/${role}/events`);
+      await page.getByRole("button", { name: "+ New Event" }).click();
+      await expect(page.getByRole("radio", { name: /My group · Group 3/ })).toBeChecked();
+      await expect(page.getByRole("status").filter({ hasText: "2 people can join" })).toBeVisible();
+      if (role === "pm") {
+        await page.getByRole("group", { name: "Who is this event for?" }).scrollIntoViewIfNeeded();
+        await page.screenshot({ path: "test-results/event-audience-desktop.png" });
+      }
+      await page.getByPlaceholder("e.g. Week 5 Guest Lecture").fill("Audience test");
+      await page.getByRole("button", { name: "Create Event" }).click();
+      await expect(page.getByText("Groups: 3", { exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "Edit audience" }).click();
+      await page.getByRole("radio", { name: /Choose people/ }).check();
+      await page.getByRole("searchbox", { name: "Find people" }).fill("audience-student");
+      await page.getByRole("checkbox", { name: "audience-student" }).check();
+      await page.getByRole("button", { name: "Save audience" }).click();
+      await expect(page.getByText("1 selected person", { exact: true })).toBeVisible();
+      const { data } = await testClient().from(table("events")).select("audience_type, audience_values").eq("title", "Audience test").single();
+      expect(data).toEqual({ audience_type: "people", audience_values: ["audience-student"] });
+    });
+  }
+
   test("pm creates an event and opens check-in, exposing a live rotating code", async ({ page, loginAs }) => {
     await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
     await loginAs({ netID: "e2e-pm", role: "pm" });
@@ -202,7 +229,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     expect(data.check_in_open).toBe(true);
   });
 
-  test("a pm sees only their own events; a course lead sees every event", async ({ page, loginAs }) => {
+  test("a pm sees only their own events; the lead web developer sees every event", async ({ page, loginAs }) => {
     await insertUser({ net_id: "e2e-pm-owner", role: "PM", group_number: 1 });
     await insertUser({ net_id: "e2e-pm-other", role: "PM", group_number: 2 });
     await insertEvent({ title: "Owner's Event", created_by: "e2e-pm-owner" });
@@ -213,9 +240,9 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await expect(page.getByText("No events yet.", { exact: false })).toBeVisible();
     await expect(page.getByText("Owner's Event", { exact: true })).not.toBeVisible();
 
-    // A course lead does (the escape hatch for an orphaned event).
-    await loginAs({ netID: "e2e-lead", role: "course_lead" });
-    await page.goto("/user/course_lead/events");
+    // The lead web developer has the full event overview.
+    await loginAs({ netID: "e2e-lead", role: "lead_web_dev" });
+    await page.goto("/user/lead_web_dev/events");
     await expect(page.getByText("Owner's Event", { exact: true })).toBeVisible();
 
     // And so does the creator.

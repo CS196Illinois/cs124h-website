@@ -23,13 +23,15 @@ test.describe("sprint understanding checks", () => {
     await page.goto("/user/course_lead/sprints");
     await page.getByRole("button", { name: "+ New Sprint" }).click();
     await page.locator("textarea").nth(0).fill("Ship the login flow"); // Goal - only textarea before questions are added
-    await page.getByRole("button", { name: "+ Add Question" }).click();
-    await page.getByRole("button", { name: "+ Add Question" }).click();
-    await page.getByRole("button", { name: "+ Add Question" }).click();
-    const textareas = page.locator("textarea");
-    await textareas.nth(1).fill("What design decisions did you make?");
-    await textareas.nth(2).fill("What alternatives did you consider?");
-    await textareas.nth(3).fill("How well did this integrate with your group's work?");
+    for (const question of ["What design decisions did you make?", "What alternatives did you consider?", "How well did this integrate with your group's work?"]) {
+      const existing = page.getByRole("checkbox", { name: question, exact: true });
+      if (await existing.count()) await existing.check();
+      else {
+        await page.getByLabel("New question", { exact: true }).fill(question);
+        await page.getByRole("button", { name: "Add question", exact: true }).click();
+        await expect(page.getByLabel("New question", { exact: true })).toHaveValue("");
+      }
+    }
     await page.locator('input[type="number"]').last().fill("20"); // Max Score (Sprint Number is the other number input)
     await page.getByRole("button", { name: "Create Sprint" }).click();
     await expect(page.getByText("Ship the login flow")).toBeVisible(SLOW);
@@ -99,10 +101,7 @@ test.describe("sprint understanding checks", () => {
     await page.goto("/user/course_lead/sprints");
     await page.getByRole("button", { name: "+ New Sprint" }).click();
     await page.locator("textarea").nth(0).fill("Sprint with a check");
-    await page.getByRole("button", { name: "+ Add Question" }).click();
-    await page.getByRole("button", { name: "+ Add Question" }).click();
-    await page.getByRole("button", { name: "+ Add Question" }).click();
-    await page.locator("textarea").nth(1).fill("What did your group accomplish?");
+    await page.getByRole("checkbox").first().check();
     await page.getByRole("button", { name: "Create Sprint" }).click();
 
     await loginAs({ netID: "e2e-stu2", role: "student" });

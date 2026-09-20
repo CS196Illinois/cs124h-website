@@ -21,7 +21,7 @@ export default function StudentDashboard() {
     setLoading(true);
     const [itemsRes, eventsRes, attendRes, spRes] = await Promise.all([
       fetch("/api/action_items"),
-      fetch("/api/events"),
+      fetch("/api/events?scope=checkin"),
       fetch("/api/events/my-checkins"),
       fetch("/api/sprints"),
     ]);

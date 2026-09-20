@@ -5,18 +5,25 @@ import { useSession } from "next-auth/react";
 import styles from "../../dashboard.module.css";
 import ActionCardList from "../../components/ActionCardList";
 import EmptyState from "../../components/EmptyState";
+import CompletedItems from "../../components/CompletedItems";
+import { averagePct } from "../../../../lib/grading";
 
 export default function StudentActionItems() {
   const { data: session, status } = useSession();
   const [activeTab, setActiveTab] = useState("todo");
   const [actionItems, setActionItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/action_items");
-    if (res.ok) setActionItems(await res.json());
-    setLoading(false);
+    setError("");
+    try {
+      const res = await fetch("/api/action_items");
+      if (!res.ok) throw new Error();
+      setActionItems(await res.json());
+    } catch { setError("We couldn't load your action items and grades. Please try again."); }
+    finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
@@ -24,17 +31,23 @@ export default function StudentActionItems() {
   }, [status, fetchItems]);
 
   const handleToggle = async (id, is_done) => {
-    await fetch(`/api/action_items/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_done: !is_done }),
-    });
-    await fetchItems();
+    try {
+      const res = await fetch(`/api/action_items/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_done: !is_done }),
+      });
+      if (!res.ok) throw new Error();
+      await fetchItems();
+    } catch { setError("That item could not be updated. Please try again."); }
   };
 
   const todo = actionItems.filter((a) => !a.is_done);
   const done = actionItems.filter((a) => a.is_done);
   const display = activeTab === "todo" ? todo : done;
+  const graded = done.filter((item) => item.is_gradable && item.grade != null);
+  const average = averagePct(graded);
+  const awaiting = done.filter((item) => item.is_gradable && item.grade == null).length;
 
   return (
     <div className={styles.container}>
@@ -43,15 +56,16 @@ export default function StudentActionItems() {
         <p>{session?.user?.name || session?.user?.netID}</p>
       </div>
 
+      {error && <p role="alert">{error} <button className={styles.btnSecondary} onClick={fetchItems}>Retry</button></p>}
       <div className={styles.statsGrid}>
         {loading
-          ? Array.from({ length: 2 }).map((_, i) => (
+          ? Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className={styles.statCard}>
                 <div className={styles.skeletonBlock} style={{ height: "2rem", width: "50%", margin: "0 auto 0.5rem" }} />
                 <div className={styles.skeletonBlock} style={{ height: "0.65rem", width: "65%", margin: "0 auto" }} />
               </div>
             ))
-          : [{ label: "To Do", val: todo.length }, { label: "Completed", val: done.length }].map(({ label, val }) => (
+          : [{ label: "To Do", val: todo.length }, { label: "Completed", val: done.length }, { label: "Average so far", val: average == null ? "—" : `${average.toFixed(1)}%` }, { label: "Awaiting grade", val: awaiting }].map(({ label, val }) => (
               <div key={label} className={styles.statCard}>
                 <div className={styles.statNumber}>{val}</div>
                 <div className={styles.statLabel}>{label}</div>
@@ -60,6 +74,7 @@ export default function StudentActionItems() {
         }
       </div>
 
+      {!loading && <p style={{ marginBottom: "1.5rem", fontSize: ".85rem", lineHeight: 1.6 }}>Average of {graded.filter((item) => Number(item.max_score) > 0).length} graded assignments, weighted equally. Ungraded work is excluded. This is your action-item average, not your final course grade.</p>}
       <div className={styles.tabs}>
         <button className={`${styles.tab} ${activeTab === "todo" ? styles.activeTab : ""}`} onClick={() => setActiveTab("todo")}>
           To Do
@@ -70,7 +85,7 @@ export default function StudentActionItems() {
           )}
         </button>
         <button className={`${styles.tab} ${activeTab === "done" ? styles.activeTab : ""}`} onClick={() => setActiveTab("done")}>
-          Completed
+          Completed & Grades
         </button>
       </div>
 
@@ -93,7 +108,7 @@ export default function StudentActionItems() {
             message={activeTab === "todo" ? "You're all caught up!" : "No completed items yet"}
           />
         ) : (
-          <ActionCardList items={display} onToggle={handleToggle} />
+          activeTab === "done" ? <CompletedItems items={done} onToggle={handleToggle} /> : <ActionCardList items={display} onToggle={handleToggle} />
         )}
       </div>
     </div>

@@ -60,7 +60,7 @@ export default function WebDevDashboard() {
     setLoading(true);
     const [meRes, itemsRes, spRes, reqRes] = await Promise.all([
       fetch("/api/users/me"),
-      fetch("/api/action_items"),
+      fetch("/api/action_items?group_scope=true"),
       fetch("/api/sprints"),
       fetch("/api/role-view-requests"),
     ]);

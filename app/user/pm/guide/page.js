@@ -36,7 +36,7 @@ export default function PMGuidePage() {
               </div>
               <div>
                 <dt>Sprints & checks</dt>
-                <dd>Future sprints stay hidden until their start date. Select shared questions or add your own; Course Leads manage the shared bank. Students can answer only while their group’s check is open.</dd>
+                <dd>Future sprints stay hidden until their start date. Saved check questions are required; you can add questions, but a Course Lead must change existing ones. Completion totals cover your group only. Students can answer only while their group’s check is open.</dd>
               </div>
               <div>
                 <dt>Attendance</dt>

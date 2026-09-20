@@ -1,29 +1,20 @@
 // middleware.js
-import { decode } from "next-auth/jwt";
+import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import { fetchApprovedViews } from "./lib/roleViews";
 
 export default async function middleware(req) {
-  // getToken() uses bracket-access on req.cookies which breaks in Next.js 15
-  // edge runtime. Read the cookie directly with the correct API and decode manually.
-  const secret = process.env.NEXTAUTH_SECRET ?? "";
-  const cookieValue = readSessionCookie(req);
-
-  let token = null;
-  if (cookieValue) {
-    try {
-      token = await decode({ token: cookieValue, secret });
-    } catch {
-      token = null;
-    }
-  }
+  // Match the cookie selection/chunking used by /api/auth/session exactly.
+  const token = await getToken({ req });
+  const cookieValue = req.cookies.getAll().some(({ name }) => name.includes("next-auth.session-token"));
 
   const role = token?.role;
   const path = req.nextUrl.pathname;
 
   if (!token) {
     const loginUrl = new URL("/signin", req.url);
-    loginUrl.searchParams.set("callbackUrl", req.nextUrl.pathname);
+    loginUrl.searchParams.set("callbackUrl", req.nextUrl.pathname + req.nextUrl.search);
+    if (cookieValue) loginUrl.searchParams.set("error", "SessionExpired");
     return NextResponse.redirect(loginUrl);
   }
 
@@ -35,7 +26,7 @@ export default async function middleware(req) {
   // /user passthrough so it also covers the bare root.
   if (!role || role === "error") {
     const url = new URL("/unauthorized", req.url);
-    url.searchParams.set("reason", "not-enrolled");
+    url.searchParams.set("reason", token.authError || "not-enrolled");
     url.searchParams.set("callbackUrl", path);
     return NextResponse.redirect(url);
   }
@@ -133,25 +124,3 @@ export default async function middleware(req) {
 export const config = {
   matcher: ["/user/:path*"],
 };
-
-// NextAuth splits oversized JWT cookies into `.0`, `.1`, ... chunks. Some
-// browsers also expose the host-only cookie name instead of the secure name.
-// Reassembling all supported forms prevents a valid session from being sent
-// back to /signin in a redirect loop.
-function readSessionCookie(req) {
-  const bases = [
-    "__Secure-next-auth.session-token",
-    "__Host-next-auth.session-token",
-    "next-auth.session-token",
-  ];
-  const cookies = req.cookies.getAll();
-  for (const base of bases) {
-    const direct = req.cookies.get(base)?.value;
-    if (direct) return direct;
-    const chunks = cookies
-      .filter(({ name }) => name.startsWith(`${base}.`))
-      .sort((a, b) => Number(a.name.slice(base.length + 1)) - Number(b.name.slice(base.length + 1)));
-    if (chunks.length) return chunks.map(({ value }) => value).join("");
-  }
-  return null;
-}

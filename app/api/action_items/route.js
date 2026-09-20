@@ -5,6 +5,7 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { MANAGEABLE_BY } from "../../../lib/roles";
+import { groupStudentIds } from "../../../lib/groupScope";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../lib/sandbox";
 
 export async function GET(request) {
@@ -21,6 +22,11 @@ export async function GET(request) {
   const scope = searchParams.get("scope") || "mine";
 
   let visibleRecipients = null;
+  // The developer's PM screens use the same group scope as PMs; explicit
+  // developer previews retain their existing access and sandbox tools.
+  if (userRole === "web_dev" && searchParams.get("group_scope") === "true") {
+    visibleRecipients = [netID, ...await groupStudentIds(netID, userRole)];
+  }
   if (userRole === "pm" || userRole === "head_pm") {
     let roster = supabaseServer.from(table("users")).select("net_id");
     if (userRole === "pm") {
@@ -64,6 +70,7 @@ export async function GET(request) {
     rows = await mergeSandboxRows(netID, "actionItems", rows, matchesFilter);
     rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
+  if (visibleRecipients) rows = rows.filter((row) => visibleRecipients.includes(row.net_id));
   return NextResponse.json(rows);
 }
 

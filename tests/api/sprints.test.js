@@ -22,18 +22,18 @@ describe("sprints CRUD", () => {
     expect(res.status).toBe(403);
   });
 
-  it("pm can edit understanding-check questions but not sprint metadata", async () => {
+  it("pm can append questions while preserving saved questions and scoring", async () => {
     const sprint = await insertSprint({ number: 1, goal: "Original", check_questions: ["Old question"], check_max_score: 10 });
     asRole("pm", "pm1");
     const updated = await PATCH(
       makeRequest(`http://localhost/api/sprints/${sprint.id}`, {
         method: "PATCH",
-        body: { check_questions: ["New question", "Follow-up"], check_max_score: 20 },
+        body: { check_questions: ["Old question", "Follow-up"] },
       }),
       { params: { id: sprint.id } },
     );
     expect(updated.status).toBe(200);
-    expect((await updated.json()).check_questions).toEqual(["New question", "Follow-up"]);
+    expect((await updated.json()).check_questions).toEqual(["Old question", "Follow-up"]);
 
     const forbidden = await PATCH(
       makeRequest(`http://localhost/api/sprints/${sprint.id}`, { method: "PATCH", body: { goal: "Changed" } }),
@@ -101,7 +101,26 @@ describe("sprints CRUD", () => {
     );
     expect(patchRes.status).toBe(404);
     const deleteRes = await DELETE(makeRequest(`http://localhost/api/sprints/${sprint.id}`, { method: "DELETE" }), { params: { id: sprint.id } });
-    expect(deleteRes.status).toBe(404);
+    expect(deleteRes.status).toBe(403);
+  });
+
+  it("PMs cannot edit, disable, reorder, delete, or change the score of lead checks", async () => {
+    const sprint = await insertSprint({ check_questions: ["Lead-only question", "Second question"], check_max_score: 20 });
+    asRole("pm", "pm1");
+    for (const body of [
+      { check_questions: null }, { check_questions: [] },
+      { check_questions: ["Edited", "Second question"] },
+      { check_questions: ["Second question", "Lead-only question"] },
+      { check_max_score: 100 },
+    ]) {
+      const response = await PATCH(makeRequest(`http://localhost/api/sprints/${sprint.id}`, { method: "PATCH", body }), { params: { id: sprint.id } });
+      expect(response.status).toBe(403);
+    }
+    expect((await DELETE(makeRequest(`http://localhost/api/sprints/${sprint.id}`, { method: "DELETE" }), { params: { id: sprint.id } })).status).toBe(403);
+    const rows = await (await GET(makeRequest("http://localhost/api/sprints"))).json();
+    expect(rows[0].check_questions).toEqual(["Lead-only question", "Second question"]);
+    asRole("course_lead", "lead1");
+    expect((await PATCH(makeRequest(`http://localhost/api/sprints/${sprint.id}`, { method: "PATCH", body: { check_questions: ["Updated by lead"] } }), { params: { id: sprint.id } })).status).toBe(200);
   });
 });
 
@@ -248,9 +267,25 @@ describe("sprint completions", () => {
 describe("sprint completions - sandbox mode", () => {
   beforeEach(clearAllTestTables);
 
+  it.each([["pm", "PM"], ["web_dev", "WEB"]])("limits %s completion reads and writes to their group", async (role, dbRole) => {
+    await insertUser({ net_id: "manager", role: dbRole, group_number: 1 });
+    await insertUser({ net_id: "mine", role: "STUDENT", group_number: 1 });
+    await insertUser({ net_id: "other", role: "STUDENT", group_number: 2 });
+    const sprint = await insertSprint({ number: 1, goal: "Sprint" });
+    await testClient().from(table("sprintCompletions")).insert(["mine", "other"].map((student_net_id) => ({ sprint_id: sprint.id, student_net_id, marked_by: "lead" })));
+    asRole(role, "manager");
+    const url = `http://localhost/api/sprints/${sprint.id}/completions`;
+    const params = { params: { id: sprint.id } };
+    expect((await (await GET_COMPLETIONS(makeRequest(url), params)).json()).map((row) => row.student_net_id)).toEqual(["mine"]);
+    expect((await POST_COMPLETION(makeRequest(url, { method: "POST", body: { student_net_id: "other" } }), params)).status).toBe(403);
+    expect((await DELETE_COMPLETION(makeRequest(`${url}?student_net_id=other`, { method: "DELETE" }), params)).status).toBe(403);
+    await testClient().from(table("users")).update({ group_number: null }).eq("net_id", "manager");
+    expect(await (await GET_COMPLETIONS(makeRequest(url), params)).json()).toEqual([]);
+  });
+
   it("a sandboxed mark writes to the overlay, not the real table", async () => {
-    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
-    await insertUser({ net_id: "stu1", role: "STUDENT" });
+    await insertUser({ net_id: "webdev1", role: "WEB", group_number: 1, sandbox_mode: "persistent" });
+    await insertUser({ net_id: "stu1", role: "STUDENT", group_number: 1 });
     const sprint = await insertSprint({ number: 1, goal: "Sprint 1" });
     asRole("web_dev", "webdev1");
 
@@ -268,8 +303,8 @@ describe("sprint completions - sandbox mode", () => {
   });
 
   it("re-marking the same student in sandbox mode updates in place, not a duplicate", async () => {
-    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
-    await insertUser({ net_id: "stu1", role: "STUDENT" });
+    await insertUser({ net_id: "webdev1", role: "WEB", group_number: 1, sandbox_mode: "persistent" });
+    await insertUser({ net_id: "stu1", role: "STUDENT", group_number: 1 });
     const sprint = await insertSprint({ number: 1, goal: "Sprint 1" });
     asRole("web_dev", "webdev1");
 
@@ -287,8 +322,8 @@ describe("sprint completions - sandbox mode", () => {
   });
 
   it("sandboxing a real completion's removal doesn't touch the real row", async () => {
-    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
-    await insertUser({ net_id: "stu1", role: "STUDENT" });
+    await insertUser({ net_id: "webdev1", role: "WEB", group_number: 1, sandbox_mode: "persistent" });
+    await insertUser({ net_id: "stu1", role: "STUDENT", group_number: 1 });
     const sprint = await insertSprint({ number: 1, goal: "Sprint 1" });
     await testClient().from(table("sprintCompletions")).insert({ sprint_id: sprint.id, student_net_id: "stu1", marked_by: "lead1" });
     asRole("web_dev", "webdev1");

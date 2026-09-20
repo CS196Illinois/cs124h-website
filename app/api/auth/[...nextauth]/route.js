@@ -41,7 +41,11 @@ export const authOptions = {
             profile.sub,
           // CILogon can omit `email` for an existing browser session while
           // still returning one of these equivalent verified identifiers.
-          email: profile.email || profile.preferred_username || profile.eppn,
+          email: profile.email,
+          preferred_username: profile.preferred_username,
+          eppn: profile.eppn,
+          subject_id: profile.subject_id,
+          idp: profile.idp,
         };
       },
     },
@@ -49,16 +53,13 @@ export const authOptions = {
 
   pages: { signIn: "/signin" },
 
-  events: {
-    async error(message) {
+  logger: {
+    error(code) {
       // Keep provider errors in the server log without writing tokens or
       // authorization codes. This makes login loops diagnosable in hosting
       // logs instead of looking like a generic redirect failure.
       console.error("NextAuth authentication error", {
-        name: message?.name,
-        code: message?.code,
-        type: message?.type,
-        message: message?.message,
+        code,
       });
     },
   },
@@ -78,6 +79,7 @@ export const authOptions = {
         // Both values come from CILogon's signed ID token - verified server-side
         // by Next-Auth's PKCE + state checks. The client cannot forge either.
         const sub = user.id; // CILogon's immutable OIDC subject identifier
+        if (!sub) throw new Error("Missing CILogon subject");
         token.sub = sub;
 
         const clogonName = user.name || "";
@@ -98,6 +100,7 @@ export const authOptions = {
               identityFields: Object.keys(user).filter((key) => key !== "access_token" && key !== "id_token"),
             });
             token.role = "error";
+            token.authError = "identity-missing";
             token.netID = null;
             token.isNewUser = false;
             token.onboardingSession = null;
@@ -116,6 +119,7 @@ export const authOptions = {
         }
 
         token.netID = record?.net_id ?? getNetIDFromIdentity(user);
+        token.authError = null;
         token.role = record ? mapRole(record.role) : "error";
         token.isNewUser = isNewUser && Boolean(record);
         token.onboardingSession = token.isNewUser ? randomUUID() : null;
@@ -146,6 +150,7 @@ export const authOptions = {
         session.user.role = token.role;
         session.user.isNewUser = token.isNewUser === true;
         session.user.onboardingSession = token.onboardingSession ?? null;
+        session.user.authError = token.authError ?? null;
       }
       return session;
     },
@@ -170,7 +175,7 @@ async function fetchRoleBySub(sub, clogonName = "") {
     .maybeSingle();
   if (error) {
     console.error("CILogon role lookup failed", { code: error.code, message: error.message });
-    return null;
+    throw new Error("Course roster is temporarily unavailable");
   }
   if (!data) return null;
   // Backfill name from CILogon if the DB row has none yet
@@ -190,7 +195,7 @@ async function fetchRoleBySub(sub, clogonName = "") {
  *
  * The `.is("sub", null)` clause in the UPDATE acts as a compare-and-swap:
  * if two identical requests race, only the first one writes the sub and the
- * second finds no matching rows, returning null instead of granting access.
+ * second re-reads by sub, allowing only the same identity to complete sign-in.
  * Once a sub is bound it can only be changed by an admin directly in the DB.
  */
 async function claimRosterEntry(netID, sub, clogonName = "") {
@@ -204,10 +209,10 @@ async function claimRosterEntry(netID, sub, clogonName = "") {
 
   if (lookupError) {
     console.error("CILogon roster lookup failed", { netID, code: lookupError.code, message: lookupError.message });
-    return null;
+    throw new Error("Course roster is temporarily unavailable");
   }
 
-  if (!unclaimed) return null;
+  if (!unclaimed) return fetchRoleBySub(sub, clogonName);
 
   // Atomic bind - only updates rows where sub is still NULL
   // Also write the CILogon name if the roster entry has none yet
@@ -220,12 +225,18 @@ async function claimRosterEntry(netID, sub, clogonName = "") {
     .select("role, net_id, name")
     .maybeSingle();
 
-  return error ? null : claimed;
+  if (error) throw new Error("Could not claim course roster entry");
+  // Concurrent callbacks for the SAME identity should both succeed. A
+  // different identity still cannot take over an already-bound roster row.
+  return claimed ?? fetchRoleBySub(sub, clogonName);
 }
 
 /** Extract a stable Illinois NetID from the identity fields CILogon may send. */
 function getNetIDFromIdentity(user) {
+  if (user?.idp && user.idp !== "urn:mace:incommon:uiuc.edu") return null;
   const candidates = [
+    user?.eppn,
+    user?.subject_id,
     user?.email,
     user?.emailAddress,
     user?.preferred_username,
@@ -238,7 +249,7 @@ function getNetIDFromIdentity(user) {
     if (!value) continue;
     const email = value.match(/^([a-z0-9][a-z0-9._-]*)@illinois\.edu$/);
     if (email) return email[1];
-    if (!value.includes("@") && /^[a-z0-9][a-z0-9._-]*$/.test(value)) return value;
+    if (user?.idp === "urn:mace:incommon:uiuc.edu" && !value.includes("@") && /^[a-z0-9][a-z0-9._-]*$/.test(value)) return value;
   }
   return null;
 }

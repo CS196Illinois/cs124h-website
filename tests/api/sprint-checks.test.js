@@ -166,15 +166,15 @@ describe("understanding check: web dev doubling as a PM", () => {
     expect(windows[0].group_number).toBe(1);
   });
 
-  it("a web dev with no group still gets the manager all-groups view", async () => {
+  it("a web dev with no group gets an empty PM roster", async () => {
     const sprint = await seed();
     await withQuestions(sprint);
     await insertUser({ net_id: "web2", role: "WEB" });
 
     asRole("web_dev", "web2");
     const view = await (await GET(makeRequest(`http://localhost/api/sprints/${sprint.id}/check`), { params: { id: sprint.id } })).json();
-    expect(Array.isArray(view.groups)).toBe(true);
-    expect(view.groups.map((g) => g.groupNumber)).toEqual([1, 2]);
+    expect(view.groups).toBeUndefined();
+    expect(view.roster).toEqual([]);
   });
 });
 

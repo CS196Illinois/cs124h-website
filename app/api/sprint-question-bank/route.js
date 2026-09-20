@@ -4,7 +4,7 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 
-const EDIT_ROLES = ["course_lead", "head_pm", "pm"];
+const EDIT_ROLES = ["course_lead", "head_pm", "pm", "web_dev", "lead_web_dev"];
 
 export async function GET() {
   const session = await getServerSession(authOptions);

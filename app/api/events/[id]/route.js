@@ -4,7 +4,7 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
-import { eventHasEnded } from "../../../../lib/events";
+import { eventHasEnded, validateEventAudience, getManagedEvent } from "../../../../lib/events";
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 
@@ -18,13 +18,23 @@ export async function PATCH(request, { params }) {
   }
 
   const { id } = await params;
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Invalid event update." }, { status: 400 });
+  const managed = await getManagedEvent(id, netID, userRole, "*");
+  if (!managed) return NextResponse.json({ error: "Only the creator can change this event." }, { status: 403 });
   const updates = {};
+  if ("audience_type" in body || "audience_values" in body) {
+    const type = body.audience_type ?? managed.audience_type ?? "all";
+    const audience = await validateEventAudience(type, body.audience_values ?? managed.audience_values ?? [], netID, userRole);
+    if (audience.error) return NextResponse.json({ error: audience.error }, { status: audience.status || 400 });
+    updates.audience_type = type;
+    updates.audience_values = audience.values;
+  }
 
   if (body.check_in_open !== undefined) {
+    if (typeof body.check_in_open !== "boolean") return NextResponse.json({ error: "Invalid check-in state." }, { status: 400 });
     if (body.check_in_open) {
-      const { data: event } = await supabaseServer.from(table("events")).select("end_time").eq("id", id).maybeSingle();
-      if (eventHasEnded(event)) return NextResponse.json({ error: "This event has already ended, so check-in cannot be opened." }, { status: 400 });
+      if (eventHasEnded(managed)) return NextResponse.json({ error: "This event has already ended, so check-in cannot be opened." }, { status: 400 });
     }
     updates.check_in_open = body.check_in_open;
     if (body.check_in_open) {

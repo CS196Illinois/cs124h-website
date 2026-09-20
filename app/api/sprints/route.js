@@ -30,10 +30,9 @@ export async function GET() {
   }
   rows = rows.filter((sprint) => isSprintVisibleToRole(sprint, userRole));
 
-  // Understanding-check question text is only for the roles that author it -
-  // a PM/student only ever learns it through /api/sprints/[id]/check, which
-  // gates it on the check actually being open for their group.
-  if (!MANAGE_ROLES.includes(userRole)) {
+  // PMs need the saved question list to append questions without overwriting
+  // required ones. Students see questions only through the gated check API.
+  if (userRole === "student") {
     rows = rows.map(({ check_questions, check_max_score, ...rest }) => rest);
   }
   return NextResponse.json(rows);

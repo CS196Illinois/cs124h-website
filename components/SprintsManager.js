@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
+import { isPmViewRole } from "../lib/roles";
 import { useUndo } from "./UndoProvider";
 import styles from "../app/user/dashboard.module.css";
 import { courseTodayISO } from "../lib/dateFormat";
@@ -15,6 +17,8 @@ function getCurrentSprint(sprints) {
 }
 
 export default function SprintsManager({ canManage = false, canManageQuestions = canManage, canManageQuestionBank = false, renderExtra }) {
+  const { data: session, status } = useSession();
+  const groupScoped = isPmViewRole(session?.user?.role);
   const { scheduleUndo } = useUndo();
   const [sprints, setSprints] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -33,10 +37,11 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
 
   const fetchBase = useCallback(async () => {
     setLoading(true);
-    const [spRes, stuRes, bankRes] = await Promise.all([
+    const [spRes, stuRes, bankRes, meRes] = await Promise.all([
       fetch("/api/sprints"),
       fetch("/api/users?role=STUDENT"),
       fetch("/api/sprint-question-bank"),
+      groupScoped ? fetch("/api/users/me") : Promise.resolve(null),
     ]);
     let fetchedSprints = [];
     if (spRes.ok) {
@@ -46,14 +51,18 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
         setSelectedId((prev) => prev ?? getCurrentSprint(fetchedSprints)?.id);
       }
     }
-    if (stuRes.ok) setStudents(await stuRes.json());
+    if (stuRes.ok) {
+      const people = await stuRes.json();
+      const me = meRes?.ok ? await meRes.json() : null;
+      setStudents(groupScoped ? people.filter((person) => me?.group_number != null && person.group_number === me.group_number) : people);
+    }
     if (bankRes.ok) setQuestionBank(await bankRes.json());
     setLoading(false);
-  }, []);
+  }, [groupScoped]);
 
   useEffect(() => {
-    fetchBase();
-  }, [fetchBase]);
+    if (status === "authenticated") fetchBase();
+  }, [fetchBase, status]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -116,7 +125,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
           check_questions: form.check_questions,
           check_max_score: form.check_max_score || null,
         }
-      : { check_questions: form.check_questions, check_max_score: form.check_max_score || null };
+      : { check_questions: form.check_questions };
     const res = editingSprint
       ? await fetch(`/api/sprints/${editingSprint.id}`, {
           method: "PATCH",
@@ -148,7 +157,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
   const toggleBankQuestion = (question) => {
     setForm((f) => ({ ...f, check_questions: f.check_questions.includes(question)
       ? f.check_questions.filter((q) => q !== question)
-      : [...f.check_questions, question] }));
+      : f.check_questions.length < 8 ? [...f.check_questions, question] : f.check_questions }));
   };
 
   const addBankQuestion = async () => {
@@ -276,10 +285,10 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
           </div>
           <div style={{ marginTop: "0.85rem", display: "inline-flex", gap: "0.4rem", alignItems: "center", background: "rgba(255,255,255,0.04)", borderRadius: "8px", padding: "0.4rem 0.75rem" }}>
             <span style={{ color: "#4ade80", fontFamily: "Inter", fontWeight: 700, fontSize: "1rem" }}>
-              {completedIds.size}
+              {students.filter((student) => completedIds.has(student.net_id)).length}
             </span>
             <span style={{ color: "rgba(249,249,249,0.5)", fontFamily: "Inter", fontSize: "0.85rem" }}>
-              / {students.length} students complete
+              / {students.length} {groupScoped ? "students in your group complete" : "students complete"}
             </span>
           </div>
         </div>
@@ -397,6 +406,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
                   <div>
                     <h3 className={styles.questionBankTitle}>Understanding check questions</h3>
                     <p className={styles.questionBankHint}>Select questions for this sprint. New questions are saved to the shared bank for future sprints.</p>
+                    {!canManage && <p className={styles.questionBankHint}>Saved questions are required and locked. You may add questions, up to 8 total. Ask a course lead to change existing questions.</p>}
                   </div>
                   <div className={styles.questionBankList}>
                     {[...questionBank, ...form.check_questions.filter((q) => !questionBank.some((b) => b.question === q)).map((question, i) => ({ id: `saved-${i}`, question, saved: true }))].map((item) => (
@@ -404,7 +414,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
                         <label className={styles.questionBankChoice}>
                           <input className={styles.checkboxInput} type="checkbox"
                             checked={form.check_questions.includes(item.question)}
-                            disabled={!canManage && (editingSprint?.check_questions ?? []).includes(item.question)}
+                            disabled={(!canManage && (editingSprint?.check_questions ?? []).includes(item.question)) || (!form.check_questions.includes(item.question) && form.check_questions.length >= 8)}
                             onChange={() => toggleBankQuestion(item.question)} />
                           <span>{item.question}</span>
                         </label>
@@ -423,13 +433,13 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
                       onChange={(e) => setNewBankQuestion(e.target.value)}
                       placeholder="What would you like students to reflect on?" />
                     {newBankQuestion.trim() && <p className={styles.questionBankHint}>Add this question before saving the sprint, or clear it to discard it.</p>}
-                    <button type="button" className={styles.btnSecondary} disabled={bankBusy || !newBankQuestion.trim()}
+                    <button type="button" className={styles.btnSecondary} disabled={bankBusy || !newBankQuestion.trim() || form.check_questions.length >= 8}
                       onClick={addBankQuestion}>{bankBusy ? "Adding…" : "Add question"}</button>
                   </div>
                   <p className={styles.questionBankHint}>{form.check_questions.length} selected for this sprint</p>
                   {form.check_questions.length > 0 && <div>
                     <label htmlFor="sprint-max-score">Maximum score</label>
-                    <input id="sprint-max-score" type="number" min="1" value={form.check_max_score}
+                    <input id="sprint-max-score" type="number" min="1" value={form.check_max_score} disabled={!canManage}
                       onChange={(e) => setForm((f) => ({ ...f, check_max_score: e.target.value }))}
                       placeholder="100" />
                   </div>}

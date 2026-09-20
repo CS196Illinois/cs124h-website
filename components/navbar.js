@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import styles from "./Navbar.module.css";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function Navbar() {
@@ -21,7 +21,7 @@ export default function Navbar() {
       // full row of nav buttons doesn't fit on one line (labels wrap inside
       // the fixed-height bar and later items get pushed off-screen), so the
       // mobile hamburger menu takes over well before the old 768px cutoff.
-      setIsMobile(window.innerWidth <= 1280);
+      setIsMobile(window.innerWidth <= 1400);
     };
 
     checkScreenSize();
@@ -84,10 +84,7 @@ export default function Navbar() {
           <div>
             <button
               onClick={() => {
-                if (!session) {
-                  signIn("cilogon", { callbackUrl: "/user" })
-                }
-                router.push("/user");
+                router.push(session ? "/user" : "/signin");
               }}
               className={`${styles["nav-button"]} ${
                 pathname === `/user/${session?.user?.role}` ? styles.active : ""
@@ -141,6 +138,7 @@ export default function Navbar() {
               Timeline
             </button>
           </Link>
+          <Link href="/support" className={`${styles["nav-button"]} ${styles.supportLink} ${pathname === "/support" ? styles.active : ""}`}>Support</Link>
           <div>
             {status === "loading" ? (
               <button className={styles["nav-button"]}>Loading…</button>
@@ -154,7 +152,7 @@ export default function Navbar() {
             ) : (
               <button
                 className={styles["nav-button"]}
-                onClick={() => signIn("cilogon", { callbackUrl: "/user" })}
+                onClick={() => router.push("/signin")}
               >
                 Login
               </button>
@@ -191,10 +189,8 @@ export default function Navbar() {
               <div>
                 <button
                   onClick={() => {
-                    if (!session) {
-                      signIn("cilogon", { callbackUrl: "/user" })
-                    }
-                    router.push("/user");
+                    handleLinkClick();
+                    router.push(session ? "/user" : "/signin");
                   }}
                   className={`${styles["nav-button"]} ${
                     pathname === `/user/${session?.user?.role}` ? styles.active : ""
@@ -248,6 +244,7 @@ export default function Navbar() {
                   Timeline
                 </button>
               </Link>
+              <Link href="/support" onClick={handleLinkClick} className={`${styles["nav-button"]} ${styles.supportLink} ${pathname === "/support" ? styles.active : ""}`}>Support</Link>
               <div>
                 {status === "loading" ? (
                   <button className={styles["nav-button"]}>Loading…</button>
@@ -261,7 +258,7 @@ export default function Navbar() {
                 ) : (
                   <button
                     className={styles["nav-button"]}
-                    onClick={() => signIn("cilogon", { callbackUrl: "/user" })}
+                    onClick={() => { handleLinkClick(); router.push("/signin"); }}
                   >
                     Login
                   </button>

@@ -18,7 +18,7 @@ export default function PMGradebook() {
     setError("");
     try {
       const [meRes, itemsRes] = await Promise.all([
-        fetch("/api/users/me"), fetch("/api/action_items?scope=all"),
+        fetch("/api/users/me"), fetch("/api/action_items?scope=all&group_scope=true"),
       ]);
       if (!meRes.ok || !itemsRes.ok) throw new Error("Unable to load your gradebook. Please try again.");
       const [me, nextItems] = await Promise.all([meRes.json(), itemsRes.json()]);

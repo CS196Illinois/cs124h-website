@@ -4,8 +4,8 @@ import { randomUUID } from "crypto";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
-import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../lib/sandbox";
-import { canAdminEvents, EVENT_AUDIENCE_TYPES, audienceMatches, eventHasEnded } from "../../../lib/events";
+import { isSandboxRole, getSandboxMode, getEffectiveRow, mergeSandboxRows, sandboxWrite } from "../../../lib/sandbox";
+import { canAdminEvents, validateEventAudience, audienceMatches, eventHasEnded } from "../../../lib/events";
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 
@@ -18,47 +18,41 @@ export async function GET(request) {
     return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
   }
 
-  // scope=checkin: the Attendance tab - every open event plus any the user
-  // has already checked into (for their attendance history).
-  // default: the Events tab - only events this user created (course
-  // leads / lead web dev see all, so an orphaned event stays reachable).
+  // Attendance: eligible open events plus the viewer's attendance history.
+  // Events: created or joined events. Only lead web developers see all.
   const scope = new URL(request.url).searchParams.get("scope") || "mine";
 
   let { data, error } = await supabaseServer
     .from(table("events"))
-    .select("id, title, description, location, presenter, start_time, check_in_open, check_in_opened_at, created_by, created_at, point_value, sheet_synced_at, sheet_sync_error, audience_type, audience_values")
+    .select("id, title, description, location, presenter, start_time, end_time, check_in_open, check_in_opened_at, created_by, created_at, point_value, sheet_synced_at, sheet_sync_error, audience_type, audience_values")
     .order("created_at", { ascending: false });
 
-  if (error && (error.code === "PGRST204" || error.code === "42703")) {
-    ({ data, error } = await supabaseServer.from(table("events")).select("id, title, description, location, presenter, start_time, check_in_open, check_in_opened_at, created_by, created_at, point_value, sheet_synced_at, sheet_sync_error").order("created_at", { ascending: false }));
-    if (data) data = data.map((row) => ({ ...row, audience_type: "all", audience_values: [] }));
-  }
   if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
 
   let rows = data;
-  const expiredIds = rows.filter((event) => event.check_in_open && eventHasEnded(event)).map((event) => event.id);
-  if (expiredIds.length) {
-    await supabaseServer.from(table("events")).update({ check_in_open: false }).in("id", expiredIds);
-    rows = rows.map((event) => expiredIds.includes(event.id) ? { ...event, check_in_open: false } : event);
-  }
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
     rows = await mergeSandboxRows(netID, "events", rows, () => true);
     rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
+  // Reading a sandbox preview must not mutate the real event table.
+  rows = rows.map((event) => event.check_in_open && eventHasEnded(event) ? { ...event, check_in_open: false } : event);
 
-  const { data: viewer } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
-  const viewerGroup = viewer?.group_number ?? null;
-  if (scope === "checkin") {
-    const { data: mine } = await supabaseServer
-      .from(table("eventCheckins")).select("event_id").eq("net_id", netID);
+  const { data: viewer, error: viewerError } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
+  if (viewerError) return NextResponse.json({ error: "Your event access could not be checked. Please try again." }, { status: 503 });
+  const effectiveViewer = isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off" ? await getEffectiveRow(netID, "users", netID, viewer) : viewer;
+  const viewerGroup = effectiveViewer?.group_number ?? null;
+  if (scope === "checkin" || !canAdminEvents(userRole)) {
+    const { data: mine, error: checkinError } = await supabaseServer
+      .from(table("eventCheckins")).select("id, event_id, net_id").eq("net_id", netID);
+    if (checkinError) return NextResponse.json({ error: "Your joined events could not be loaded. Please try again." }, { status: 503 });
     let attendedIds = new Set((mine ?? []).map((r) => r.event_id));
     if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
       const merged = await mergeSandboxRows(netID, "eventCheckins", mine ?? [], (r) => r.net_id === netID);
       attendedIds = new Set(merged.map((r) => r.event_id));
     }
-    rows = rows.filter((e) => audienceMatches(e, { netID, role: userRole, groupNumber: viewerGroup }) && (e.check_in_open || attendedIds.has(e.id)));
-  } else if (!canAdminEvents(userRole)) {
-    rows = rows.filter((e) => e.created_by === netID || (e.audience_type !== "all" && audienceMatches(e, { netID, role: userRole, groupNumber: viewerGroup })));
+    rows = rows.filter((e) => attendedIds.has(e.id) || (scope === "checkin"
+      ? e.check_in_open && audienceMatches(e, { netID, role: userRole, groupNumber: viewerGroup })
+      : e.created_by === netID));
   }
 
   return NextResponse.json(rows);
@@ -75,25 +69,24 @@ export async function POST(request) {
 
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Please check the information you entered and try again." }, { status: 400 });
-  const { title, description, location, presenter, start_time, end_time, audience_type = "all", audience_values = [] } = body;
+  const { title, description, location, presenter, start_time, end_time } = body;
+  let { audience_type, audience_values = [] } = body;
+  if (audience_type === undefined && ["pm", "web_dev"].includes(userRole)) {
+    const { data: me, error } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
+    if (error) return NextResponse.json({ error: "Your group could not be loaded. Please try again." }, { status: 503 });
+    const effectiveMe = isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off" ? await getEffectiveRow(netID, "users", netID, me) : me;
+    if (effectiveMe?.group_number == null) return NextResponse.json({ error: "You have no group assigned. Choose an event audience explicitly." }, { status: 400 });
+    audience_type = "groups";
+    audience_values = [String(effectiveMe.group_number)];
+  }
+  audience_type ??= "all";
 
   if (typeof title !== "string" || !title.trim()) {
     return NextResponse.json({ error: "Please enter a title." }, { status: 400 });
   }
-  if (!EVENT_AUDIENCE_TYPES.includes(audience_type) || !Array.isArray(audience_values) || audience_values.some((v) => typeof v !== "string" && typeof v !== "number")) {
-    return NextResponse.json({ error: "Please choose a valid event audience." }, { status: 400 });
-  }
-  const cleanAudience = [...new Set(audience_values.map(String).map((v) => v.trim()).filter(Boolean))];
-  if (audience_type !== "all" && cleanAudience.length === 0) return NextResponse.json({ error: "Select at least one audience member" }, { status: 400 });
-  if (audience_type === "roles" && cleanAudience.some((v) => !["LEAD", "LEAD_WEB", "HEAD", "PM", "WEB", "STUDENT"].includes(v.toUpperCase()))) return NextResponse.json({ error: "One or more selected audience roles are not valid." }, { status: 400 });
-  if (audience_type === "roles") cleanAudience.forEach((value, index) => { cleanAudience[index] = value.toUpperCase(); });
-  if (audience_type === "people" || audience_type === "groups") {
-    const { data: roster } = await supabaseServer.from(table("users")).select("net_id, group_number");
-    const valid = audience_type === "people"
-      ? new Set((roster ?? []).map((person) => person.net_id))
-      : new Set((roster ?? []).filter((person) => person.group_number != null).map((person) => String(person.group_number)));
-    if (cleanAudience.some((value) => !valid.has(value))) return NextResponse.json({ error: "One or more audience selections are not in the roster" }, { status: 400 });
-  }
+  const audience = await validateEventAudience(audience_type, audience_values, netID, userRole);
+  if (audience.error) return NextResponse.json({ error: audience.error }, { status: audience.status || 400 });
+  const cleanAudience = audience.values;
 
   if ([description, location, presenter].some((value) => value != null && typeof value !== "string")) {
     return NextResponse.json({ error: "Description, location and presenter must be text" }, { status: 400 });

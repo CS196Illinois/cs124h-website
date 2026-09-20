@@ -15,6 +15,7 @@ const links = [
   { href: "/gradebook",    label: "Gradebook"    },
   { href: "/events",       label: "Events"       },
   { href: "/sprints",      label: "Sprints"      },
+  { href: "/guide",        label: "PM Guide"     },
   { href: "/user/checkin", label: "Attendance", absolute: true },
 ];
 

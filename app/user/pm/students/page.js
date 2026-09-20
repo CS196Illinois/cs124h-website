@@ -32,7 +32,7 @@ export default function PMStudents() {
     setLoading(true);
     const [meRes, itemsRes, spRes] = await Promise.all([
       fetch("/api/users/me"),
-      fetch("/api/action_items"),
+      fetch("/api/action_items?group_scope=true"),
       fetch("/api/sprints"),
     ]);
     let me = null;

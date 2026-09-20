@@ -29,6 +29,7 @@ describe("GET/POST /api/events", () => {
   });
 
   it("creates an event, defaulting end_time to start_time + 1h", async () => {
+    await insertUser({ net_id: "pm1", role: "PM", group_number: 1 });
     asRole("pm", "pm1");
     const start = new Date("2026-01-01T18:00:00Z").toISOString();
     const res = await POST(makeRequest("http://localhost/api/events", {
@@ -68,7 +69,7 @@ describe("PATCH/DELETE /api/events/[id]", () => {
     );
     expect(headBlocked.status).toBe(403);
 
-    // Course leads can see all events, but cannot manage another creator's event.
+    // Course leads also cannot manage another creator's event.
     asRole("course_lead", "lead1");
     const leadEdit = await PATCH(
       makeRequest(`http://localhost/api/events/${others.id}`, { method: "PATCH", body: { title: "cleaned up" } }),
@@ -99,7 +100,34 @@ describe("PATCH/DELETE /api/events/[id]", () => {
 describe("GET /api/events scoping", () => {
   beforeEach(clearAllTestTables);
 
-  it("the Events tab (default scope) returns only events you created - but a course lead sees all", async () => {
+  it("keeps invitations out of Events but preserves joined history after audience changes", async () => {
+    await insertUser({ net_id: "pm1", role: "PM", group_number: 1 });
+    await insertEvent({ title: "invited", created_by: "other", check_in_open: true, audience_type: "groups", audience_values: ["1"] });
+    await insertEvent({ title: "other group", created_by: "other", check_in_open: true, audience_type: "groups", audience_values: ["2"] });
+    const joined = await insertEvent({ title: "joined", created_by: "other", audience_type: "groups", audience_values: ["2"] });
+    await testClient().from(table("eventCheckins")).insert({ event_id: joined.id, net_id: "pm1" });
+    asRole("pm", "pm1");
+    const events = await (await GET(makeRequest("http://localhost/api/events"))).json();
+    expect(events.map((event) => event.title)).toEqual(["joined"]);
+    const attendance = await (await GET(makeRequest("http://localhost/api/events?scope=checkin"))).json();
+    expect(attendance.map((event) => event.title).sort()).toEqual(["invited", "joined"]);
+    for (const role of ["course_lead", "head_pm", "web_dev"]) {
+      asRole(role, "unrelated");
+      expect(await (await GET(makeRequest("http://localhost/api/events"))).json()).toEqual([]);
+    }
+  });
+
+  it.each([["pm", "PM"], ["web_dev", "WEB"]])("defaults %s events to their group and requires an explicit audience without a group", async (role, dbRole) => {
+    await insertUser({ net_id: "owner", role: dbRole, group_number: 7 });
+    asRole(role, "owner");
+    const response = await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "Group meeting" } }));
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({ audience_type: "groups", audience_values: ["7"] });
+    await testClient().from(table("users")).update({ group_number: null }).eq("net_id", "owner");
+    expect((await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "No group" } }))).status).toBe(400);
+  });
+
+  it("the Events tab returns created events, while the lead web developer sees all", async () => {
     await insertEvent({ title: "pm1 event", created_by: "pm1" });
     await insertEvent({ title: "pm2 event", created_by: "pm2" });
 
@@ -107,7 +135,7 @@ describe("GET /api/events scoping", () => {
     const mine = await (await GET(makeRequest("http://localhost/api/events"))).json();
     expect(mine.map((e) => e.title)).toEqual(["pm1 event"]);
 
-    asRole("course_lead", "lead1");
+    asRole("lead_web_dev", "lead1");
     const all = await (await GET(makeRequest("http://localhost/api/events"))).json();
     expect(all.map((e) => e.title).sort()).toEqual(["pm1 event", "pm2 event"]);
   });
@@ -131,7 +159,7 @@ describe("events - sandbox mode", () => {
     await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
     asRole("web_dev", "webdev1");
 
-    const res = await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "Sandboxed event" } }));
+    const res = await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "Sandboxed event", audience_type: "all" } }));
     expect(res.status).toBe(201);
 
     const { data: real } = await testClient().from(table("events")).select("*");
@@ -277,7 +305,7 @@ describe("event check-ins - sandbox mode", () => {
     await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
     asRole("web_dev", "webdev1");
 
-    const created = await (await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "sandbox event" } }))).json();
+    const created = await (await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "sandbox event", audience_type: "all" } }))).json();
     await PATCH(
       makeRequest(`http://localhost/api/events/${created.id}`, { method: "PATCH", body: { check_in_open: true } }),
       { params: { id: created.id } }

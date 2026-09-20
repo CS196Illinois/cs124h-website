@@ -27,7 +27,7 @@ test.describe("action items: assign, complete, and grade", () => {
     await page.getByRole("button", { name: "Mark complete" }).first().click();
     // Completing the item moves it out of the "To Do" tab and into "Completed".
     await page.getByRole("button", { name: "Completed" }).click();
-    await expect(page.getByText("Awaiting grade")).toBeVisible();
+    await expect(page.getByRole("article").getByText("Awaiting grade", { exact: true })).toBeVisible();
 
     // ── PM sees one collapsed batch entry ready to grade ──
     await loginAs({ netID: "e2e-pm", role: "pm" });
@@ -124,8 +124,10 @@ test.describe("action items: assign, complete, and grade", () => {
     await loginAs({ netID: "e2e-stu1", role: "student" });
     await page.goto("/user/student/action_items");
     await page.getByRole("button", { name: "Completed" }).click();
-    await expect(page.getByText("Score: 90/100")).toBeVisible();
-    await page.getByRole("button", { name: "Mark incomplete" }).click();
+    await expect(page.getByText("90/100", { exact: true })).toBeVisible();
+    await page.getByText("View details", { exact: true }).click();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: "Reopen item" }).click();
 
     // Reopening moves it back to "To Do" and clears the grade.
     await page.getByRole("button", { name: "To Do" }).click();

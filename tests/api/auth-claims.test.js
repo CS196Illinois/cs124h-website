@@ -28,3 +28,30 @@ it("accepts CILogon's alternate preferred username identity for first login", as
   expect(token.role).toBe("student");
   expect(token.netID).toBe("alternate-student");
 });
+
+it("retains an Illinois principal when the provider also sends a non-Illinois email", async () => {
+  await insertUser({ net_id: "principal", role: "STUDENT", sub: null });
+  const user = authOptions.providers[0].profile({ sub: "principal-sub", email: "someone@example.org", eppn: "principal@illinois.edu" });
+  const token = await authOptions.callbacks.jwt({ token: {}, user });
+  expect(token.role).toBe("student");
+  expect(token.netID).toBe("principal");
+});
+
+it("allows simultaneous first sign-ins from the same identity", async () => {
+  await insertUser({ net_id: "sameidentity", role: "STUDENT", sub: null });
+  const tokens = await Promise.all([1, 2].map(() => authOptions.callbacks.jwt({ token: {}, user: { id: "same-sub", email: "sameidentity@illinois.edu" } })));
+  expect(tokens.map((token) => token.role)).toEqual(["student", "student"]);
+});
+
+it("does not claim a roster row using an unscoped username from an unrelated IdP", async () => {
+  await insertUser({ net_id: "unscoped", role: "STUDENT", sub: null });
+  const token = await authOptions.callbacks.jwt({ token: {}, user: { id: "other-sub", preferred_username: "unscoped", idp: "https://other.example" } });
+  expect(token.role).toBe("error");
+  expect(token.authError).toBe("identity-missing");
+});
+
+it("does not trust an Illinois-looking email from an unrelated identity provider", async () => {
+  await insertUser({ net_id: "foreignidp", role: "STUDENT", sub: null });
+  const user = authOptions.providers[0].profile({ sub: "foreign-sub", email: "foreignidp@illinois.edu", idp: "https://other.example" });
+  expect((await authOptions.callbacks.jwt({ token: {}, user })).role).toBe("error");
+});

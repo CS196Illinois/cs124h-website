@@ -67,6 +67,7 @@ export default async function UnauthorizedPage({ searchParams }) {
         </p>
 
         <div className={styles.buttonGroup}>
+          <Link href="/support" className={styles.homeButton}>Get help</Link>
           <SignOutButton />
           <Link href="/" className={styles.homeButton}>
             Home
@@ -79,13 +80,14 @@ export default async function UnauthorizedPage({ searchParams }) {
   return (
     <div className={styles.pageContainer}>
       <div className={styles.error}>401</div>
-      <h1 className={styles.heading}>Unauthorized</h1>
+      <h1 className={styles.heading}>{params?.reason === "identity-missing" ? "We couldn't identify your Illinois account" : "Unauthorized"}</h1>
       <p className={styles.description}>
         You don't have permission to view this page. Sign in with an account
         that has access or return to the homepage.
       </p>
 
       <div className={styles.buttonGroup}>
+        <Link href="/support" className={styles.homeButton}>Get help</Link>
         <Link href={loginUrl} className={styles.signInButton}>
           Sign in
         </Link>
