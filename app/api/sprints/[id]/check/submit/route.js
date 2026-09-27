@@ -1,3 +1,4 @@
+import { getUserGroup, groupSprintChecks } from "../../../../../../lib/groupSprintChecks";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
@@ -19,8 +20,10 @@ export async function POST(request, { params }) {
   const body = await request.json().catch(() => null);
   const answers = Array.isArray(body?.answers) ? body.answers : null;
 
-  const { data: sprint } = await supabaseServer.from(table("sprints")).select("*").eq("id", id).maybeSingle();
-  if (!sprint || !isSprintVisibleToRole(sprint, userRole)) return NextResponse.json({ error: "This sprint is not available yet." }, { status: 404 });
+  const { data: baseSprint } = await supabaseServer.from(table("sprints")).select("*").eq("id", id).maybeSingle();
+  if (!baseSprint || !isSprintVisibleToRole(baseSprint, userRole)) return NextResponse.json({ error: "This sprint is not available yet." }, { status: 404 });
+  const groupNumber = await getUserGroup(netID);
+  const [sprint] = await groupSprintChecks([baseSprint], groupNumber, netID, userRole);
   const questions = Array.isArray(sprint?.check_questions) ? sprint.check_questions : [];
   if (!questions.length) {
     return NextResponse.json({ error: "This sprint does not have an understanding check yet." }, { status: 400 });
@@ -29,12 +32,11 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: "Please answer every question before submitting." }, { status: 400 });
   }
 
-  const { data: me } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
   const { data: window } = await supabaseServer
     .from(table("sprintCheckWindows"))
     .select("*")
     .eq("sprint_id", id)
-    .eq("group_number", me?.group_number ?? -1)
+    .eq("group_number", groupNumber ?? -1)
     .maybeSingle();
   if (!window?.is_open) {
     return NextResponse.json({ error: "This check is closed right now. Ask your PM to open it." }, { status: 403 });

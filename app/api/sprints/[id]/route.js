@@ -1,3 +1,5 @@
+import { getUserGroup, applyGroupQuestions, saveGroupSprintCheck } from "../../../../lib/groupSprintChecks";
+import { isPmViewRole } from "../../../../lib/roles";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "../../auth/[...nextauth]/route";
@@ -23,7 +25,7 @@ export async function PATCH(request, { params }) {
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Please check the information you entered and try again." }, { status: 400 });
 
-  // PMs may append questions, but saved questions and scoring are protected.
+  // PMs customize their group’s additions; course-wide questions and scoring are protected.
   const allowed = userRole === "pm"
     ? ["check_questions", "check_max_score"]
     : ["number", "goal", "start_date", "end_date", "check_questions", "check_max_score"];
@@ -44,11 +46,11 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: "Sprint number must be a non-negative whole number." }, { status: 400 });
   }
   if ("check_questions" in updates) updates.check_questions = normalizeQuestions(updates.check_questions);
-  if (userRole === "pm" && "check_questions" in updates) {
+  if (isPmViewRole(userRole) && "check_questions" in updates) {
     const changedSavedQuestion = (existingSprint.check_questions ?? []).some((question, index) => updates.check_questions?.[index] !== question);
     if (changedSavedQuestion) return NextResponse.json({ error: "Saved sprint questions cannot be edited, reordered, or disabled by PMs. Ask a course lead to change them." }, { status: 403 });
   }
-  if (userRole === "pm" && "check_max_score" in updates) {
+  if (isPmViewRole(userRole) && "check_max_score" in updates) {
     if (resolveMaxScore({ check_max_score: updates.check_max_score }) !== resolveMaxScore(existingSprint)) {
       return NextResponse.json({ error: "Only sprint managers can change the maximum score." }, { status: 403 });
     }
@@ -66,27 +68,32 @@ export async function PATCH(request, { params }) {
     return NextResponse.json({ error: "Please provide at least one field to change." }, { status: 400 });
   }
 
+  let groupQuestions;
+  if (isPmViewRole(userRole) && "check_questions" in updates) {
+    const groupNumber = await getUserGroup(netID);
+    if (groupNumber == null) return NextResponse.json({ error: "You are not assigned to a group yet." }, { status: 400 });
+    const required = existingSprint.check_questions ?? [];
+    groupQuestions = (updates.check_questions ?? []).slice(required.length);
+    await saveGroupSprintCheck(id, groupNumber, groupQuestions, netID, userRole);
+    delete updates.check_questions;
+    if (!Object.keys(updates).length) {
+      return NextResponse.json(applyGroupQuestions(existingSprint, groupQuestions));
+    }
+  }
+
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    const { data: realRow } = await supabaseServer.from(table("sprints")).select("*").eq("id", id).maybeSingle();
-    const current = await getEffectiveRow(netID, "sprints", id, realRow);
+    const current = await getEffectiveRow(netID, "sprints", id, existingSprint);
     if (!current) return NextResponse.json({ error: "We could not find that sprint. It may have been removed or is not available yet." }, { status: 404 });
     const merged = { ...current, ...updates };
     await sandboxWrite(netID, "sprints", "update", id, merged);
-    return NextResponse.json(merged);
+    return NextResponse.json(groupQuestions ? applyGroupQuestions(merged, groupQuestions) : merged);
   }
 
-  let query = supabaseServer
-    .from(table("sprints"))
-    .update(updates)
-    .eq("id", id);
-  // Compare-and-swap prevents an old PM form overwriting a newly added lead question.
-  if (userRole === "pm") query = existingSprint.check_questions == null
-    ? query.is("check_questions", null)
-    : query.eq("check_questions", JSON.stringify(existingSprint.check_questions));
+  const query = supabaseServer.from(table("sprints")).update(updates).eq("id", id);
   const { data, error } = await query.select().maybeSingle();
   if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
   if (!data) return NextResponse.json({ error: "This sprint changed while you were editing. Reload it and try again." }, { status: 409 });
-  return NextResponse.json(data);
+  return NextResponse.json(groupQuestions ? applyGroupQuestions(data, groupQuestions) : data);
 }
 
 export async function DELETE(request, { params }) {

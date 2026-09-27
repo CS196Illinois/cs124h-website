@@ -193,6 +193,7 @@ export async function insertEventAttendance(rows) {
 // Primary key column per table key - used to build a delete-everything filter
 // (`not(pk, "is", null)` matches every row regardless of PK type/name).
 const TABLE_PK = {
+  sprintGroupChecks: "id",
   sprintCompletions: "id",
   sprintCheckWindows: "id",
   eventCheckins: "id",
@@ -210,7 +211,7 @@ const TABLE_PK = {
 
 // Children before parents, though FKs are ON DELETE CASCADE anyway.
 const CLEAR_ORDER = [
-  "sprintCompletions", "sprintCheckWindows", "eventCheckins", "actionItems", "roleViewRequests",
+  "sprintGroupChecks", "sprintCompletions", "sprintCheckWindows", "eventCheckins", "actionItems", "roleViewRequests",
   "sprints", "events", "eventAttendanceSp26", "staff", "resources", "projects",
   "sandboxOverlay", "users",
 ];

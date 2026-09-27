@@ -32,6 +32,33 @@ async function withQuestions(sprint) {
 describe("understanding check: questions + gating", () => {
   beforeEach(clearAllTestTables);
 
+  it("keeps PM additions in their own group in the database and student APIs", async () => {
+    const sprint = await seed();
+    await insertUser({ net_id: "pm2", role: "PM", group_number: 2 });
+    await withQuestions(sprint);
+    for (const group of [1, 2]) {
+      asRole("pm", `pm${group}`);
+      const updated = await PATCH(
+        makeRequest(`http://localhost/api/sprints/${sprint.id}`, { method: "PATCH", body: { check_questions: [...QUESTIONS, `Group ${group} question`] } }),
+        { params: { id: sprint.id } },
+      );
+      expect(updated.status).toBe(200);
+      await insertSprintCheckWindow({ sprint_id: sprint.id, group_number: group, is_open: true, opened_by: `pm${group}` });
+    }
+    const { data: shared } = await testClient().from(table("sprints")).select("check_questions").eq("id", sprint.id).single();
+    expect(shared.check_questions).toEqual(QUESTIONS);
+    for (const group of [1, 2]) {
+      asRole("student", `stu${group}`);
+      const result = await (await GET(makeRequest(`http://localhost/api/sprints/${sprint.id}/check`), { params: { id: sprint.id } })).json();
+      expect(result.questions).toEqual([...QUESTIONS, `Group ${group} question`]);
+      const submitted = await SUBMIT(makeRequest(`http://localhost/api/sprints/${sprint.id}/check/submit`, {
+        method: "POST", body: { answers: ["First", "Second", "My group answer"] },
+      }), { params: { id: sprint.id } });
+      expect(submitted.status).toBe(201);
+      expect((await submitted.json()).additional_info.questions).toEqual(result.questions);
+    }
+  });
+
   it("a student never sees the questions until their group's window is open", async () => {
     const sprint = await seed();
     await withQuestions(sprint);

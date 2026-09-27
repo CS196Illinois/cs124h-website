@@ -1,3 +1,5 @@
+import { CHECK_MANAGE_ROLES } from "../../../../../lib/sprintCheckAccess";
+import { getUserGroup, groupSprintChecks, fetchGroupChecks, applyGroupQuestions } from "../../../../../lib/groupSprintChecks";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "../../../auth/[...nextauth]/route";
@@ -8,41 +10,28 @@ import { resolveMaxScore } from "../../../../../lib/sprintChecks";
 import { isPmViewRole } from "../../../../../lib/roles";
 import { isSprintVisibleToRole } from "../../../../../lib/sprintVisibility";
 
-const MANAGE_ROLES = ["course_lead", "head_pm", "lead_web_dev", "web_dev"];
-
-/**
- * Which group a PM/manager may open or close the check for - a PM (or a web dev
- * assigned to a group) is always their own group; a manager names one. Shared
- * by open/ and close/.
- */
-export async function resolveActorGroup(userRole, netID, bodyGroupNumber) {
-  if (isPmViewRole(userRole)) {
-    const { data: me } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
-    if (me?.group_number != null) return { groupNumber: me.group_number };
-    return { error: "You are not assigned to a group yet." };
-  }
-  if (MANAGE_ROLES.includes(userRole)) {
-    const g = Number(bodyGroupNumber);
-    if (!Number.isFinite(g)) return { error: "Please choose a group." };
-    return { groupNumber: g };
-  }
-  return { error: "You do not have permission to do that.", status: 403 };
-}
-
-async function fetchWindows(sprintId, netID, userRole) {
-  const { data } = await supabaseServer.from(table("sprintCheckWindows")).select("*").eq("sprint_id", sprintId);
+async function fetchWindows(sprintId, netID, userRole, groupNumber) {
+  if (groupNumber === null) return [];
+  let query = supabaseServer.from(table("sprintCheckWindows")).select("*").eq("sprint_id", sprintId);
+  if (groupNumber !== undefined) query = query.eq("group_number", groupNumber);
+  const { data, error } = await query;
+  if (error) throw error;
   let rows = data ?? [];
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    rows = await mergeSandboxRows(netID, "sprintCheckWindows", rows, (row) => row.sprint_id === sprintId);
+    rows = await mergeSandboxRows(netID, "sprintCheckWindows", rows, (row) => row.sprint_id === sprintId && (groupNumber === undefined || row.group_number === groupNumber));
   }
   return rows;
 }
 
-async function fetchSubmissions(sprintId, netID, userRole) {
-  const { data } = await supabaseServer.from(table("actionItems")).select("*").eq("sprint_id", sprintId);
+async function fetchSubmissions(sprintId, netID, userRole, studentNetIDs) {
+  if (studentNetIDs?.length === 0) return [];
+  let query = supabaseServer.from(table("actionItems")).select("*").eq("sprint_id", sprintId);
+  if (studentNetIDs) query = query.in("net_id", studentNetIDs);
+  const { data, error } = await query;
+  if (error) throw error;
   let rows = data ?? [];
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    rows = await mergeSandboxRows(netID, "actionItems", rows, (row) => row.sprint_id === sprintId);
+    rows = await mergeSandboxRows(netID, "actionItems", rows, (row) => row.sprint_id === sprintId && (!studentNetIDs || studentNetIDs.includes(row.net_id)));
   }
   return rows;
 }
@@ -50,9 +39,9 @@ async function fetchSubmissions(sprintId, netID, userRole) {
 // `item` is the full action_items row when submitted, shaped exactly as
 // GradeActionItemModal expects - so a roster's "Grade" button can hand it
 // the row directly with no extra fetch.
-function rosterFor(students, submissions) {
+function rosterFor(students, submissionsByNetID) {
   return students.map((s) => {
-    const sub = submissions.find((x) => x.net_id === s.net_id);
+    const sub = submissionsByNetID.get(s.net_id);
     return { net_id: s.net_id, name: s.name, submitted: !!sub, item: sub ?? null };
   });
 }
@@ -65,24 +54,28 @@ export async function GET(request, { params }) {
     return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
   }
   const { id } = await params;
-  const { data: sprint } = await supabaseServer.from(table("sprints")).select("*").eq("id", id).maybeSingle();
-  if (!sprint) return NextResponse.json({ error: "We could not find that sprint. It may have been removed or is not available yet." }, { status: 404 });
-  if (!isSprintVisibleToRole(sprint, userRole)) return NextResponse.json({ error: "This sprint is not available yet." }, { status: 404 });
+  const { data: baseSprint } = await supabaseServer.from(table("sprints")).select("*").eq("id", id).maybeSingle();
+  if (!baseSprint) return NextResponse.json({ error: "We could not find that sprint. It may have been removed or is not available yet." }, { status: 404 });
+  if (!isSprintVisibleToRole(baseSprint, userRole)) return NextResponse.json({ error: "This sprint is not available yet." }, { status: 404 });
 
+  const groupScoped = userRole === "student" || isPmViewRole(userRole);
+  const groupNumber = groupScoped ? await getUserGroup(netID) : undefined;
+  const [sprint] = groupScoped
+    ? await groupSprintChecks([baseSprint], groupNumber, netID, userRole)
+    : [baseSprint];
   const hasCheck = Array.isArray(sprint.check_questions) && sprint.check_questions.length > 0;
   const maxScore = resolveMaxScore(sprint);
 
   if (userRole === "student") {
-    if (!hasCheck) return NextResponse.json({ hasCheck: false });
-    const { data: me } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
-    const [windows, submissions] = await Promise.all([fetchWindows(id, netID, userRole), fetchSubmissions(id, netID, userRole)]);
-    const myWindow = windows.find((w) => w.group_number === me?.group_number);
+    const [windows, submissions] = await Promise.all([fetchWindows(id, netID, userRole, groupNumber), fetchSubmissions(id, netID, userRole, [netID])]);
+    const myWindow = windows.find((w) => w.group_number === groupNumber);
     const mine = submissions.find((s) => s.net_id === netID);
+    if (!hasCheck && !mine) return NextResponse.json({ hasCheck: false });
     const isOpen = !!myWindow?.is_open;
     return NextResponse.json({
       hasCheck: true,
       isOpen,
-      questions: isOpen || mine ? sprint.check_questions : null,
+      questions: mine ? (mine.additional_info?.questions ?? sprint.check_questions) : isOpen ? sprint.check_questions : null,
       maxScore,
       mySubmission: mine
         ? { answers: mine.additional_info?.answers ?? [], grade: mine.grade, gradeNote: mine.grade_note }
@@ -91,42 +84,46 @@ export async function GET(request, { params }) {
   }
 
   if (isPmViewRole(userRole)) {
-    const { data: me } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
-    const groupNumber = me?.group_number;
-    // No assigned group means no group roster, never course-wide access.
-    {
-      const [windows, submissions] = await Promise.all([fetchWindows(id, netID, userRole), fetchSubmissions(id, netID, userRole)]);
-      const myWindow = windows.find((w) => w.group_number === groupNumber);
-      let roster = [];
-      if (groupNumber != null) {
-        const { data: students } = await supabaseServer
-          .from(table("users")).select("net_id, name").eq("role", "STUDENT").eq("group_number", groupNumber);
-        roster = rosterFor(students ?? [], submissions);
-      }
-      return NextResponse.json({
-        hasCheck,
-        groupNumber,
-        isOpen: !!myWindow?.is_open,
-        questions: hasCheck ? sprint.check_questions : null,
-        maxScore,
-        roster,
-      });
-    }
+    // Unassigned PMs get no course-wide roster or submissions.
+    const { data: students, error } = groupNumber == null ? { data: [] } : await supabaseServer
+      .from(table("users")).select("net_id, name").eq("role", "STUDENT").eq("group_number", groupNumber);
+    if (error) throw error;
+    const [windows, submissions] = await Promise.all([
+      fetchWindows(id, netID, userRole, groupNumber),
+      fetchSubmissions(id, netID, userRole, (students ?? []).map((s) => s.net_id)),
+    ]);
+    return NextResponse.json({
+      hasCheck, groupNumber, isOpen: !!windows[0]?.is_open,
+      questions: hasCheck ? sprint.check_questions : null,
+      maxScore,
+      roster: rosterFor(students ?? [], new Map(submissions.map((s) => [s.net_id, s]))),
+    });
   }
 
-  if (MANAGE_ROLES.includes(userRole)) {
-    const [windows, submissions, { data: students }] = await Promise.all([
+  if (CHECK_MANAGE_ROLES.includes(userRole)) {
+    const [windows, submissions, { data: students, error }, groupChecks] = await Promise.all([
       fetchWindows(id, netID, userRole),
       fetchSubmissions(id, netID, userRole),
       supabaseServer.from(table("users")).select("net_id, name, group_number").eq("role", "STUDENT"),
+      fetchGroupChecks([id], undefined, netID, userRole),
     ]);
-    const groupNumbers = [...new Set((students ?? []).map((s) => s.group_number).filter((g) => g != null))].sort((a, b) => a - b);
-    const groups = groupNumbers.map((g) => ({
+    if (error) throw error;
+    const studentsByGroup = new Map();
+    for (const student of students ?? []) {
+      if (student.group_number == null) continue;
+      if (!studentsByGroup.has(student.group_number)) studentsByGroup.set(student.group_number, []);
+      studentsByGroup.get(student.group_number).push(student);
+    }
+    const submissionsByNetID = new Map(submissions.map((s) => [s.net_id, s]));
+    const windowsByGroup = new Map(windows.map((w) => [w.group_number, w]));
+    const questionsByGroup = new Map(groupChecks.map((c) => [c.group_number, c.additional_questions]));
+    const groups = [...studentsByGroup.keys()].sort((a, b) => a - b).map((g) => ({
+      questions: applyGroupQuestions(sprint, questionsByGroup.get(g)).check_questions ?? [],
       groupNumber: g,
-      isOpen: !!windows.find((w) => w.group_number === g)?.is_open,
-      roster: rosterFor((students ?? []).filter((s) => s.group_number === g), submissions),
+      isOpen: !!windowsByGroup.get(g)?.is_open,
+      roster: rosterFor(studentsByGroup.get(g), submissionsByNetID),
     }));
-    return NextResponse.json({ hasCheck, questions: hasCheck ? sprint.check_questions : null, maxScore, groups });
+    return NextResponse.json({ hasCheck: hasCheck || groups.some((g) => g.questions.length > 0), questions: hasCheck ? sprint.check_questions : null, maxScore, groups });
   }
 
   return NextResponse.json({ error: "Please sign in to continue." }, { status: 403 });

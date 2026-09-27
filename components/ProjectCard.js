@@ -1,38 +1,8 @@
-import styles from "./ProjectCard.module.css";
+"use client";
+
 import { GithubLogo } from "@phosphor-icons/react";
+import MediaCard from "./MediaCard";
 
 export default function ProjectCard({ project }) {
-  return (
-    <div className={styles.projectCard}>
-      {project.imageUrl && <img
-        src={project.imageUrl}
-        alt={project.title}
-        className={styles.cardImage}
-        onError={(e) => {
-          e.currentTarget.hidden = true;
-        }}
-      />}
-      <div className={styles.cardContent}>
-        <h3 className={styles.cardTitle}>{project.title}</h3>
-        {Array.isArray(project.members) && project.members.length > 0 && (
-          <p className={styles.cardMembers}>By: {project.members.join(", ")}</p>
-        )}
-        <p className={styles.cardDescription}>{project.description}</p>
-        <a
-          href={project.githubUrl}
-          target="_blank" // just opens the link in a new tab
-          rel="noopener noreferrer"
-          className={styles.githubButton}
-        >
-          {/* Use inline style for icon size/margin or wrap in a styled span if needed */}
-          <GithubLogo
-            size={16}
-            style={{ marginRight: "8px", transform: "scale(1)" }}
-            className={styles.githubIcon}
-          />
-          View on GitHub
-        </a>
-      </div>
-    </div>
-  );
-};
+  return <MediaCard project={project} href={project.githubUrl} linkLabel="View on GitHub" icon={GithubLogo} />;
+}

@@ -5,7 +5,7 @@ import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../../../lib/supabaseServer";
 import { table } from "../../../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../../../../lib/sandbox";
-import { resolveActorGroup } from "../route";
+import { resolveActorGroup } from "../../../../../../lib/sprintCheckAccess";
 import { isSprintVisibleToRole } from "../../../../../../lib/sprintVisibility";
 
 export async function POST(request, { params }) {
@@ -20,7 +20,7 @@ export async function POST(request, { params }) {
   if (!sprint || !isSprintVisibleToRole(sprint, userRole)) return NextResponse.json({ error: "This sprint is not available yet." }, { status: 404 });
   const body = await request.json().catch(() => ({}));
 
-  const { groupNumber, error, status } = await resolveActorGroup(userRole, netID, body.group_number);
+  const { groupNumber, error, status } = await resolveActorGroup(userRole, netID, body?.group_number);
   if (error) return NextResponse.json({ error }, { status: status ?? 400 });
 
   const now = new Date().toISOString();

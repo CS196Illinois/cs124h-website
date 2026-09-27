@@ -131,7 +131,7 @@ INSERT INTO test_sprint_question_bank (question, created_by) VALUES
  ('What design decisions did you make this week, and why?', 'system'),
  ('What alternative approaches did you consider, and why didn''t you choose them?', 'system'),
  ('How well did your work this week integrate with the rest of your group''s work?', 'system')
-ON CONFLICT (question) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS test_sprint_completions (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -249,3 +249,19 @@ ALTER TABLE test_staff               DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_resources           DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_projects            DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_event_attendance_sp26 DISABLE ROW LEVEL SECURITY;
+
+-- Group-scoped PM additions; shared sprint questions remain course-wide.
+CREATE TABLE IF NOT EXISTS test_sprint_group_checks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  sprint_id uuid NOT NULL REFERENCES test_sprints(id) ON DELETE CASCADE,
+  group_number integer NOT NULL,
+  additional_questions jsonb NOT NULL DEFAULT '[]'::jsonb,
+  UNIQUE (sprint_id, group_number)
+);
+ALTER TABLE test_sprint_group_checks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE test_sprint_question_bank ADD COLUMN IF NOT EXISTS group_number integer;
+ALTER TABLE test_sprint_question_bank DROP CONSTRAINT IF EXISTS test_sprint_question_bank_question_key;
+CREATE UNIQUE INDEX IF NOT EXISTS test_sprint_question_bank_shared_question
+  ON test_sprint_question_bank (question) WHERE group_number IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS test_sprint_question_bank_group_question
+  ON test_sprint_question_bank (group_number, question) WHERE group_number IS NOT NULL;

@@ -1,3 +1,5 @@
+import { getUserGroup, groupSprintChecks } from "../../../lib/groupSprintChecks";
+import { isPmViewRole } from "../../../lib/roles";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
@@ -29,6 +31,10 @@ export async function GET() {
     rows.sort((a, b) => b.number - a.number);
   }
   rows = rows.filter((sprint) => isSprintVisibleToRole(sprint, userRole));
+
+  if (isPmViewRole(userRole)) {
+    rows = await groupSprintChecks(rows, await getUserGroup(netID), netID, userRole);
+  }
 
   // PMs need the saved question list to append questions without overwriting
   // required ones. Students see questions only through the gated check API.

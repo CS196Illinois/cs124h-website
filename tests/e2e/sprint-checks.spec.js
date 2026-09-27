@@ -18,11 +18,13 @@ test.describe("sprint understanding checks", () => {
     await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
     await insertUser({ net_id: "e2e-stu1", role: "STUDENT", name: "Student One", group_number: 1 });
 
-    // Course lead: create a sprint with two understanding-check questions.
+    // Course lead: create a sprint with three understanding-check questions.
     await loginAs({ netID: "e2e-lead", role: "course_lead" });
     await page.goto("/user/course_lead/sprints");
     await page.getByRole("button", { name: "+ New Sprint" }).click();
     await page.locator("textarea").nth(0).fill("Ship the login flow"); // Goal - only textarea before questions are added
+    // The editor loads the bank on demand; wait before checking for existing questions.
+    await expect(page.getByRole("checkbox").first()).toBeVisible();
     for (const question of ["What design decisions did you make?", "What alternatives did you consider?", "How well did this integrate with your group's work?"]) {
       const existing = page.getByRole("checkbox", { name: question, exact: true });
       if (await existing.count()) await existing.check();
@@ -42,7 +44,7 @@ test.describe("sprint understanding checks", () => {
     await page.goto("/user/pm/sprints");
     await expect(page.getByText("Ship the login flow")).toBeVisible(SLOW);
     await expect(page.getByText("● Closed")).toBeVisible(SLOW);
-    await page.getByRole("button", { name: "Open Check" }).click();
+    await page.getByRole("button", { name: "Open Understanding Check" }).click();
     await expect(page.getByText("● Open")).toBeVisible(SLOW);
     await expect(page.getByText("Not submitted")).toBeVisible(SLOW);
 
@@ -68,7 +70,7 @@ test.describe("sprint understanding checks", () => {
     await expect(page.getByText("Graded 18/20")).toBeVisible(SLOW);
 
     // PM closes the window; the student can still see their graded answer.
-    await page.getByRole("button", { name: "Close Check" }).click();
+    await page.getByRole("button", { name: "Close Understanding Check" }).click();
     await expect(page.getByText("● Closed")).toBeVisible(SLOW);
 
     await loginAs({ netID: "e2e-stu1", role: "student" });
@@ -87,7 +89,7 @@ test.describe("sprint understanding checks", () => {
     await page.goto("/user/web_dev/sprints");
     await expect(page.getByText("Web dev sprint")).toBeVisible(SLOW);
     await expect(page.getByText("● Closed")).toBeVisible(SLOW);
-    await page.getByRole("button", { name: "Open Check" }).click();
+    await page.getByRole("button", { name: "Open Understanding Check" }).click();
     await expect(page.getByText("● Open")).toBeVisible(SLOW);
     await expect(page.getByText("Not submitted")).toBeVisible(SLOW);
   });

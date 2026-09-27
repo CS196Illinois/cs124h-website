@@ -23,6 +23,7 @@ describe("sprints CRUD", () => {
   });
 
   it("pm can append questions while preserving saved questions and scoring", async () => {
+    await insertUser({ net_id: "pm1", role: "PM", group_number: 1 });
     const sprint = await insertSprint({ number: 1, goal: "Original", check_questions: ["Old question"], check_max_score: 10 });
     asRole("pm", "pm1");
     const updated = await PATCH(

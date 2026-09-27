@@ -1,3 +1,4 @@
+import PublicImage from "./PublicImage";
 import styles from "./StaffCard.module.css";
 
 export default function StaffCard({ member, onClick }) {
@@ -15,7 +16,8 @@ export default function StaffCard({ member, onClick }) {
       key={member.id ?? member.name}
     >
       <div className={styles.staffImageBox}>
-        <img src={member.image} alt={member.name} />
+        <PublicImage src={member.image} alt={member.name} width={480} height={560}
+          sizes="(max-width: 640px) 80vw, (max-width: 1024px) 40vw, 280px" />
       </div>
       <p className={styles.staffCardText}>{member.name}</p>
     </div>

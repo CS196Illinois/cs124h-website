@@ -868,3 +868,31 @@ select.roleSelect {
 .audienceChoices { border: 1px solid #45517f; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; display: grid; gap: .6rem; max-height: 260px; overflow-y: auto; }
 .audienceChoices legend { color: #f9f9f9; padding: 0 .3rem; font-size: .9rem; }
 .audienceChoices label { min-height: 32px; color: #f9f9f9; line-height: 1.4; }
+
+/* Primary meeting action stays above the questions, with a large touch target. */
+.checkControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid rgba(236, 181, 87, 0.45);
+  border-radius: 8px;
+  background: rgba(236, 181, 87, 0.08);
+}
+.checkControls p {
+  margin: 0.5rem 0 0;
+  color: rgba(249, 249, 249, 0.75);
+  font-size: 0.9rem;
+}
+.checkToggle {
+  min-height: 48px;
+  padding: 0.85rem 1.4rem;
+  font-size: 1rem;
+  white-space: normal;
+}
+@media (max-width: 600px) {
+  .checkToggle { width: 100%; }
+}

@@ -17,7 +17,7 @@ INSERT INTO sprint_question_bank (question, created_by) VALUES
  ('What design decisions did you make this week, and why?', 'system'),
  ('What alternative approaches did you consider, and why didn''t you choose them?', 'system'),
  ('How well did your work this week integrate with the rest of your group''s work?', 'system')
-ON CONFLICT (question) DO NOTHING;
+ON CONFLICT DO NOTHING;
 INSERT INTO test_sprint_question_bank (question, created_by)
 SELECT question, created_by FROM sprint_question_bank
-ON CONFLICT (question) DO NOTHING;
+ON CONFLICT DO NOTHING;

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import PublicImage from "../../components/PublicImage";
 import StaffCard from "../../components/StaffCard";
 import SemesterTabs from "../../components/SemesterTabs";
 import styles from "./CourseStaff.module.css";
@@ -155,7 +156,8 @@ export default function CourseStaffPage() {
               </button>
 
               <div className={styles.imagePopup}>
-                <img src={selectedMember.image} alt={selectedMember.name} />
+                <PublicImage src={selectedMember.image} alt={selectedMember.name} width={640} height={800}
+                  sizes="(max-width: 768px) 80vw, 400px" />
               </div>
 
               <div className={styles.textContent}>

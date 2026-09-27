@@ -53,26 +53,45 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
   const [loading, setLoading] = useState(true);
   const [busyGroup, setBusyGroup] = useState(null);
   const [expanded, setExpanded] = useState(new Set());
+  const [error, setError] = useState(null);
   const [grading, setGrading] = useState(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/sprints/${sprint.id}/check`);
-    setData(res.ok ? await res.json() : null);
-    setLoading(false);
-  }, [sprint.id]);
+    try {
+      const res = await fetch(`/api/sprints/${sprint.id}/check`);
+      if (!res.ok) throw new Error("The understanding check could not be loaded. Please try again.");
+      setData(await res.json());
+      setError(null);
+    } catch (err) {
+      setData(null);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [sprint.id, sprint.check_questions]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const toggleWindow = async (groupNumber, isOpen) => {
     setBusyGroup(groupNumber);
-    await fetch(`/api/sprints/${sprint.id}/check/${isOpen ? "close" : "open"}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ group_number: groupNumber }),
-    });
-    await fetchData();
-    setBusyGroup(null);
+    setError(null);
+    try {
+      const res = await fetch(`/api/sprints/${sprint.id}/check/${isOpen ? "close" : "open"}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group_number: groupNumber }),
+      });
+      if (!res.ok) {
+        const result = await res.json().catch(() => ({}));
+        throw new Error(result.error || "The check could not be updated. Please try again.");
+      }
+      await fetchData();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyGroup(null);
+    }
   };
 
   const toggleExpand = (g) => {
@@ -83,8 +102,15 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
     });
   };
 
-  if (loading || !data) {
+  if (loading) {
     return <div className={styles.panel}><div className={styles.loading}>Loading understanding check…</div></div>;
+  }
+
+  if (!data) {
+    return <div className={styles.panel}>
+      <p role="alert">{error}</p>
+      <button className={styles.btnSecondary} onClick={fetchData}>Retry</button>
+    </div>;
   }
 
   if (!data.hasCheck) {
@@ -110,30 +136,32 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
       <div style={{ color: "#f9f9f9", fontFamily: "Inter", fontWeight: 600, marginBottom: "0.75rem" }}>
         Understanding Check
       </div>
+      {error && <p role="alert">{error}</p>}
+      {scope === "my-group" && data.groupNumber != null && (
+        <div className={styles.checkControls}>
+          <div>
+            <span style={{ color: data.isOpen ? "#4ade80" : "#f9f9f9", fontWeight: 600 }}>
+              {data.isOpen ? "● Open" : "● Closed"}
+            </span>
+            <p>{data.isOpen ? "Your students can submit their answers now." : "Open the check when your group’s meeting begins so students can submit."}</p>
+          </div>
+          <button data-tour="sprint-open-check"
+            className={`${data.isOpen ? styles.btnDanger : styles.btnPrimary} ${styles.checkToggle}`}
+            onClick={() => toggleWindow(data.groupNumber, data.isOpen)}
+            disabled={busyGroup === data.groupNumber}>
+            {busyGroup === data.groupNumber ? "Updating…" : data.isOpen ? "Close Understanding Check" : "Open Understanding Check"}
+          </button>
+        </div>
+      )}
       <ol style={{ color: "rgba(249,249,249,0.7)", fontFamily: "Inter", fontSize: "0.88rem", paddingLeft: "1.2rem", marginBottom: "1.1rem" }}>
-        {data.questions.map((q, i) => <li key={i} style={{ marginBottom: "0.3rem" }}>{q}</li>)}
+        {(data.questions ?? []).map((q, i) => <li key={i} style={{ marginBottom: "0.3rem" }}>{q}</li>)}
       </ol>
 
       {scope === "my-group" ? (
         data.groupNumber == null ? (
           <div className={styles.emptyState} style={{ padding: "1rem 0" }}>You have no group assigned yet.</div>
         ) : (
-          <>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem" }}>
-              <button
-                data-tour="sprint-open-check"
-                className={data.isOpen ? styles.btnDanger : styles.btnComplete}
-                onClick={() => toggleWindow(data.groupNumber, data.isOpen)}
-                disabled={busyGroup === data.groupNumber}
-              >
-                {busyGroup === data.groupNumber ? "…" : data.isOpen ? "Close Check" : "Open Check"}
-              </button>
-              <span style={{ color: data.isOpen ? "#4ade80" : "rgba(249,249,249,0.45)", fontSize: "0.85rem", fontWeight: 600 }}>
-                {data.isOpen ? "● Open" : "● Closed"}
-              </span>
-            </div>
-            <RosterTable roster={data.roster} onGrade={setGrading} />
-          </>
+          <RosterTable roster={data.roster} onGrade={setGrading} />
         )
       ) : groups.length === 0 ? (
         <div className={styles.emptyState} style={{ padding: "1rem 0" }}>No groups with students yet.</div>
@@ -158,7 +186,10 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
                   {busyGroup === g.groupNumber ? "…" : g.isOpen ? "Close" : "Open"}
                 </button>
               </div>
-              {isOpenRow && <div style={{ padding: "0 0.9rem 0.9rem" }}><RosterTable roster={g.roster} onGrade={setGrading} /></div>}
+              {isOpenRow && <div style={{ padding: "0 0.9rem 0.9rem" }}>
+                <ol>{(g.questions ?? data.questions ?? []).map((q, i) => <li key={i}>{q}</li>)}</ol>
+                <RosterTable roster={g.roster} onGrade={setGrading} />
+              </div>}
             </div>
           );
         })

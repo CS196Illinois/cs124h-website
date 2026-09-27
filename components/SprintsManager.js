@@ -37,10 +37,9 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
 
   const fetchBase = useCallback(async () => {
     setLoading(true);
-    const [spRes, stuRes, bankRes, meRes] = await Promise.all([
+    const [spRes, stuRes, meRes] = await Promise.all([
       fetch("/api/sprints"),
       fetch("/api/users?role=STUDENT"),
-      fetch("/api/sprint-question-bank"),
       groupScoped ? fetch("/api/users/me") : Promise.resolve(null),
     ]);
     let fetchedSprints = [];
@@ -56,13 +55,28 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
       const me = meRes?.ok ? await meRes.json() : null;
       setStudents(groupScoped ? people.filter((person) => me?.group_number != null && person.group_number === me.group_number) : people);
     }
-    if (bankRes.ok) setQuestionBank(await bankRes.json());
     setLoading(false);
   }, [groupScoped]);
 
   useEffect(() => {
     if (status === "authenticated") fetchBase();
   }, [fetchBase, status]);
+
+  // The bank is only needed while editing, not for viewing or grading a sprint.
+  useEffect(() => {
+    if (!showModal || !canManageQuestions) return;
+    const controller = new AbortController();
+    setBankBusy(true);
+    fetch("/api/sprint-question-bank", { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Question bank could not be loaded. Reopen the editor to try again.");
+        const questions = await res.json();
+        if (!controller.signal.aborted) setQuestionBank(questions);
+      })
+      .catch((error) => { if (!controller.signal.aborted) setModalError(error.message); })
+      .finally(() => { if (!controller.signal.aborted) setBankBusy(false); });
+    return () => controller.abort();
+  }, [showModal, canManageQuestions]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -95,6 +109,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
     setForm({ number: String(nextNum), goal: "", start_date: "", end_date: "", check_questions: [], check_max_score: "" });
     setEditingSprint(null);
     setModalError(null);
+    setNewBankQuestion("");
     setShowModal(true);
   };
 
@@ -109,6 +124,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
     });
     setEditingSprint(sprint);
     setModalError(null);
+    setNewBankQuestion("");
     setShowModal(true);
   };
 
@@ -405,8 +421,8 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
                 <div className={styles.questionBank}>
                   <div>
                     <h3 className={styles.questionBankTitle}>Understanding check questions</h3>
-                    <p className={styles.questionBankHint}>Select questions for this sprint. New questions are saved to the shared bank for future sprints.</p>
-                    {!canManage && <p className={styles.questionBankHint}>Saved questions are required and locked. You may add questions, up to 8 total. Ask a course lead to change existing questions.</p>}
+                    <p className={styles.questionBankHint}>{canManage ? "Select questions for this sprint. New questions are saved to the shared bank for future sprints." : "Your added questions are saved for your group and used in your students’ checks. Other groups are unaffected."}</p>
+                    {!canManage && <p className={styles.questionBankHint}>Course-wide questions are required and locked. You may add or remove your group’s questions, up to 8 total.</p>}
                   </div>
                   <div className={styles.questionBankList}>
                     {[...questionBank, ...form.check_questions.filter((q) => !questionBank.some((b) => b.question === q)).map((question, i) => ({ id: `saved-${i}`, question, saved: true }))].map((item) => (
@@ -414,7 +430,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
                         <label className={styles.questionBankChoice}>
                           <input className={styles.checkboxInput} type="checkbox"
                             checked={form.check_questions.includes(item.question)}
-                            disabled={(!canManage && (editingSprint?.check_questions ?? []).includes(item.question)) || (!form.check_questions.includes(item.question) && form.check_questions.length >= 8)}
+                            disabled={(!canManage && (editingSprint?.required_check_questions ?? editingSprint?.check_questions ?? []).includes(item.question)) || (!form.check_questions.includes(item.question) && form.check_questions.length >= 8)}
                             onChange={() => toggleBankQuestion(item.question)} />
                           <span>{item.question}</span>
                         </label>
