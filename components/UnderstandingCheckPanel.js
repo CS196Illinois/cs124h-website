@@ -48,7 +48,7 @@ function RosterTable({ roster, onGrade }) {
  * lead/head PM) shows every group, each expandable. Rendered by
  * SprintsManager's `renderExtra`.
  */
-export default function UnderstandingCheckPanel({ sprint, scope }) {
+export default function UnderstandingCheckPanel({ sprint, scope: requestedScope }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busyGroup, setBusyGroup] = useState(null);
@@ -123,6 +123,10 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
     );
   }
 
+  // A lead web dev testing the PM page gets the all-groups response; render it
+  // as such instead of claiming they have no group.
+  const scope = requestedScope === "my-group" && data.groups ? "all-groups" : requestedScope;
+
   // A web dev assigned to a group always gets the single-group (PM) response,
   // even on a manager page reached through a role-view. Fold it into the shape
   // the all-groups view iterates so that path can never hit an undefined list.
@@ -131,10 +135,21 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
       ? [{ groupNumber: data.groupNumber, isOpen: data.isOpen, roster: data.roster ?? [] }]
       : []);
 
+  const countedRosters = scope === "my-group" ? [data.roster ?? []] : groups.map((g) => g.roster);
+  const submittedTotal = countedRosters.reduce((acc, roster) => ({
+    submitted: acc.submitted + roster.filter((r) => r.submitted).length,
+    total: acc.total + roster.length,
+  }), { submitted: 0, total: 0 });
+
   return (
     <div className={styles.panel}>
-      <div style={{ color: "#f9f9f9", fontFamily: "Inter", fontWeight: 600, marginBottom: "0.75rem" }}>
-        Understanding Check
+      <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "0.75rem", marginBottom: "0.75rem" }}>
+        <span style={{ color: "#f9f9f9", fontFamily: "Inter", fontWeight: 600 }}>Understanding Check</span>
+        {submittedTotal.total > 0 && (
+          <span style={{ color: "rgba(249,249,249,0.55)", fontFamily: "Inter", fontSize: "0.85rem" }}>
+            <span style={{ color: "#4ade80", fontWeight: 700 }}>{submittedTotal.submitted}</span> / {submittedTotal.total} {scope === "my-group" ? "students in your group submitted" : "students submitted"}
+          </span>
+        )}
       </div>
       {error && <p role="alert">{error}</p>}
       {scope === "my-group" && data.groupNumber != null && (
@@ -179,7 +194,7 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
                   {g.isOpen ? "● Open" : "● Closed"}
                 </span>
                 <button
-                  className={g.isOpen ? styles.btnDanger : styles.btnComplete}
+                  className={`${styles.btnSmall} ${g.isOpen ? styles.btnDanger : styles.btnComplete}`}
                   onClick={(e) => { e.stopPropagation(); toggleWindow(g.groupNumber, g.isOpen); }}
                   disabled={busyGroup === g.groupNumber}
                 >
@@ -187,7 +202,16 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
                 </button>
               </div>
               {isOpenRow && <div style={{ padding: "0 0.9rem 0.9rem" }}>
-                <ol>{(g.questions ?? data.questions ?? []).map((q, i) => <li key={i}>{q}</li>)}</ol>
+                {g.additionalQuestions?.length > 0 && (
+                  <div style={{ marginBottom: "0.75rem" }}>
+                    <div style={{ color: "rgba(249,249,249,0.55)", fontFamily: "Inter", fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "0.35rem" }}>
+                      Added by this group’s PM
+                    </div>
+                    <ol start={(data.questions ?? []).length + 1} style={{ color: "rgba(249,249,249,0.7)", fontFamily: "Inter", fontSize: "0.88rem", paddingLeft: "1.2rem", margin: 0 }}>
+                      {g.additionalQuestions.map((q, i) => <li key={i} style={{ marginBottom: "0.3rem" }}>{q}</li>)}
+                    </ol>
+                  </div>
+                )}
                 <RosterTable roster={g.roster} onGrade={setGrading} />
               </div>}
             </div>

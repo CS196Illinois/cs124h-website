@@ -38,8 +38,8 @@ for (const [role, dbRole] of [["pm", "PM"], ["web_dev", "WEB"]]) {
     await testClient().from(table("sprintCompletions")).insert(["group-student1", "outside-student"].map((student_net_id) => ({ sprint_id: sprint.id, student_net_id, marked_by: "lead" })));
     await loginAs({ netID: "group-manager", role });
     await page.goto(`/user/${role}/sprints`);
-    const count = page.getByText("/ 2 students in your group complete", { exact: true }).locator("..");
-    await expect(count).toHaveText(/1\s*\/ 2 students in your group complete/);
+    const count = page.getByText("/ 2 students in your group marked sprint complete", { exact: true }).locator("..");
+    await expect(count).toHaveText(/1\s*\/ 2 students in your group marked sprint complete/);
     await expect(page.getByText("outside-student", { exact: true })).toHaveCount(0);
     if (role === "web_dev") await expect(page.getByRole("link", { name: "PM Guide", exact: true })).toBeVisible();
   });
@@ -147,7 +147,9 @@ test("PM sees saved non-bank questions locked and can append a new question", as
   await page.getByRole("button", { name: "Save Changes" }).click();
   await expect(page.getByLabel("Maximum score")).toHaveCount(0);
   const { data } = await testClient().from(table("sprints")).select("check_questions, check_max_score").eq("id", sprint.id).single();
-  expect(data.check_questions[0]).toBe("Required course lead question");
-  expect(data.check_questions).toHaveLength(2);
+  // The PM's addition is scoped to their group; the course-wide sprint is untouched.
+  expect(data.check_questions).toEqual(["Required course lead question"]);
   expect(data.check_max_score).toBe(20);
+  const { data: groupCheck } = await testClient().from(table("sprintGroupChecks")).select("additional_questions").eq("sprint_id", sprint.id).eq("group_number", 1).single();
+  expect(groupCheck.additional_questions).toHaveLength(1);
 });

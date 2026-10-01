@@ -68,12 +68,14 @@ for (const role of ["pm", "course_lead", "head_pm", "web_dev"]) {
   test(`${role}: failed requests show a recoverable error instead of an empty gradebook`, async ({ page, loginAs }) => {
     await insertUser({ net_id: "ux-manager", role: role === "pm" ? "PM" : role === "web_dev" ? "WEB" : role === "head_pm" ? "HEAD" : "LEAD", group_number: 1 });
     await loginAs({ netID: "ux-manager", role });
-    await page.route("**/api/action_items?scope=all", (route) => route.fulfill({ status: 500, json: { error: "Database unavailable" } }));
+    // PM-view gradebooks add &group_scope=true, so match on the scope param.
+    const allItems = (url) => url.pathname === "/api/action_items" && url.searchParams.get("scope") === "all";
+    await page.route(allItems, (route) => route.fulfill({ status: 500, json: { error: "Database unavailable" } }));
     await page.goto(`/user/${role}/gradebook`);
     const errorAlert = page.getByRole("alert").filter({ hasText: "Unable to load" });
     await expect(errorAlert).toBeVisible();
     await expect(page.getByText("No students in scope yet")).not.toBeVisible();
-    await page.unroute("**/api/action_items?scope=all");
+    await page.unroute(allItems);
     await page.getByRole("button", { name: "Retry" }).click();
     await expect(page.getByText("No students in scope yet")).toBeVisible();
     await expect(errorAlert).not.toBeVisible();

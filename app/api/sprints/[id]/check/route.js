@@ -119,6 +119,7 @@ export async function GET(request, { params }) {
     const questionsByGroup = new Map(groupChecks.map((c) => [c.group_number, c.additional_questions]));
     const groups = [...studentsByGroup.keys()].sort((a, b) => a - b).map((g) => ({
       questions: applyGroupQuestions(sprint, questionsByGroup.get(g)).check_questions ?? [],
+      additionalQuestions: (questionsByGroup.get(g) ?? []).filter((q) => !(sprint.check_questions ?? []).includes(q)),
       groupNumber: g,
       isOpen: !!windowsByGroup.get(g)?.is_open,
       roster: rosterFor(studentsByGroup.get(g), submissionsByNetID),

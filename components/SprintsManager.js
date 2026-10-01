@@ -304,7 +304,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
               {students.filter((student) => completedIds.has(student.net_id)).length}
             </span>
             <span style={{ color: "rgba(249,249,249,0.5)", fontFamily: "Inter", fontSize: "0.85rem" }}>
-              / {students.length} {groupScoped ? "students in your group complete" : "students complete"}
+              / {students.length} {groupScoped ? "students in your group marked sprint complete" : "students marked sprint complete"}
             </span>
           </div>
         </div>
