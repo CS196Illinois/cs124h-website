@@ -5,6 +5,7 @@ import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../../lib/sandbox";
 import { syncSheetAccessForRole } from "../../../../lib/sheetAccess";
+import { parseGroupNumber } from "../../../../lib/fieldRules";
 
 const FULL_USER_ACCESS = ["course_lead", "web_dev"];
 const WEB_TEAM_ROLES   = ["LEAD_WEB", "WEB"];
@@ -24,14 +25,14 @@ export async function PATCH(request, { params }) {
   if (!body || typeof body !== "object") return NextResponse.json({ error: "Please provide the changes to save." }, { status: 400 });
   const updates = {};
 
-  if (body.name         !== undefined) updates.name         = body.name;
+  if (body.name !== undefined) {
+    if (body.name != null && typeof body.name !== "string") return NextResponse.json({ error: "Please enter the name as text." }, { status: 400 });
+    updates.name = body.name?.trim() || null;
+  }
   if (body.group_number !== undefined) {
-    const value = body.group_number;
-    const group = value === null || value === "" ? null : Number(value);
-    if (group !== null && ((typeof value !== "string" && typeof value !== "number") || !Number.isInteger(group) || group < 0)) {
-      return NextResponse.json({ error: "Enter a whole group number of zero or greater, or leave it blank to unassign." }, { status: 400 });
-    }
-    updates.group_number = group;
+    const group = parseGroupNumber(body.group_number);
+    if (group.error) return NextResponse.json({ error: group.error }, { status: 400 });
+    updates.group_number = group.value;
   }
 
   if (body.role !== undefined) {

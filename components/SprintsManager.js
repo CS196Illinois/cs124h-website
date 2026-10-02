@@ -6,6 +6,7 @@ import { isPmViewRole } from "../lib/roles";
 import { useUndo } from "./UndoProvider";
 import styles from "../app/user/dashboard.module.css";
 import { courseTodayISO } from "../lib/dateFormat";
+import { parseMaxScore, parseSprintNumber } from "../lib/fieldRules";
 
 function getCurrentSprint(sprints) {
   if (!sprints.length) return null;
@@ -129,12 +130,20 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
   };
 
   const handleSave = async () => {
+    const sprintNumber = parseSprintNumber(form.number);
+    if (canManage && sprintNumber.error) { setModalError(sprintNumber.error); return; }
     if (!form.goal.trim()) { setModalError("Goal is required"); return; }
+    if (canManage && form.check_max_score !== "" && form.check_max_score != null && parseMaxScore(form.check_max_score).error) {
+      setModalError(parseMaxScore(form.check_max_score).error); return;
+    }
+    if (canManage && form.start_date && form.end_date && form.end_date < form.start_date) {
+      setModalError("End date must be on or after the start date."); return;
+    }
     setSaving(true);
     setModalError(null);
     const body = canManage
       ? {
-          number: Number(form.number),
+          number: sprintNumber.value,
           goal: form.goal.trim(),
           start_date: form.start_date || null,
           end_date: form.end_date || null,
@@ -385,8 +394,10 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
             {canManage && <div className={styles.formGroup}>
               <label>Sprint Number <span className={styles.required}>*</span></label>
               <input
+                required
                 type="number"
                 min="0"
+                step="1"
                 value={form.number}
                 onChange={(e) => setForm((f) => ({ ...f, number: e.target.value }))}
               />
@@ -394,6 +405,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
             {canManage && <div className={styles.formGroup}>
               <label>Goal <span className={styles.required}>*</span></label>
               <textarea
+                required
                 value={form.goal}
                 onChange={(e) => setForm((f) => ({ ...f, goal: e.target.value }))}
                 placeholder="What should students accomplish this sprint?"

@@ -1,5 +1,6 @@
 import { getUserGroup, applyGroupQuestions, saveGroupSprintCheck } from "../../../../lib/groupSprintChecks";
 import { isPmViewRole } from "../../../../lib/roles";
+import { parseSprintNumber } from "../../../../lib/fieldRules";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { authOptions } from "../../auth/[...nextauth]/route";
@@ -35,15 +36,17 @@ export async function PATCH(request, { params }) {
   const updates = {};
   for (const key of allowed) {
     if (key in body) {
-      updates[key] = key === "number" ? Number(body[key]) : (body[key] ?? null);
+      updates[key] = body[key] ?? null;
     }
   }
   if (updates.goal != null) updates.goal = String(updates.goal).trim();
   if ("goal" in updates && !updates.goal) return NextResponse.json({ error: "Goal cannot be empty." }, { status: 400 });
   const dateError = validateSprintDates(updates.start_date ?? existingSprint.start_date, updates.end_date ?? existingSprint.end_date);
   if (dateError) return NextResponse.json({ error: dateError }, { status: 400 });
-  if ("number" in updates && (!Number.isInteger(updates.number) || updates.number < 0)) {
-    return NextResponse.json({ error: "Sprint number must be a non-negative whole number." }, { status: 400 });
+  if ("number" in updates) {
+    const sprintNumber = parseSprintNumber(updates.number);
+    if (sprintNumber.error) return NextResponse.json({ error: sprintNumber.error }, { status: 400 });
+    updates.number = sprintNumber.value;
   }
   if ("check_questions" in updates) updates.check_questions = normalizeQuestions(updates.check_questions);
   if (isPmViewRole(userRole) && "check_questions" in updates) {

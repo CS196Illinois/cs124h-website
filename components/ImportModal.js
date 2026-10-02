@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import styles from "../app/user/dashboard.module.css";
 import { ALL_ROLES, ROLE_ALIASES } from "../lib/roles";
+import { parseGroupNumber } from "../lib/fieldRules";
 
 // ─── CSV parser (handles quoted fields) ──────────────────────────────────────
 function parseCsv(text) {
@@ -100,6 +101,7 @@ function processRows(mappedRows) {
     const errs = [
       !r.net_id && "Missing NetID",
       !VALID_ROLES.includes(r.role) && `Invalid role "${r.role || "(empty)"}"`,
+      parseGroupNumber(r.group_number).error && `Invalid group number "${r.group_number}"`,
     ].filter(Boolean);
     return { ...r, _valid: errs.length === 0, _errors: errs };
   });

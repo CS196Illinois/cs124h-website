@@ -1,5 +1,6 @@
 import { getUserGroup, groupSprintChecks } from "../../../lib/groupSprintChecks";
 import { isPmViewRole } from "../../../lib/roles";
+import { parseSprintNumber } from "../../../lib/fieldRules";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
@@ -54,13 +55,12 @@ export async function POST(request) {
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Please check the information you entered and try again." }, { status: 400 });
   const { number, goal, start_date, end_date, check_questions, check_max_score } = body;
-  if (number == null || !goal?.trim()) {
+  if (number == null || typeof goal !== "string" || !goal.trim()) {
     return NextResponse.json({ error: "Please enter both a sprint number and a goal." }, { status: 400 });
   }
-  const sprintNumber = Number(number);
-  if (!Number.isInteger(sprintNumber) || sprintNumber < 0) {
-    return NextResponse.json({ error: "Sprint number must be a non-negative whole number." }, { status: 400 });
-  }
+  const parsedNumber = parseSprintNumber(number);
+  if (parsedNumber.error) return NextResponse.json({ error: parsedNumber.error }, { status: 400 });
+  const sprintNumber = parsedNumber.value;
   const dateError = validateSprintDates(start_date, end_date);
   if (dateError) return NextResponse.json({ error: dateError }, { status: 400 });
   if (check_max_score != null && check_max_score !== "" && (!Number.isFinite(Number(check_max_score)) || Number(check_max_score) <= 0)) {

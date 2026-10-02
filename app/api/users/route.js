@@ -4,6 +4,7 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { MANAGEABLE_BY as MANAGEABLE_ROLES } from "../../../lib/roles";
+import { parseGroupNumber } from "../../../lib/fieldRules";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../lib/sandbox";
 import { syncSheetAccessForRole, SHEET_ACCESS_ROLES } from "../../../lib/sheetAccess";
 
@@ -58,9 +59,14 @@ export async function POST(request) {
   const body = await request.json();
   const { net_id, role, name, group_number } = body;
 
-  if (!net_id || !role) {
+  if (typeof net_id !== "string" || !net_id.trim() || !role) {
     return NextResponse.json({ error: "Please enter both a NetID and a role." }, { status: 400 });
   }
+  if (name != null && typeof name !== "string") {
+    return NextResponse.json({ error: "Please enter the name as text." }, { status: 400 });
+  }
+  const group = parseGroupNumber(group_number);
+  if (group.error) return NextResponse.json({ error: group.error }, { status: 400 });
 
   if (!allowed.includes(role)) {
     return NextResponse.json({ error: "You cannot add users with that role" }, { status: 403 });
@@ -75,7 +81,7 @@ export async function POST(request) {
       return NextResponse.json({ error: `A user with NetID "${cleanNetId}" already exists.` }, { status: 409 });
     }
     const fullRow = {
-      net_id: cleanNetId, role, name: name?.trim() || null, group_number: group_number || null,
+      net_id: cleanNetId, role, name: name?.trim() || null, group_number: group.value,
       sub: null, discord_user_id: null, sandbox_mode: "off",
     };
     await sandboxWrite(netID, "users", "insert", cleanNetId, fullRow);
@@ -84,7 +90,7 @@ export async function POST(request) {
 
   const { data, error } = await supabaseServer
     .from(table("users"))
-    .insert({ net_id: cleanNetId, role, name: name?.trim() || null, group_number: group_number || null })
+    .insert({ net_id: cleanNetId, role, name: name?.trim() || null, group_number: group.value })
     .select()
     .single();
 

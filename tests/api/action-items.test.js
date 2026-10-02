@@ -110,15 +110,20 @@ describe("POST /api/action_items", () => {
     expect(res.status).toBe(403);
   });
 
-  it("gradable items default max_score to 100 when unset or invalid", async () => {
+  it("gradable items default max_score to 100 when unset, and reject an invalid one", async () => {
     asRole("course_lead", "lead1");
     const res = await POST(makeRequest("http://localhost/api/action_items", {
       method: "POST",
-      body: { title: "x", target_type: "individual", target_net_ids: ["stu1"], is_gradable: true, max_score: "not-a-number" },
+      body: { title: "x", target_type: "individual", target_net_ids: ["stu1"], is_gradable: true, max_score: "" },
     }));
     const json = await res.json();
     expect(json.data[0].is_gradable).toBe(true);
     expect(json.data[0].max_score).toBe(100);
+    const invalid = await POST(makeRequest("http://localhost/api/action_items", {
+      method: "POST",
+      body: { title: "x", target_type: "individual", target_net_ids: ["stu1"], is_gradable: true, max_score: "not-a-number" },
+    }));
+    expect(invalid.status).toBe(400);
   });
 });
 

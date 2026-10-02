@@ -6,6 +6,7 @@ import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, mergeSandboxRows, sandboxWrite } from "../../../lib/sandbox";
 import { canAdminEvents, validateEventAudience, audienceMatches, eventHasEnded } from "../../../lib/events";
+import { EVENT_TEXT_MAX } from "../../../lib/fieldRules";
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 
@@ -91,6 +92,13 @@ export async function POST(request) {
   if ([description, location, presenter].some((value) => value != null && typeof value !== "string")) {
     return NextResponse.json({ error: "Description, location and presenter must be text" }, { status: 400 });
   }
+  if ([title, location, presenter].some((value) => typeof value === "string" && value.trim().length > EVENT_TEXT_MAX)) {
+    return NextResponse.json({ error: `Title, location and presenter must be ${EVENT_TEXT_MAX} characters or fewer.` }, { status: 400 });
+  }
+  // start_time is NOT NULL in the database.
+  if (typeof start_time !== "string" || !start_time.trim()) {
+    return NextResponse.json({ error: "Please choose a start time." }, { status: 400 });
+  }
   if ([start_time, end_time].some((value) => value != null && value !== "" && (typeof value !== "string" || !Number.isFinite(Date.parse(value))))) {
     return NextResponse.json({ error: "Please enter a valid event date and time." }, { status: 400 });
   }
@@ -98,19 +106,15 @@ export async function POST(request) {
     return NextResponse.json({ error: "End time must be after start time" }, { status: 400 });
   }
 
-  // end_time is required by the DB - default to 1 hour after start_time, or now + 1h
-  const resolvedEndTime = end_time || (
-    start_time
-      ? new Date(new Date(start_time).getTime() + 60 * 60 * 1000).toISOString()
-      : new Date(Date.now() + 60 * 60 * 1000).toISOString()
-  );
+  // end_time is required by the DB - default to 1 hour after start_time
+  const resolvedEndTime = end_time || new Date(Date.parse(start_time) + 60 * 60 * 1000).toISOString();
 
   const row = {
     title: title.trim(),
     description: description?.trim() || null,
     location: location?.trim() || null,
     presenter: presenter?.trim() || null,
-    start_time: start_time || null,
+    start_time,
     end_time: resolvedEndTime,
     created_by: netID,
     audience_type,

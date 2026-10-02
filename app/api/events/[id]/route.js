@@ -5,6 +5,7 @@ import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
 import { eventHasEnded, validateEventAudience, getManagedEvent } from "../../../../lib/events";
+import { EVENT_TEXT_MAX } from "../../../../lib/fieldRules";
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 
@@ -41,9 +42,18 @@ export async function PATCH(request, { params }) {
       updates.check_in_opened_at = new Date().toISOString();
     }
   }
-  if (body.title      !== undefined) updates.title      = body.title;
-  if (body.description !== undefined) updates.description = body.description;
-  if (body.location   !== undefined) updates.location   = body.location;
+  if (body.title !== undefined) {
+    if (typeof body.title !== "string" || !body.title.trim()) return NextResponse.json({ error: "Please enter a title." }, { status: 400 });
+    updates.title = body.title.trim();
+  }
+  if ([body.description, body.location].some((value) => value != null && typeof value !== "string")) {
+    return NextResponse.json({ error: "Description and location must be text" }, { status: 400 });
+  }
+  if ([updates.title, body.location].some((value) => typeof value === "string" && value.trim().length > EVENT_TEXT_MAX)) {
+    return NextResponse.json({ error: `Title and location must be ${EVENT_TEXT_MAX} characters or fewer.` }, { status: 400 });
+  }
+  if (body.description !== undefined) updates.description = body.description?.trim() || null;
+  if (body.location   !== undefined) updates.location   = body.location?.trim() || null;
 
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
     const { data: realRow } = await supabaseServer.from(table("events")).select("*").eq("id", id).maybeSingle();

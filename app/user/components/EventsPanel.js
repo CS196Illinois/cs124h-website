@@ -10,6 +10,7 @@ import styles from "../dashboard.module.css";
 import panelStyles from "./EventsPanel.module.css";
 import EventAudiencePicker from "./EventAudiencePicker";
 import { isPmViewRole, roleLabel } from "../../../lib/roles";
+import { CHECKIN_NETID_MAX, EVENT_TEXT_MAX } from "../../../lib/fieldRules";
 
 // Roles with standing Editor access to the shared attendance sheet (kept in
 // sync with lib/sheetAccess.js's SHEET_ACCESS_PATH_ROLES) - only these see
@@ -300,6 +301,8 @@ export default function EventsPanel() {
   const handleCreate = async () => {
     setFormError("");
     if (!form.title.trim()) { setFormError("Title is required."); return; }
+    if (!form.start_time) { setFormError("Start time is required."); return; }
+    if (form.end_time && form.end_time <= form.start_time) { setFormError("End time must be after start time."); return; }
     if (form.audience_type !== "all" && !form.audience_values.length) { setFormError("Choose who this event is for before creating it."); return; }
     setFormLoading(true);
     try {
@@ -544,6 +547,7 @@ export default function EventsPanel() {
                               style={{ flex: "0 1 220px" }}
                               list={`roster-${event.id}`}
                               placeholder="NetID to add…"
+                              maxLength={CHECKIN_NETID_MAX}
                               value={addInputs[event.id] || ""}
                               onChange={(e) => setAddInputs((prev) => ({ ...prev, [event.id]: e.target.value }))}
                             />
@@ -584,6 +588,8 @@ export default function EventsPanel() {
             <div className={styles.formGroup}>
               <label>Title <span className={styles.required}>*</span></label>
               <input
+                required
+                maxLength={EVENT_TEXT_MAX}
                 value={form.title}
                 onChange={e => setForm({ ...form, title: e.target.value })}
                 placeholder="e.g. Week 5 Guest Lecture"
@@ -601,6 +607,7 @@ export default function EventsPanel() {
             <div className={styles.formGroup}>
               <label>Presenter</label>
               <input
+                maxLength={EVENT_TEXT_MAX}
                 value={form.presenter}
                 onChange={e => setForm({ ...form, presenter: e.target.value })}
                 placeholder="Speaker name (optional)"
@@ -609,6 +616,7 @@ export default function EventsPanel() {
             <div className={styles.formGroup}>
               <label>Location</label>
               <input
+                maxLength={EVENT_TEXT_MAX}
                 value={form.location}
                 onChange={e => setForm({ ...form, location: e.target.value })}
                 placeholder="e.g. Siebel 1404"
@@ -616,16 +624,19 @@ export default function EventsPanel() {
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
               <div className={styles.formGroup} style={{ flex: "1 1 160px" }}>
-                <label>Start Time</label>
+                <label htmlFor="event-start-time">Start Time <span className={styles.required}>*</span></label>
                 <input
+                  id="event-start-time"
+                  required
                   type="datetime-local"
                   value={form.start_time}
                   onChange={e => setForm({ ...form, start_time: e.target.value })}
                 />
               </div>
               <div className={styles.formGroup} style={{ flex: "1 1 160px" }}>
-                <label>End Time <span style={{ color: "rgba(249,249,249,0.35)", fontWeight: 400 }}>(optional)</span></label>
+                <label htmlFor="event-end-time">End Time <span style={{ color: "rgba(249,249,249,0.35)", fontWeight: 400 }}>(optional)</span></label>
                 <input
+                  id="event-end-time"
                   type="datetime-local"
                   value={form.end_time}
                   onChange={e => setForm({ ...form, end_time: e.target.value })}

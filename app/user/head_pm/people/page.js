@@ -5,6 +5,7 @@ import GroupFilter from "../../../../components/GroupFilter";
 import { useState, useEffect, useCallback } from "react";
 import { useUndo } from "../../../../components/UndoProvider";
 import styles from "../../dashboard.module.css";
+import { parseGroupNumber } from "../../../../lib/fieldRules";
 import Modal from "../../components/Modal";
 import RoleBadge from "../../components/RoleBadge";
 import { ALL_ROLES } from "../../../../lib/roles";
@@ -82,6 +83,8 @@ export default function HeadPMPeople() {
   const handleAddUser = async () => {
     setAddError("");
     if (!addForm.net_id.trim()) { setAddError("NetID is required."); return; }
+    const group = addForm.role === "STUDENT" ? parseGroupNumber(addForm.group_number) : { value: null };
+    if (group.error) { setAddError(group.error); return; }
     setAddLoading(true);
     const res = await fetch("/api/users", {
       method: "POST",
@@ -90,7 +93,7 @@ export default function HeadPMPeople() {
         net_id: addForm.net_id.trim().toLowerCase(),
         role: addForm.role,
         name: addForm.name.trim() || null,
-        group_number: addForm.role === "STUDENT" && addForm.group_number ? Number(addForm.group_number) : null,
+        group_number: group.value,
       }),
     });
     const json = await res.json();
@@ -109,13 +112,15 @@ export default function HeadPMPeople() {
 
   const handleSaveEdit = async () => {
     setEditError("");
+    const group = parseGroupNumber(editForm.group_number);
+    if (editUser.role === "STUDENT" && group.error) { setEditError(group.error); return; }
     setEditLoading(true);
     const res = await fetch(`/api/users/${encodeURIComponent(editUser.net_id)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: editForm.name.trim() || null,
-        ...(editUser.role === "STUDENT" && { group_number: editForm.group_number ? Number(editForm.group_number) : null }),
+        ...(editUser.role === "STUDENT" && { group_number: group.value }),
       }),
     });
     const json = await res.json();
@@ -299,7 +304,7 @@ export default function HeadPMPeople() {
           </div>
           <div className={styles.formGroup}>
             <label>NetID <span className={styles.required}>*</span></label>
-            <input value={addForm.net_id} onChange={(e) => setAddForm({ ...addForm, net_id: e.target.value })} placeholder="jdoe2" />
+            <input required value={addForm.net_id} onChange={(e) => setAddForm({ ...addForm, net_id: e.target.value })} placeholder="jdoe2" />
           </div>
           <div className={styles.formGroup}>
             <label>Role <span className={styles.required}>*</span></label>
@@ -310,7 +315,7 @@ export default function HeadPMPeople() {
           {addForm.role === "STUDENT" && (
             <div className={styles.formGroup}>
               <label>Group Number</label>
-              <input type="number" value={addForm.group_number} onChange={(e) => setAddForm({ ...addForm, group_number: e.target.value })} placeholder="e.g. 3" />
+              <input type="number" min="0" step="1" value={addForm.group_number} onChange={(e) => setAddForm({ ...addForm, group_number: e.target.value })} placeholder="e.g. 3" />
             </div>
           )}
           <div className={styles.modalActions}>
@@ -333,7 +338,7 @@ export default function HeadPMPeople() {
           {editUser.role === "STUDENT" && (
             <div className={styles.formGroup}>
               <label>Group Number</label>
-              <input type="number" value={editForm.group_number} onChange={(e) => setEditForm({ ...editForm, group_number: e.target.value })} placeholder="e.g. 3" />
+              <input type="number" min="0" step="1" value={editForm.group_number} onChange={(e) => setEditForm({ ...editForm, group_number: e.target.value })} placeholder="e.g. 3" />
             </div>
           )}
           <div className={styles.modalActions}>

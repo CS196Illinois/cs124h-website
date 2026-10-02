@@ -120,11 +120,11 @@ describe("GET /api/events scoping", () => {
   it.each([["pm", "PM"], ["web_dev", "WEB"]])("defaults %s events to their group and requires an explicit audience without a group", async (role, dbRole) => {
     await insertUser({ net_id: "owner", role: dbRole, group_number: 7 });
     asRole(role, "owner");
-    const response = await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "Group meeting" } }));
+    const response = await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "Group meeting", start_time: "2026-01-01T18:00:00.000Z" } }));
     expect(response.status).toBe(201);
     expect(await response.json()).toMatchObject({ audience_type: "groups", audience_values: ["7"] });
     await testClient().from(table("users")).update({ group_number: null }).eq("net_id", "owner");
-    expect((await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "No group" } }))).status).toBe(400);
+    expect((await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "No group", start_time: "2026-01-01T18:00:00.000Z" } }))).status).toBe(400);
   });
 
   it("the Events tab returns created events, while the lead web developer sees all", async () => {
@@ -159,7 +159,7 @@ describe("events - sandbox mode", () => {
     await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
     asRole("web_dev", "webdev1");
 
-    const res = await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "Sandboxed event", audience_type: "all" } }));
+    const res = await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "Sandboxed event", audience_type: "all", start_time: "2026-01-01T18:00:00.000Z" } }));
     expect(res.status).toBe(201);
 
     const { data: real } = await testClient().from(table("events")).select("*");
@@ -305,7 +305,7 @@ describe("event check-ins - sandbox mode", () => {
     await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
     asRole("web_dev", "webdev1");
 
-    const created = await (await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "sandbox event", audience_type: "all" } }))).json();
+    const created = await (await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "sandbox event", audience_type: "all", start_time: new Date(Date.now() - 5 * 60 * 1000).toISOString() } }))).json();
     await PATCH(
       makeRequest(`http://localhost/api/events/${created.id}`, { method: "PATCH", body: { check_in_open: true } }),
       { params: { id: created.id } }

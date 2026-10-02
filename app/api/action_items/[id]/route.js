@@ -69,8 +69,14 @@ export async function PATCH(request, { params }) {
     if (!allowed) {
       return NextResponse.json({ error: "You do not have permission to do that." }, { status: 403 });
     }
-    if (body.title !== undefined) updates.title = body.title;
-    if (body.description !== undefined) updates.description = body.description;
+    if (body.title !== undefined) {
+      if (typeof body.title !== "string" || !body.title.trim()) return NextResponse.json({ error: "Please enter a title." }, { status: 400 });
+      updates.title = body.title.trim();
+    }
+    if (body.description !== undefined) {
+      if (body.description != null && typeof body.description !== "string") return NextResponse.json({ error: "Please enter the description as text." }, { status: 400 });
+      updates.description = body.description?.trim() || null;
+    }
     if (body.due_date !== undefined) updates.due_date = body.due_date || null;
     if (body.is_gradable !== undefined) {
       updates.is_gradable = !!body.is_gradable;

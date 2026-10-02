@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Modal from "./Modal";
 import styles from "../dashboard.module.css";
+import { parseMaxScore } from "../../../lib/fieldRules";
 
 export default function EditActionItemModal({ item, onClose, onSaved }) {
   const [form, setForm] = useState({
@@ -18,6 +19,8 @@ export default function EditActionItemModal({ item, onClose, onSaved }) {
   const handleSave = async () => {
     setError("");
     if (!form.title.trim()) { setError("Title is required."); return; }
+    const maxScore = form.is_gradable ? parseMaxScore(form.max_score) : { value: null };
+    if (maxScore.error) { setError(maxScore.error); return; }
     setLoading(true);
     const res = await fetch(`/api/action_items/${item.id}`, {
       method: "PATCH",
@@ -27,7 +30,7 @@ export default function EditActionItemModal({ item, onClose, onSaved }) {
         description: form.description.trim() || null,
         due_date: form.due_date || null,
         is_gradable: form.is_gradable,
-        max_score: form.is_gradable ? Number(form.max_score) || 100 : null,
+        max_score: maxScore.value,
       }),
     });
     const json = await res.json();
@@ -42,7 +45,7 @@ export default function EditActionItemModal({ item, onClose, onSaved }) {
       {error && <div className={styles.alertError}>{error}</div>}
       <div className={styles.formGroup}>
         <label>Title <span className={styles.required}>*</span></label>
-        <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+        <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
       </div>
       <div className={styles.formGroup}>
         <label>Description</label>

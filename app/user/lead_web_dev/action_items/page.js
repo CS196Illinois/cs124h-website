@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useUndo } from "../../../../components/UndoProvider";
 import styles from "../../dashboard.module.css";
+import { parseMaxScore } from "../../../../lib/fieldRules";
 import Modal from "../../components/Modal";
 import EditActionItemModal from "../../components/EditActionItemModal";
 import GradeActionItemModal from "../../components/GradeActionItemModal";
@@ -122,6 +123,7 @@ export default function LeadWebDevActionItems() {
   const handleCreate = async () => {
     setFormError("");
     if (!form.title.trim()) { setFormError("Title is required."); return; }
+    if (form.is_gradable && parseMaxScore(form.max_score).error) { setFormError(parseMaxScore(form.max_score).error); return; }
     if (form.target_type === "individual" && form.target_net_ids.length === 0) {
       setFormError("Select at least one person."); return;
     }
@@ -264,7 +266,7 @@ export default function LeadWebDevActionItems() {
           <h2>Assign Action Item</h2>
           {formError && <div className={styles.alertError}>{formError}</div>}
           {formSuccess && <div className={styles.alertSuccess}>{formSuccess}</div>}
-          <div className={styles.formGroup}><label>Title <span className={styles.required}>*</span></label><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Task title" /></div>
+          <div className={styles.formGroup}><label>Title <span className={styles.required}>*</span></label><input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Task title" /></div>
           <div className={styles.formGroup}><label>Description</label><textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional details…" /></div>
           <div className={styles.formGroup}><label>Due Date</label><input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} /></div>
           <div className={styles.formGroup}>

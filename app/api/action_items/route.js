@@ -5,6 +5,7 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { MANAGEABLE_BY } from "../../../lib/roles";
+import { parseMaxScore } from "../../../lib/fieldRules";
 import { groupStudentIds } from "../../../lib/groupScope";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../lib/sandbox";
 
@@ -99,8 +100,9 @@ export async function POST(request) {
   let maxScore = null;
   if (is_gradable) {
     gradable = true;
-    const parsed = Number(max_score);
-    maxScore = Number.isFinite(parsed) && parsed > 0 ? parsed : 100;
+    const parsed = parseMaxScore(max_score);
+    if (parsed.error) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    maxScore = parsed.value;
   }
 
   const sandboxed = isSandboxRole(userRole) && (await getSandboxMode(assignerNetID)) !== "off";

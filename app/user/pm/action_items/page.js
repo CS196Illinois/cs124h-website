@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useUndo } from "../../../../components/UndoProvider";
 import styles from "../../dashboard.module.css";
+import { parseMaxScore } from "../../../../lib/fieldRules";
 import Modal from "../../components/Modal";
 import EditActionItemModal from "../../components/EditActionItemModal";
 import GradeActionItemModal from "../../components/GradeActionItemModal";
@@ -96,6 +97,7 @@ export default function PMActionItems() {
   const handleCreate = async () => {
     setFormError("");
     if (!form.title.trim()) { setFormError("Title is required."); return; }
+    if (form.is_gradable && parseMaxScore(form.max_score).error) { setFormError(parseMaxScore(form.max_score).error); return; }
     if (form.target_type === "individual" && form.target_net_ids.length === 0) {
       setFormError("Select at least one student."); return;
     }
@@ -340,7 +342,7 @@ export default function PMActionItems() {
           {formSuccess && <div className={styles.alertSuccess}>{formSuccess}</div>}
           <div className={styles.formGroup}>
             <label>Title <span className={styles.required}>*</span></label>
-            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Action item…" />
+            <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Action item…" />
           </div>
           <div className={styles.formGroup}>
             <label>Description</label>

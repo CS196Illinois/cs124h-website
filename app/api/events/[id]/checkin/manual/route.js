@@ -7,6 +7,7 @@ import { table } from "../../../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../../../../lib/sandbox";
 import { getManagedEvent } from "../../../../../../lib/events";
 import { syncEventAttendance } from "../../../../../../lib/eventAttendanceSync";
+import { CHECKIN_NETID_MAX } from "../../../../../../lib/fieldRules";
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 
@@ -26,10 +27,14 @@ export async function POST(request, { params }) {
   if (!(await getManagedEvent(id, netID, userRole))) {
     return NextResponse.json({ error: "That event could not be found, or you do not have permission to manage it." }, { status: 403 });
   }
-  const { net_id } = await request.json();
-  const cleanNetId = net_id?.trim().toLowerCase();
+  const { net_id } = await request.json().catch(() => ({}));
+  const cleanNetId = typeof net_id === "string" ? net_id.trim().toLowerCase() : "";
   if (!cleanNetId) {
     return NextResponse.json({ error: "Please choose a person." }, { status: 400 });
+  }
+  // event_checkins.net_id is varchar(50) in the database.
+  if (cleanNetId.length > CHECKIN_NETID_MAX) {
+    return NextResponse.json({ error: "That NetID is too long." }, { status: 400 });
   }
 
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {

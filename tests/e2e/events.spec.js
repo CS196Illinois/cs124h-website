@@ -3,6 +3,15 @@ import { insertUser, insertEvent, insertEventCheckin, clearAllTestTables, testCl
 import { deriveCode } from "../../app/api/events/[id]/code/route";
 import { table } from "../../lib/tables";
 
+// The event form requires a start time (events.start_time is NOT NULL). A few
+// minutes ago keeps the event live so check-in can still be opened.
+function recentLocalDateTime() {
+  const d = new Date(Date.now() - 5 * 60 * 1000);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+
 test.describe("events: create, check-in toggle, and creator-scoped permissions", () => {
   test.beforeEach(clearAllTestTables);
 
@@ -20,6 +29,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
         await page.screenshot({ path: "test-results/event-audience-desktop.png" });
       }
       await page.getByPlaceholder("e.g. Week 5 Guest Lecture").fill("Audience test");
+      await page.getByLabel("Start Time").fill(recentLocalDateTime());
       await page.getByRole("button", { name: "Create Event" }).click();
       await expect(page.getByText("Groups: 3", { exact: true })).toBeVisible();
       await page.getByRole("button", { name: "Edit audience" }).click();
@@ -40,6 +50,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
 
     await page.getByRole("button", { name: "+ New Event" }).click();
     await page.getByPlaceholder("e.g. Week 5 Guest Lecture").fill("Guest Lecture");
+    await page.getByLabel("Start Time").fill(recentLocalDateTime());
     await page.getByPlaceholder("Speaker name (optional)").fill("Dr. Smith");
     await page.getByRole("button", { name: "Create Event" }).click();
 

@@ -5,6 +5,7 @@ import GroupFilter from "../../../../components/GroupFilter";
 import { useState, useEffect, useCallback } from "react";
 import { useUndo } from "../../../../components/UndoProvider";
 import styles from "../../dashboard.module.css";
+import { parseGroupNumber } from "../../../../lib/fieldRules";
 import ImportModal from "../../../../components/ImportModal";
 import Modal from "../../components/Modal";
 import RoleBadge from "../../components/RoleBadge";
@@ -90,11 +91,13 @@ export default function CourseLeadPeople() {
   const handleAddUser = async () => {
     setAddError("");
     if (!addForm.net_id.trim() || !addForm.role) { setAddError("NetID and role are required."); return; }
+    const group = parseGroupNumber(addForm.group_number);
+    if (group.error) { setAddError(group.error); return; }
     setAddLoading(true);
     const res = await fetch("/api/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(addForm),
+      body: JSON.stringify({ ...addForm, net_id: addForm.net_id.trim().toLowerCase(), name: addForm.name.trim() || null, group_number: group.value }),
     });
     const json = await res.json();
     if (!res.ok) { setAddError(json.error || "Failed to add user."); setAddLoading(false); return; }
@@ -137,9 +140,9 @@ export default function CourseLeadPeople() {
   };
 
   const handleGroupChange = async (net_id, group_number) => {
-    const value = group_number.trim() === "" ? null : Number(group_number);
-    if (value !== null && (!Number.isInteger(value) || value < 0)) {
-      setSaveError("Enter a whole group number of zero or greater, or leave it blank to unassign.");
+    const { value, error } = parseGroupNumber(group_number);
+    if (error) {
+      setSaveError(error);
       return;
     }
     setSaveError("");
@@ -308,6 +311,8 @@ export default function CourseLeadPeople() {
                         </select>
                         <input
                           type="number"
+                          min="0"
+                          step="1"
                           className={styles.roleSelect}
                           style={{ width: 70 }}
                           placeholder="Grp"
@@ -345,7 +350,7 @@ export default function CourseLeadPeople() {
             </div>
             <div className={styles.formGroup}>
               <label>NetID <span className={styles.required}>*</span></label>
-              <input value={addForm.net_id} onChange={(e) => setAddForm({ ...addForm, net_id: e.target.value })} placeholder="jdoe2" />
+              <input required value={addForm.net_id} onChange={(e) => setAddForm({ ...addForm, net_id: e.target.value })} placeholder="jdoe2" />
             </div>
             <div className={styles.formGroup}>
               <label>Role <span className={styles.required}>*</span></label>
@@ -355,7 +360,7 @@ export default function CourseLeadPeople() {
             </div>
             <div className={styles.formGroup}>
               <label>Group Number</label>
-              <input type="number" value={addForm.group_number} onChange={(e) => setAddForm({ ...addForm, group_number: e.target.value })} placeholder="e.g. 3" />
+              <input type="number" min="0" step="1" value={addForm.group_number} onChange={(e) => setAddForm({ ...addForm, group_number: e.target.value })} placeholder="e.g. 3" />
             </div>
             <div className={styles.modalActions}>
               <button className={styles.btnSecondary} onClick={() => setShowAddModal(false)}>Cancel</button>

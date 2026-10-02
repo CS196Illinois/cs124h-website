@@ -4,6 +4,8 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { syncSheetAccessForRole, SHEET_ACCESS_ROLES } from "../../../../lib/sheetAccess";
+import { ALL_ROLES } from "../../../../lib/roles";
+import { parseGroupNumber } from "../../../../lib/fieldRules";
 
 // GET: proxy-fetch a Google Sheets CSV to avoid CORS
 export async function GET(request) {
@@ -62,20 +64,22 @@ export async function POST(request) {
     return NextResponse.json({ error: "No rows were found to import. Please check your file or sheet." }, { status: 400 });
   }
 
-  const VALID_ROLES = ["LEAD", "HEAD", "PM", "WEB", "STUDENT"];
+  const VALID_ROLES = ALL_ROLES.map((r) => r.id);
   const validRows = [];
   const errors = [];
 
   for (const row of rows) {
-    const net_id = row.net_id?.trim().toLowerCase();
-    const role = row.role?.toUpperCase().trim();
+    const net_id = typeof row.net_id === "string" ? row.net_id.trim().toLowerCase() : "";
+    const role = typeof row.role === "string" ? row.role.toUpperCase().trim() : "";
     if (!net_id) { errors.push({ row, reason: "NetID is missing." }); continue; }
     if (!VALID_ROLES.includes(role)) { errors.push({ row, reason: `Invalid role: ${row.role}` }); continue; }
+    const group = parseGroupNumber(row.group_number);
+    if (group.error) { errors.push({ row, reason: `Invalid group number: ${row.group_number}` }); continue; }
     validRows.push({
       net_id,
       role,
-      name: row.name?.trim() || null,
-      group_number: row.group_number ? Number(row.group_number) : null,
+      name: typeof row.name === "string" ? row.name.trim() || null : null,
+      group_number: group.value,
     });
   }
 

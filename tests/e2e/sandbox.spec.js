@@ -2,6 +2,15 @@ import { test, expect } from "./fixtures";
 import { insertUser, insertSandboxOverlay, clearAllTestTables, testClient } from "../helpers/db";
 import { table } from "../../lib/tables";
 
+// The event form requires a start time (events.start_time is NOT NULL). A few
+// minutes ago keeps the event live so check-in can still be opened.
+function recentLocalDateTime() {
+  const d = new Date(Date.now() - 5 * 60 * 1000);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+
 test.describe("dashboard sandbox mode", () => {
   test.beforeEach(clearAllTestTables);
 
@@ -69,6 +78,7 @@ test.describe("dashboard sandbox mode", () => {
 
     await page.getByRole("button", { name: "+ New Event" }).click();
     await page.getByPlaceholder("e.g. Week 5 Guest Lecture").fill("Sandbox-only workshop");
+    await page.getByLabel("Start Time").fill(recentLocalDateTime());
     await page.getByRole("button", { name: "Create Event" }).click();
 
     await expect(page.getByText("Sandbox-only workshop")).toBeVisible();
