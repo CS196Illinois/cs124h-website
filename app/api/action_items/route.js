@@ -4,9 +4,10 @@ import { randomUUID } from "crypto";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
-import { MANAGEABLE_BY } from "../../../lib/roles";
+import { MANAGEABLE_BY, isPmViewRole } from "../../../lib/roles";
 import { parseMaxScore } from "../../../lib/fieldRules";
 import { groupStudentIds } from "../../../lib/groupScope";
+import { manageableCheckStudents } from "../../../lib/sprintCheckAccess";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../lib/sandbox";
 
 export async function GET(request) {
@@ -72,6 +73,13 @@ export async function GET(request) {
     rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
   if (visibleRecipients) rows = rows.filter((row) => visibleRecipients.includes(row.net_id));
+  // PMs (and web devs acting as PMs) only ever see their own group's
+  // understanding-check submissions, whatever scope they asked for.
+  if (isPmViewRole(userRole)) {
+    const checkStudents = rows.filter((row) => row.sprint_id && row.net_id !== netID).map((row) => row.net_id);
+    const allowed = await manageableCheckStudents(userRole, netID, checkStudents);
+    rows = rows.filter((row) => !row.sprint_id || row.net_id === netID || allowed.has(row.net_id));
+  }
   return NextResponse.json(rows);
 }
 

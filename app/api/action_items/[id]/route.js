@@ -4,6 +4,7 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
+import { canManageCheckSubmission } from "../../../../lib/sprintCheckAccess";
 
 export async function PATCH(request, { params }) {
   const session = await getServerSession(authOptions);
@@ -104,7 +105,7 @@ export async function PATCH(request, { params }) {
     }
     const item = sandboxed
       ? effectiveItem
-      : (await supabaseServer.from(table("actionItems")).select("is_gradable, is_done, assigned_by, max_score").eq("id", id).maybeSingle()).data;
+      : (await supabaseServer.from(table("actionItems")).select("net_id, sprint_id, is_gradable, is_done, assigned_by, max_score").eq("id", id).maybeSingle()).data;
     if (!item) return NextResponse.json({ error: "We could not find that item." }, { status: 404 });
     gradingSnapshot = item;
     if (!(updates.is_gradable ?? item.is_gradable)) {
@@ -113,7 +114,13 @@ export async function PATCH(request, { params }) {
     if (!(updates.is_done ?? item.is_done)) {
       return NextResponse.json({ error: "Mark the work complete before entering a grade." }, { status: 400 });
     }
-    if (item.assigned_by !== netID) {
+    // Understanding checks are graded by the student's group (their PM) or a
+    // course manager - not by whoever happened to open the check window.
+    if (item.sprint_id) {
+      if (!(await canManageCheckSubmission(userRole, netID, item.net_id))) {
+        return NextResponse.json({ error: "Only this student's PM or course staff can grade their understanding check." }, { status: 403 });
+      }
+    } else if (item.assigned_by !== netID) {
       return NextResponse.json({ error: "Only the person who assigned this work can grade it." }, { status: 403 });
     }
 
@@ -166,7 +173,8 @@ export async function PATCH(request, { params }) {
   }
 
   if (gradingSnapshot) {
-    query = query.eq("assigned_by", netID).eq("is_done", gradingSnapshot.is_done).eq("is_gradable", gradingSnapshot.is_gradable);
+    if (!gradingSnapshot.sprint_id) query = query.eq("assigned_by", netID);
+    query = query.eq("is_done", gradingSnapshot.is_done).eq("is_gradable", gradingSnapshot.is_gradable);
     query = gradingSnapshot.max_score == null ? query.is("max_score", null) : query.eq("max_score", gradingSnapshot.max_score);
   }
   const { data, error } = await query.select().maybeSingle();
@@ -208,18 +216,21 @@ export async function DELETE(request, { params }) {
  * course_lead  - can manage items for anyone
  * head_pm      - can manage items assigned to PMs or students
  * pm           - can manage items assigned to students in their own group
+ * Understanding-check submissions: course managers, or the student's own PM.
  */
 const FULL_ITEM_ACCESS = ["course_lead", "lead_web_dev", "web_dev"];
 
 export async function canManageItem(userRole, netID, itemId) {
-  if (FULL_ITEM_ACCESS.includes(userRole)) return true;
-
   // Fetch the item to find the recipient
   const { data: item } = await supabaseServer
     .from(table("actionItems"))
-    .select("net_id")
+    .select("net_id, sprint_id")
     .eq("id", itemId)
     .maybeSingle();
+  // Understanding-check submissions are scoped by group for every role,
+  // including web devs acting as PMs.
+  if (item?.sprint_id) return canManageCheckSubmission(userRole, netID, item.net_id);
+  if (FULL_ITEM_ACCESS.includes(userRole)) return true;
   if (!item) return false;
 
   // Fetch the recipient's role and group

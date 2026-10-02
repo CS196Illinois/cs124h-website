@@ -5,6 +5,16 @@ import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
 import { canManageItem } from "../../[id]/route";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../../../lib/sandbox";
+import { manageableCheckStudents } from "../../../../../lib/sprintCheckAccess";
+
+// A sprint's understanding-check submissions share the sprint id as their
+// batch_id across every group. For those, a caller acts only on the
+// submissions they manage (a PM: their own group), never the whole batch.
+async function scopeCheckBatch(items, userRole, netID) {
+  if (!items.length || !items.every((item) => item.sprint_id)) return { isCheckBatch: false, items };
+  const allowed = await manageableCheckStudents(userRole, netID, items.map((item) => item.net_id));
+  return { isCheckBatch: true, items: items.filter((item) => allowed.has(item.net_id)) };
+}
 
 /**
  * Bulk-grade every eligible item in a batch (a set of action items created
@@ -43,7 +53,12 @@ export async function PATCH(request, { params }) {
   if (!items || items.length === 0) {
     return NextResponse.json({ error: "That group of assignments could not be found." }, { status: 404 });
   }
-  if (items.some((item) => item.assigned_by !== netID)) {
+  const scoped = await scopeCheckBatch(items, userRole, netID);
+  items = scoped.items;
+  if (scoped.isCheckBatch && items.length === 0) {
+    return NextResponse.json({ error: "Only a student's PM or course staff can grade their understanding check." }, { status: 403 });
+  }
+  if (!scoped.isCheckBatch && items.some((item) => item.assigned_by !== netID)) {
     return NextResponse.json({ error: "Only the person who assigned this work can grade it." }, { status: 403 });
   }
 
@@ -104,8 +119,9 @@ export async function PATCH(request, { params }) {
       const item = itemsById[update.id];
       const { id, net_id, title, ...gradeFields } = update;
       let query = supabaseServer.from(table("actionItems")).update(gradeFields)
-        .eq("id", id).eq("batch_id", batchId).eq("assigned_by", netID)
+        .eq("id", id).eq("batch_id", batchId)
         .eq("is_done", true).eq("is_gradable", true);
+      if (!scoped.isCheckBatch) query = query.eq("assigned_by", netID);
       query = item.max_score == null ? query.is("max_score", null) : query.eq("max_score", item.max_score);
       const { data: saved, error } = await query.select().maybeSingle();
       if (error) skipped.push({ id, reason: "Could not save this grade; retry" });
@@ -138,7 +154,7 @@ export async function DELETE(request, { params }) {
 
   const { data: realItems, error: fetchErr } = await supabaseServer
     .from(table("actionItems"))
-    .select("id")
+    .select("id, net_id, sprint_id")
     .eq("batch_id", batchId);
   if (fetchErr) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
 
@@ -148,6 +164,11 @@ export async function DELETE(request, { params }) {
   }
   if (!items || items.length === 0) {
     return NextResponse.json({ error: "That group of assignments could not be found." }, { status: 404 });
+  }
+  const scoped = await scopeCheckBatch(items, userRole, netID);
+  if (scoped.isCheckBatch) {
+    items = scoped.items;
+    if (items.length === 0) return NextResponse.json({ error: "You do not have permission to do that." }, { status: 403 });
   }
 
   for (const item of items) {
@@ -161,7 +182,9 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ success: true, count: items.length });
   }
 
-  const { error } = await supabaseServer.from(table("actionItems")).delete().eq("batch_id", batchId);
+  let deletion = supabaseServer.from(table("actionItems")).delete().eq("batch_id", batchId);
+  if (scoped.isCheckBatch) deletion = deletion.in("id", items.map((item) => item.id));
+  const { error } = await deletion;
   if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
 
   return NextResponse.json({ success: true, count: items.length });
