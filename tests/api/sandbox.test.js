@@ -65,7 +65,7 @@ describe("getSandboxMode - ephemeral idle expiry", () => {
     expect(data).toHaveLength(1);
   });
 
-  it("an idle-past-TTL ephemeral session fully deactivates: overlay clears AND mode reverts to off", async () => {
+  it("an idle-past-TTL ephemeral session clears its overlay but stays ephemeral", async () => {
     const user = await insertUser({ role: "WEB", sandbox_mode: "ephemeral" });
     const stale = new Date(Date.now() - EPHEMERAL_TTL_MS - 60_000).toISOString();
     await insertSandboxOverlay({
@@ -73,16 +73,15 @@ describe("getSandboxMode - ephemeral idle expiry", () => {
       updated_at: stale,
     });
 
-    // The very request that discovers the expiry must itself see "off" -
-    // not the stale pre-expiry value - so a caller never sees a
-    // just-deactivated session still reported as ephemeral.
+    // The request that discovers the expiry must still be sandboxed, so it
+    // can never write real data.
     const mode = await getSandboxMode(user.net_id);
-    expect(mode).toBe("off");
+    expect(mode).toBe("ephemeral");
 
     const { data: overlay } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", user.net_id);
     expect(overlay).toHaveLength(0);
     const { data: userRow } = await testClient().from(table("users")).select("sandbox_mode").eq("net_id", user.net_id).single();
-    expect(userRow.sandbox_mode).toBe("off");
+    expect(userRow.sandbox_mode).toBe("ephemeral");
   });
 
   it("a persistent sandbox never expires, no matter how old", async () => {
@@ -107,7 +106,7 @@ describe("getSandboxMode - ephemeral idle expiry", () => {
 describe("deactivateEphemeral", () => {
   beforeEach(clearAllTestTables);
 
-  it("clears the overlay and reverts the mode to off", async () => {
+  it("clears the overlay and keeps the mode ephemeral", async () => {
     const user = await insertUser({ role: "WEB", sandbox_mode: "ephemeral" });
     await insertSandboxOverlay({ owner_net_id: user.net_id, table_key: "sprints", row_pk: "s1", op: "insert", row_data: { id: "s1" } });
 
@@ -115,7 +114,7 @@ describe("deactivateEphemeral", () => {
 
     const { data: overlay } = await testClient().from(table("sandboxOverlay")).select("*").eq("owner_net_id", user.net_id);
     expect(overlay).toHaveLength(0);
-    expect(await getSandboxMode(user.net_id)).toBe("off");
+    expect(await getSandboxMode(user.net_id)).toBe("ephemeral");
   });
 
   it("only ever affects the given owner, never another user", async () => {

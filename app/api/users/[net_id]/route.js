@@ -6,9 +6,10 @@ import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../../lib/sandbox";
 import { syncSheetAccessForRole } from "../../../../lib/sheetAccess";
 import { parseGroupNumber } from "../../../../lib/fieldRules";
+import { WEB_TEAM_ROLE_IDS, DEFAULT_WEB_SANDBOX_MODE } from "../../../../lib/roles";
 
 const FULL_USER_ACCESS = ["course_lead", "web_dev"];
-const WEB_TEAM_ROLES   = ["LEAD_WEB", "WEB"];
+const WEB_TEAM_ROLES   = WEB_TEAM_ROLE_IDS;
 const HEAD_PM_ROLES    = ["PM", "STUDENT"];
 
 export async function PATCH(request, { params }) {
@@ -75,6 +76,12 @@ export async function PATCH(request, { params }) {
     // write path, never here, even though the update shape looks the same.
     await sandboxWrite(callerNetId, "users", "update", net_id, merged);
     return NextResponse.json(merged);
+  }
+
+  // Joining the web team starts the person in the default sandbox mode.
+  if (updates.role !== undefined && WEB_TEAM_ROLES.includes(updates.role)) {
+    const { data: before } = await supabaseServer.from(table("users")).select("role").eq("net_id", net_id).maybeSingle();
+    if (before && !WEB_TEAM_ROLES.includes(before.role)) updates.sandbox_mode = DEFAULT_WEB_SANDBOX_MODE;
   }
 
   const { data, error } = await supabaseServer

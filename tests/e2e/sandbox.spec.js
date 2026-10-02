@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures";
-import { insertUser, insertSandboxOverlay, clearAllTestTables, testClient } from "../helpers/db";
+import { insertUser, insertSandboxOverlay, insertRoleViewRequest, clearAllTestTables, testClient } from "../helpers/db";
 import { table } from "../../lib/tables";
 
 // The event form requires a start time (events.start_time is NOT NULL). A few
@@ -35,6 +35,27 @@ test.describe("dashboard sandbox mode", () => {
 
     await page.getByRole("button", { name: /^Off/ }).click();
     await expect(page.getByText("Sandbox active")).not.toBeVisible();
+  });
+
+  test("an ephemeral web dev stays sandboxed, with the banner, while testing other roles and Attendance", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-webroam", role: "WEB", sandbox_mode: "ephemeral" });
+    await insertRoleViewRequest({ requester_net_id: "e2e-webroam", requested_role: "pm", status: "approved", expires_at: null });
+    await insertSandboxOverlay({ owner_net_id: "e2e-webroam", table_key: "sprints", row_pk: "s1", op: "insert", row_data: { id: "s1" } });
+    await loginAs({ netID: "e2e-webroam", role: "web_dev" });
+    await page.goto("/user/web_dev");
+    await expect(page.getByText("Sandbox active (ephemeral)")).toBeVisible();
+
+    await page.getByRole("link", { name: "PM", exact: true }).click();
+    await expect(page).toHaveURL(/\/user\/pm$/);
+    await expect(page.getByText("Sandbox active (ephemeral)")).toBeVisible();
+    await page.goto("/user/checkin");
+    await page.goto("/user/web_dev");
+    await expect(page.getByText("Sandbox active (ephemeral)")).toBeVisible();
+
+    const { data: user } = await testClient().from(table("users")).select("sandbox_mode").eq("net_id", "e2e-webroam").single();
+    expect(user.sandbox_mode).toBe("ephemeral");
+    const { data: overlay } = await testClient().from(table("sandboxOverlay")).select("id").eq("owner_net_id", "e2e-webroam");
+    expect(overlay).toHaveLength(1);
   });
 
   test("Reset Sandbox clears the overlay without changing the mode", async ({ page, loginAs }) => {

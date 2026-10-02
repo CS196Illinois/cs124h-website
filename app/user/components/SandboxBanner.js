@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 
 /**
@@ -12,8 +12,6 @@ import { useSession } from "next-auth/react";
 export default function SandboxBanner() {
   const { status } = useSession();
   const [mode, setMode] = useState("off");
-  const modeRef = useRef(mode);
-  modeRef.current = mode;
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -31,20 +29,9 @@ export default function SandboxBanner() {
     return () => window.removeEventListener("sandbox-mode-changed", onChange);
   }, []);
 
-  // Best-effort clear when this banner unmounts - which only happens on an
-  // in-app navigation away from the web_dev/lead_web_dev section entirely
-  // (sub-route changes within it don't remount the layout/sidebar). Not the
-  // safety net for ephemeral mode: a tab close or crash never runs this at
-  // all, which is exactly why getSandboxMode()'s lazy idle-TTL expiry exists
-  // as the real guarantee. The route itself re-checks that mode is
-  // currently ephemeral before clearing anything.
-  useEffect(() => {
-    return () => {
-      if (modeRef.current === "ephemeral") {
-        navigator.sendBeacon?.("/api/users/me/sandbox", new Blob());
-      }
-    };
-  }, []);
+  // No clear-on-unmount: this banner also unmounts when a web dev opens
+  // another role's dashboard or Attendance, mid-test. An ephemeral sandbox
+  // ends through getSandboxMode()'s idle-TTL expiry instead.
 
   if (mode === "off") return null;
 

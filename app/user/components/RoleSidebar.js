@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useRef, useState, useEffect } from "react";
 import styles from "./UserSidebar.module.css";
+import SandboxBanner from "./SandboxBanner";
 
 export default function RoleSidebar({ links, base, roleTitle, ownRole, banner, children }) {
   const pathname = usePathname();
@@ -55,7 +56,8 @@ export default function RoleSidebar({ links, base, roleTitle, ownRole, banner, c
       <div className={styles.siteTitle}>CS 124H</div>
       <div className={styles.roleTitle}>{roleTitle}</div>
       {session?.user?.name && <div className={styles.userName}>{session.user.name}</div>}
-      {banner}
+      {/* A web dev viewing another role's dashboard is still sandboxed - show it. */}
+      {banner ?? (["web_dev", "lead_web_dev"].includes(sessionRole) && <SandboxBanner />)}
       {isRoleViewing && (
         <Link
           href={`/user/${sessionRole}`}

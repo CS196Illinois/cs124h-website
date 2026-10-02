@@ -6,7 +6,7 @@ import styles from "../dashboard.module.css";
 
 const SANDBOX_MODES = [
   { id: "off", label: "Off", desc: "Changes go to the real database, same as any other staff role." },
-  { id: "ephemeral", label: "Ephemeral", desc: "Sandbox clears automatically after a while away from the dashboard." },
+  { id: "ephemeral", label: "Ephemeral (default)", desc: "Changes stay in your sandbox, which clears after 2 hours of inactivity." },
   { id: "persistent", label: "Persistent", desc: "Sandbox stays until you reset it or your access changes." },
 ];
 

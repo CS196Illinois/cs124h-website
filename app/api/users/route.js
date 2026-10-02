@@ -3,7 +3,7 @@ import { NextResponse, after } from "next/server";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
-import { MANAGEABLE_BY as MANAGEABLE_ROLES } from "../../../lib/roles";
+import { MANAGEABLE_BY as MANAGEABLE_ROLES, WEB_TEAM_ROLE_IDS, DEFAULT_WEB_SANDBOX_MODE } from "../../../lib/roles";
 import { parseGroupNumber } from "../../../lib/fieldRules";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../lib/sandbox";
 import { syncSheetAccessForRole, SHEET_ACCESS_ROLES } from "../../../lib/sheetAccess";
@@ -90,7 +90,10 @@ export async function POST(request) {
 
   const { data, error } = await supabaseServer
     .from(table("users"))
-    .insert({ net_id: cleanNetId, role, name: name?.trim() || null, group_number: group.value })
+    .insert({
+      net_id: cleanNetId, role, name: name?.trim() || null, group_number: group.value,
+      ...(WEB_TEAM_ROLE_IDS.includes(role) && { sandbox_mode: DEFAULT_WEB_SANDBOX_MODE }),
+    })
     .select()
     .single();
 
