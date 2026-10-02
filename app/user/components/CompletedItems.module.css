@@ -17,5 +17,9 @@
 .feedback { margin-top: 1rem; padding: 1rem; border-left: 3px solid #ecb557; background: #142d58; }
 .feedback h3 { color: #ffd184; font-size: .85rem; }
 .details button { margin-top: 1rem; padding: .5rem .8rem; border: 1px solid #8096bc; border-radius: 6px; background: transparent; color: #fff; cursor: pointer; }
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-top: 1rem; }
+.actions > a, .actions > button { margin-top: 0; display: inline-flex; align-items: center; padding: .5rem .8rem; border: 1px solid #8096bc; border-radius: 6px; background: transparent; color: #fff; font: inherit; font-size: .85rem; line-height: 1.4; text-decoration: none; cursor: pointer; }
+.actions > a:hover, .actions > button:hover:not(:disabled) { background: rgba(255, 255, 255, .08); }
+.actions > button:disabled { opacity: .55; cursor: not-allowed; }
 .section :focus-visible { outline: 3px solid #ffd184; outline-offset: 3px; }
 @media (max-width: 450px) { .summary { flex-direction: column; gap: .75rem; padding: 1rem; } .score { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; text-align: left; } .toolbar label { flex-basis: 100%; } }

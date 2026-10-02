@@ -56,8 +56,8 @@ export default function SupportInbox() {
         <div className={ticketStyles.summary}><div><h2>{ticket.subject}</h2><p className={ticketStyles.muted}>{ticket.full_name} · {ticket.net_id} · {formatLocalDate(ticket.created_at)} · {ticket.category}</p></div><span className={ticketStyles.pending}>{ticket.status}</span></div>
         <div className={ticketStyles.details}>
           <p>{ticket.description}</p><p className={ticketStyles.muted}>Reference: {ticket.id}<br />Email notification: {ticket.notification_status}</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: ".75rem", alignItems: "center" }}>
-            <a className={styles.btnSecondary} href={`mailto:${ticket.net_id}@illinois.edu?subject=${encodeURIComponent(`Re: [CS 124H Support #${ticket.id.slice(0, 8)}] ${ticket.subject}`)}`}>Reply by email</a>
+          <div className={ticketStyles.actions}>
+            <a href={`mailto:${ticket.net_id}@illinois.edu?subject=${encodeURIComponent(`Re: [CS 124H Support #${ticket.id.slice(0, 8)}] ${ticket.subject}`)}`}>Reply by email</a>
             <button disabled={busy === ticket.id} onClick={() => update(ticket.id, { status: ticket.status === "open" ? "resolved" : "open" })}>{ticket.status === "open" ? "Resolve ticket" : "Reopen ticket"}</button>
             {ticket.notification_status !== "sent" && <button disabled={busy === ticket.id} onClick={() => update(ticket.id, { retry_notification: true })}>Retry email notification</button>}
             <button disabled={busy === ticket.id} onClick={() => showAttachments(ticket.id)}>View screenshots</button>

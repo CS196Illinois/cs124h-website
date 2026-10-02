@@ -1,14 +1,23 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState, Suspense, useRef } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import styles from "../support/Support.module.css";
 
 function SignInInner() {
   const searchParams = useSearchParams();
-  const error = searchParams?.get("error");
+  // Read once: the param is then dropped from the URL so a refresh starts clean
+  // instead of showing a stale "session expired" message (the middleware has
+  // already cleared the unreadable cookie by the time this page loads).
+  const [error] = useState(() => searchParams?.get("error"));
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("error")) return;
+    url.searchParams.delete("error");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search);
+  }, []);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState("");
   const inFlight = useRef(false);

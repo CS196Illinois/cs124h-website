@@ -37,3 +37,43 @@ it("preserves query parameters and stops invalid sessions at the recovery screen
   expect(target.searchParams.get("callbackUrl")).toBe("/user/student/action_items?tab=done");
   expect(target.searchParams.get("error")).toBe("SessionExpired");
 });
+
+const expired = (res) => res.cookies.getAll().filter((cookie) => cookie.maxAge === 0).map((cookie) => cookie.name).sort();
+
+it("keeps a valid session beside a leftover chunk, and expires the leftover so next-auth can read it", async () => {
+  const token = await encode({ token: { role: "student", netID: "test" }, secret: process.env.NEXTAUTH_SECRET });
+  const req = new NextRequest("http://localhost/user/student", { headers: { cookie: `next-auth.session-token=${token}; next-auth.session-token.1=stale` } });
+  const res = await middleware(req);
+  expect(res.status).toBe(200);
+  expect(expired(res)).toEqual(["next-auth.session-token.1"]);
+});
+
+it("expires an unreadable session so a refresh cannot loop back to the recovery screen", async () => {
+  const req = new NextRequest("http://localhost/user/student", { headers: { cookie: "next-auth.session-token=invalid; __Host-next-auth.session-token=legacy; preference=keep" } });
+  const res = await middleware(req);
+  expect(new URL(res.headers.get("location")).searchParams.get("error")).toBe("SessionExpired");
+  expect(expired(res)).toEqual(["__Host-next-auth.session-token", "next-auth.session-token"]);
+
+  const retry = await middleware(new NextRequest("http://localhost/user/student", { headers: { cookie: "preference=keep" } }));
+  expect(new URL(retry.headers.get("location")).searchParams.get("error")).toBeNull();
+});
+
+it("leaves a healthy session's cookies untouched", async () => {
+  const token = await encode({ token: { role: "student", netID: "test" }, secret: process.env.NEXTAUTH_SECRET });
+  const res = await middleware(new NextRequest("http://localhost/user/student", { headers: { cookie: `next-auth.session-token=${token}` } }));
+  expect(res.status).toBe(200);
+  expect(expired(res)).toEqual([]);
+});
+
+it("over HTTPS, reads the __Secure- cookie and treats a leftover plain cookie as stale", async () => {
+  vi.stubEnv("NEXTAUTH_URL", "https://course.example");
+  try {
+    const token = await encode({ token: { role: "student", netID: "test" }, secret: process.env.NEXTAUTH_SECRET });
+    const req = new NextRequest("https://course.example/user/student", { headers: { cookie: `__Secure-next-auth.session-token=${token}; __Secure-next-auth.session-token.0=stale; next-auth.session-token=old` } });
+    const res = await middleware(req);
+    expect(res.status).toBe(200);
+    expect(expired(res)).toEqual(["__Secure-next-auth.session-token.0", "next-auth.session-token"]);
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});

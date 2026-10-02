@@ -1,20 +1,28 @@
 // middleware.js
-import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import { fetchApprovedViews } from "./lib/roleViews";
+import { readSession, expireCookies } from "./lib/sessionCookies";
 
 export default async function middleware(req) {
-  // Match the cookie selection/chunking used by /api/auth/session exactly.
-  const token = await getToken({ req });
-  const cookieValue = req.cookies.getAll().some(({ name }) => name.includes("next-auth.session-token"));
+  const { token, stale, present } = await readSession(req);
+  if (present && !token) {
+    // Names only - never cookie values. Makes a sign-in loop diagnosable in logs.
+    console.warn("Unreadable session cookie", { path: req.nextUrl.pathname, cookies: stale });
+  }
+  // Expiring stale session cookies (an unreadable session, or leftovers beside a
+  // valid one) keeps a refresh from looping back here, and lets next-auth's own
+  // session endpoint - which joins every matching cookie - read the valid one.
+  return expireCookies(await route(req, token, present), stale);
+}
 
+async function route(req, token, hadSessionCookie) {
   const role = token?.role;
   const path = req.nextUrl.pathname;
 
   if (!token) {
     const loginUrl = new URL("/signin", req.url);
     loginUrl.searchParams.set("callbackUrl", req.nextUrl.pathname + req.nextUrl.search);
-    if (cookieValue) loginUrl.searchParams.set("error", "SessionExpired");
+    if (hadSessionCookie) loginUrl.searchParams.set("error", "SessionExpired");
     return NextResponse.redirect(loginUrl);
   }
 
