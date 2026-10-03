@@ -53,6 +53,10 @@ export default function EventsPanel() {
   const [addInputs, setAddInputs]   = useState({});   // eventId → in-progress net_id text
   const [addErrors, setAddErrors]   = useState({});   // eventId → error message from the last add attempt
 
+  // Discord sync
+  const [discordSync, setDiscordSync] = useState(null); // null | "syncing" | { synced, message }
+  const DISCORD_SYNC_ROLES = new Set(["course_lead", "lead_web_dev", "head_pm"]);
+
   // Create-event modal
   const [showModal, setShowModal]   = useState(false);
   const [audienceEvent, setAudienceEvent] = useState(null);
@@ -223,6 +227,23 @@ export default function EventsPanel() {
 
   // ── Actions ────────────────────────────────────────────────────
 
+  const syncDiscordEvents = async () => {
+    setDiscordSync("syncing");
+    try {
+      const res = await fetch("/api/discord/sync-events", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        setDiscordSync({ error: json.error || "Sync failed." });
+      } else {
+        setDiscordSync({ synced: json.synced, message: json.message });
+        if (json.synced > 0) await fetchEvents();
+      }
+    } catch {
+      setDiscordSync({ error: "Could not reach the server. Check your connection." });
+    }
+    setTimeout(() => setDiscordSync(null), 5000);
+  };
+
   const toggleCheckIn = async (eventId, currentlyOpen) => {
     await fetch(`/api/events/${eventId}`, {
       method: "PATCH",
@@ -375,12 +396,41 @@ export default function EventsPanel() {
               Attendance Sheet
             </a>
           )}
+          {DISCORD_SYNC_ROLES.has(session?.user?.role) && (
+            <button
+              className={styles.btnSecondary}
+              onClick={syncDiscordEvents}
+              disabled={discordSync === "syncing"}
+              title="Import upcoming events from your Discord server"
+            >
+              {discordSync === "syncing" ? "Syncing…" : "Sync from Discord"}
+            </button>
+          )}
           <button data-tour="event-new" className={styles.btnPrimary} disabled={rosterLoading || !session} onClick={openCreate}>
             + New Event
           </button>
         </div>
       </div>
 
+      {discordSync && discordSync !== "syncing" && (
+        <div
+          style={{
+            marginBottom: "0.75rem",
+            padding: "0.5rem 0.75rem",
+            borderRadius: "6px",
+            fontSize: "0.85rem",
+            background: discordSync.error ? "rgba(248,113,113,0.15)" : "rgba(74,222,128,0.12)",
+            color: discordSync.error ? "#f87171" : "#4ade80",
+            border: `1px solid ${discordSync.error ? "rgba(248,113,113,0.3)" : "rgba(74,222,128,0.25)"}`,
+          }}
+        >
+          {discordSync.error
+            ? `Discord sync failed: ${discordSync.error}`
+            : discordSync.synced > 0
+              ? `Synced ${discordSync.synced} new event${discordSync.synced !== 1 ? "s" : ""} from Discord.`
+              : (discordSync.message || "Discord sync complete.")}
+        </div>
+      )}
       <p style={{ color: "#c0cbe0", fontSize: ".85rem", marginBottom: "1rem" }}>{session?.user?.role === "lead_web_dev" ? "All course events. Only the creator can manage an event." : "Events you created or joined. Visit Attendance to join an event that is open to you."}</p>
       {/* Event list */}
       {loading ? (
