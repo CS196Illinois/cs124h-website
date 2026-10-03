@@ -5,12 +5,12 @@ for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 900 });
     const sprint = { id: "sprint", number: 1, goal: "Group check", check_questions: ["Required", "Group question"], required_check_questions: ["Required"] };
     let isOpen = false;
-    await page.route("**/api/sprints", (r) => r.fulfill({ json: [sprint] }));
+    await page.route("**/api/sprints?view=pm", (r) => r.fulfill({ json: [sprint] }));
     await page.route("**/api/users?role=STUDENT", (r) => r.fulfill({ json: [] }));
     await page.route("**/api/users/me", (r) => r.fulfill({ json: { net_id: "pm1", role: "PM", group_number: 1 } }));
-    await page.route("**/api/sprint-question-bank", (r) => r.fulfill({ json: [{ id: "group-question", question: "Group question", group_number: 1 }] }));
+    await page.route("**/api/sprint-question-bank?view=pm", (r) => r.fulfill({ json: [{ id: "group-question", question: "Group question", group_number: 1 }] }));
     await page.route("**/api/sprints/sprint/completions", (r) => r.fulfill({ json: [] }));
-    await page.route("**/api/sprints/sprint/check", (r) => r.fulfill({ json: { hasCheck: true, groupNumber: 1, isOpen, questions: sprint.check_questions, roster: [] } }));
+    await page.route("**/api/sprints/sprint/check?view=pm", (r) => r.fulfill({ json: { hasCheck: true, groupNumber: 1, isOpen, questions: sprint.check_questions, roster: [] } }));
     await page.route("**/api/sprints/sprint/check/open", async (r) => {
       expect(r.request().postDataJSON()).toEqual({ group_number: 1 });
       isOpen = true;

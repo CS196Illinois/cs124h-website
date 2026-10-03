@@ -11,7 +11,7 @@ export default function PMSprints() {
         <h1>Sprints</h1>
         <p>Open the understanding check for your group during your weekly meeting</p>
       </div>
-      <SprintsManager canManageQuestions renderExtra={(sprint) => <UnderstandingCheckPanel sprint={sprint} scope="my-group" />} />
+      <SprintsManager canManageQuestions pmView renderExtra={(sprint) => <UnderstandingCheckPanel sprint={sprint} scope="my-group" />} />
     </div>
   );
 }

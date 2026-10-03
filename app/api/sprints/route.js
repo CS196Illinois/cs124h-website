@@ -1,5 +1,5 @@
 import { getUserGroup, groupSprintChecks } from "../../../lib/groupSprintChecks";
-import { isPmViewRole } from "../../../lib/roles";
+import { actsAsPm } from "../../../lib/roles";
 import { parseSprintNumber } from "../../../lib/fieldRules";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -13,7 +13,7 @@ import { isSprintVisibleToRole, validateSprintDates } from "../../../lib/sprintV
 
 const MANAGE_ROLES = ["course_lead", "head_pm", "lead_web_dev", "web_dev"];
 
-export async function GET() {
+export async function GET(request) {
   const session = await getServerSession(authOptions);
   const userRole = session?.user?.role;
   const netID = session?.user?.netID;
@@ -33,7 +33,7 @@ export async function GET() {
   }
   rows = rows.filter((sprint) => isSprintVisibleToRole(sprint, userRole));
 
-  if (isPmViewRole(userRole)) {
+  if (actsAsPm(userRole, new URL(request.url).searchParams.get("view"))) {
     rows = await groupSprintChecks(rows, await getUserGroup(netID), netID, userRole);
   }
 

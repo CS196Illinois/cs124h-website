@@ -89,9 +89,9 @@ describe("group understanding-check isolation", () => {
     expect((await view("student", "student1")).questions).toEqual(["Required", "Group one"]);
     expect((await view("student", "student2")).questions).toEqual(["Required"]);
     asRole("pm", "pm1");
-    expect((await (await LIST()).json())[0].check_questions).toEqual(["Required", "Group one"]);
+    expect((await (await LIST(makeRequest("http://localhost/api/sprints"))).json())[0].check_questions).toEqual(["Required", "Group one"]);
     asRole("pm", "pm2");
-    expect((await (await LIST()).json())[0].check_questions).toEqual(["Required"]);
+    expect((await (await LIST(makeRequest("http://localhost/api/sprints"))).json())[0].check_questions).toEqual(["Required"]);
   });
 
   it("allows revising/removing group additions while protecting shared questions and scores", async () => {
@@ -182,12 +182,12 @@ describe("group understanding-check isolation", () => {
   it("shows shared bank entries plus only the current group's additions", async () => {
     asRole("pm", "pm1");
     expect((await ADD(request({ question: "Group bank", group_number: 2 }))).status).toBe(201);
-    expect((await (await BANK()).json()).map((q) => q.question)).toEqual(["Shared bank question", "Group bank"]);
+    expect((await (await BANK(makeRequest("http://localhost/api/sprint-question-bank"))).json()).map((q) => q.question)).toEqual(["Shared bank question", "Group bank"]);
     asRole("pm", "copm");
-    expect((await (await BANK()).json()).map((q) => q.question)).toContain("Group bank");
+    expect((await (await BANK(makeRequest("http://localhost/api/sprint-question-bank"))).json()).map((q) => q.question)).toContain("Group bank");
     for (const [role, user] of [["pm", "pm2"], ["course_lead", "lead"]]) {
       asRole(role, user);
-      expect((await (await BANK()).json()).map((q) => q.question)).toEqual(["Shared bank question"]);
+      expect((await (await BANK(makeRequest("http://localhost/api/sprint-question-bank"))).json()).map((q) => q.question)).toEqual(["Shared bank question"]);
     }
   });
 });

@@ -7,6 +7,9 @@ import { table } from "../../lib/tables";
 const { GET } = await import("../../app/api/action_items/route");
 const { PATCH, DELETE } = await import("../../app/api/action_items/[id]/route");
 const { PATCH: PATCH_BATCH, DELETE: DELETE_BATCH } = await import("../../app/api/action_items/batch/[batchId]/route");
+const { GET: CHECK } = await import("../../app/api/sprints/[id]/check/route");
+const { PATCH: PATCH_SPRINT } = await import("../../app/api/sprints/[id]/route");
+const { POST: ADD_BANK } = await import("../../app/api/sprint-question-bank/route");
 
 afterAll(clearAllTestTables);
 
@@ -79,5 +82,37 @@ describe("PMs only view and manage their own group's understanding checks", () =
     expect(res.status).toBe(200);
     const { data: rows } = await testClient().from(table("actionItems")).select("net_id").eq("batch_id", data.sprint.id);
     expect(rows.map((row) => row.net_id)).toEqual(["stu2"]);
+  });
+});
+
+describe("a lead web dev previewing the PM page sees and edits it as a PM", () => {
+  let data;
+  beforeEach(async () => {
+    data = await seed();
+    await insertUser({ net_id: "leadweb", role: "LEAD_WEB", group_number: 1, sandbox_mode: "off" });
+    asRole("lead_web_dev", "leadweb");
+  });
+
+  it("gets only their own group, as a PM does, but the course-wide view without view=pm", async () => {
+    const check = (query) => CHECK(makeRequest(`http://localhost/api/sprints/${data.sprint.id}/check${query}`), { params: Promise.resolve({ id: data.sprint.id }) });
+    const pm = await (await check("?view=pm")).json();
+    expect(pm.groupNumber).toBe(1);
+    expect(pm.roster.map((row) => row.net_id)).toEqual(["stu1"]);
+    expect(pm.groups).toBeUndefined();
+    const all = await (await check("")).json();
+    expect(all.groups.map((group) => group.groupNumber)).toEqual([1, 2]);
+  });
+
+  it("adds questions to their group, never to the course-wide sprint", async () => {
+    const res = await PATCH_SPRINT(makeRequest(`http://localhost/api/sprints/${data.sprint.id}?view=pm`, { method: "PATCH", body: { check_questions: ["Q", "Group only"] } }), { params: Promise.resolve({ id: data.sprint.id }) });
+    expect(res.status).toBe(200);
+    const { data: sprint } = await testClient().from(table("sprints")).select("check_questions").eq("id", data.sprint.id).single();
+    expect(sprint.check_questions).toEqual(["Q"]);
+    const { data: group } = await testClient().from(table("sprintGroupChecks")).select("additional_questions").eq("sprint_id", data.sprint.id).eq("group_number", 1).single();
+    expect(group.additional_questions).toEqual(["Group only"]);
+
+    const bank = await ADD_BANK(makeRequest("http://localhost/api/sprint-question-bank?view=pm", { method: "POST", body: { question: `Preview bank question ${Date.now()}` } }));
+    expect(bank.status).toBe(201);
+    expect((await bank.json()).group_number).toBe(1);
   });
 });

@@ -48,7 +48,7 @@ function RosterTable({ roster, onGrade }) {
  * lead/head PM) shows every group, each expandable. Rendered by
  * SprintsManager's `renderExtra`.
  */
-export default function UnderstandingCheckPanel({ sprint, scope: requestedScope }) {
+export default function UnderstandingCheckPanel({ sprint, scope }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busyGroup, setBusyGroup] = useState(null);
@@ -59,7 +59,9 @@ export default function UnderstandingCheckPanel({ sprint, scope: requestedScope 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/sprints/${sprint.id}/check`);
+      // The PM page asks for the PM view, so a lead web dev previewing it sees
+      // their own group exactly as a PM does.
+      const res = await fetch(`/api/sprints/${sprint.id}/check${scope === "my-group" ? "?view=pm" : ""}`);
       if (!res.ok) throw new Error("The understanding check could not be loaded. Please try again.");
       setData(await res.json());
       setError(null);
@@ -69,7 +71,7 @@ export default function UnderstandingCheckPanel({ sprint, scope: requestedScope 
     } finally {
       setLoading(false);
     }
-  }, [sprint.id, sprint.check_questions]);
+  }, [sprint.id, sprint.check_questions, scope]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -122,10 +124,6 @@ export default function UnderstandingCheckPanel({ sprint, scope: requestedScope 
       </div>
     );
   }
-
-  // A lead web dev testing the PM page gets the all-groups response; render it
-  // as such instead of claiming they have no group.
-  const scope = requestedScope === "my-group" && data.groups ? "all-groups" : requestedScope;
 
   // A web dev assigned to a group always gets the single-group (PM) response,
   // even on a manager page reached through a role-view. Fold it into the shape

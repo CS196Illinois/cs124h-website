@@ -1,5 +1,5 @@
 import { getUserGroup, applyGroupQuestions, saveGroupSprintCheck } from "../../../../lib/groupSprintChecks";
-import { isPmViewRole } from "../../../../lib/roles";
+import { actsAsPm } from "../../../../lib/roles";
 import { parseSprintNumber } from "../../../../lib/fieldRules";
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
@@ -25,6 +25,8 @@ export async function PATCH(request, { params }) {
   if (!isSprintVisibleToRole(existingSprint, userRole)) return NextResponse.json({ error: "This sprint is not available yet." }, { status: 404 });
   const body = await request.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Please check the information you entered and try again." }, { status: 400 });
+  // PMs (and a lead web dev previewing the PM page) edit their group's additions.
+  const pmView = actsAsPm(userRole, new URL(request.url).searchParams.get("view"));
 
   // PMs customize their group’s additions; course-wide questions and scoring are protected.
   const allowed = userRole === "pm"
@@ -49,11 +51,11 @@ export async function PATCH(request, { params }) {
     updates.number = sprintNumber.value;
   }
   if ("check_questions" in updates) updates.check_questions = normalizeQuestions(updates.check_questions);
-  if (isPmViewRole(userRole) && "check_questions" in updates) {
+  if (pmView && "check_questions" in updates) {
     const changedSavedQuestion = (existingSprint.check_questions ?? []).some((question, index) => updates.check_questions?.[index] !== question);
     if (changedSavedQuestion) return NextResponse.json({ error: "Saved sprint questions cannot be edited, reordered, or disabled by PMs. Ask a course lead to change them." }, { status: 403 });
   }
-  if (isPmViewRole(userRole) && "check_max_score" in updates) {
+  if (pmView && "check_max_score" in updates) {
     if (resolveMaxScore({ check_max_score: updates.check_max_score }) !== resolveMaxScore(existingSprint)) {
       return NextResponse.json({ error: "Only sprint managers can change the maximum score." }, { status: 403 });
     }
@@ -72,7 +74,7 @@ export async function PATCH(request, { params }) {
   }
 
   let groupQuestions;
-  if (isPmViewRole(userRole) && "check_questions" in updates) {
+  if (pmView && "check_questions" in updates) {
     const groupNumber = await getUserGroup(netID);
     if (groupNumber == null) return NextResponse.json({ error: "You are not assigned to a group yet." }, { status: 400 });
     const required = existingSprint.check_questions ?? [];

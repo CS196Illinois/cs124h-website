@@ -7,7 +7,7 @@ import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows } from "../../../../../lib/sandbox";
 import { resolveMaxScore } from "../../../../../lib/sprintChecks";
-import { isPmViewRole } from "../../../../../lib/roles";
+import { actsAsPm } from "../../../../../lib/roles";
 import { isSprintVisibleToRole } from "../../../../../lib/sprintVisibility";
 
 async function fetchWindows(sprintId, netID, userRole, groupNumber) {
@@ -58,7 +58,8 @@ export async function GET(request, { params }) {
   if (!baseSprint) return NextResponse.json({ error: "We could not find that sprint. It may have been removed or is not available yet." }, { status: 404 });
   if (!isSprintVisibleToRole(baseSprint, userRole)) return NextResponse.json({ error: "This sprint is not available yet." }, { status: 404 });
 
-  const groupScoped = userRole === "student" || isPmViewRole(userRole);
+  const pmView = actsAsPm(userRole, new URL(request.url).searchParams.get("view"));
+  const groupScoped = userRole === "student" || pmView;
   const groupNumber = groupScoped ? await getUserGroup(netID) : undefined;
   const [sprint] = groupScoped
     ? await groupSprintChecks([baseSprint], groupNumber, netID, userRole)
@@ -83,7 +84,7 @@ export async function GET(request, { params }) {
     });
   }
 
-  if (isPmViewRole(userRole)) {
+  if (pmView) {
     // Unassigned PMs get no course-wide roster or submissions.
     const { data: students, error } = groupNumber == null ? { data: [] } : await supabaseServer
       .from(table("users")).select("net_id, name").eq("role", "STUDENT").eq("group_number", groupNumber);

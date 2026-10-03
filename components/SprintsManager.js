@@ -17,9 +17,15 @@ function getCurrentSprint(sprints) {
   return active || sprints[0];
 }
 
-export default function SprintsManager({ canManage = false, canManageQuestions = canManage, canManageQuestionBank = false, renderExtra }) {
+/**
+ * `pmView` (the PM sprints page) scopes everything to the viewer's own group
+ * as a PM sees it - including for a lead web dev previewing that page, whose
+ * requests carry `view=pm` so the server answers as it would for a PM.
+ */
+export default function SprintsManager({ canManage = false, canManageQuestions = canManage, canManageQuestionBank = false, pmView = false, renderExtra }) {
   const { data: session, status } = useSession();
-  const groupScoped = isPmViewRole(session?.user?.role);
+  const groupScoped = pmView || isPmViewRole(session?.user?.role);
+  const viewQuery = pmView ? "?view=pm" : "";
   const { scheduleUndo } = useUndo();
   const [sprints, setSprints] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -39,7 +45,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
   const fetchBase = useCallback(async () => {
     setLoading(true);
     const [spRes, stuRes, meRes] = await Promise.all([
-      fetch("/api/sprints"),
+      fetch(`/api/sprints${viewQuery}`),
       fetch("/api/users?role=STUDENT"),
       groupScoped ? fetch("/api/users/me") : Promise.resolve(null),
     ]);
@@ -57,7 +63,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
       setStudents(groupScoped ? people.filter((person) => me?.group_number != null && person.group_number === me.group_number) : people);
     }
     setLoading(false);
-  }, [groupScoped]);
+  }, [groupScoped, viewQuery]);
 
   useEffect(() => {
     if (status === "authenticated") fetchBase();
@@ -68,7 +74,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
     if (!showModal || !canManageQuestions) return;
     const controller = new AbortController();
     setBankBusy(true);
-    fetch("/api/sprint-question-bank", { signal: controller.signal })
+    fetch(`/api/sprint-question-bank${viewQuery}`, { signal: controller.signal })
       .then(async (res) => {
         if (!res.ok) throw new Error("Question bank could not be loaded. Reopen the editor to try again.");
         const questions = await res.json();
@@ -77,7 +83,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
       .catch((error) => { if (!controller.signal.aborted) setModalError(error.message); })
       .finally(() => { if (!controller.signal.aborted) setBankBusy(false); });
     return () => controller.abort();
-  }, [showModal, canManageQuestions]);
+  }, [showModal, canManageQuestions, viewQuery]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -152,7 +158,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
         }
       : { check_questions: form.check_questions };
     const res = editingSprint
-      ? await fetch(`/api/sprints/${editingSprint.id}`, {
+      ? await fetch(`/api/sprints/${editingSprint.id}${viewQuery}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -191,7 +197,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
     setBankBusy(true);
     setModalError(null);
     try {
-      const res = await fetch("/api/sprint-question-bank", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }) });
+      const res = await fetch(`/api/sprint-question-bank${viewQuery}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { setModalError(data.error || "The question could not be added."); return; }
       setQuestionBank((prev) => [...prev, data]);
