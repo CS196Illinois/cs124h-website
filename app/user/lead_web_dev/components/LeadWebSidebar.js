@@ -11,7 +11,6 @@ const links = [
   { href: "/people",        label: "Web Devs"      },
   { href: "/role_requests", label: "Role Requests" },
   { href: "/support",       label: "Support Tickets" },
-  { href: "/action_items",  label: "Action Items"  },
   { href: "/events",        label: "Events"        },
   { href: "/user/checkin",  label: "Attendance", absolute: true },
 ];

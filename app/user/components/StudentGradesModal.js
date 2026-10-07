@@ -8,8 +8,8 @@ import { downloadCsv } from "../../../lib/csvExport";
 import { formatDueDate, localTodayISO } from "../../../lib/dateFormat";
 
 /**
- * Full grade history for one student - every gradable action item they've
- * ever been assigned, regardless of which assignment or group view was used
+ * Full grade history for one student - every graded submission they've
+ * made, regardless of which assignment or group view was used
  * to open it. This is the one "view all of this student's grades" surface
  * both the group-overview and by-assignment tabs link into.
  */

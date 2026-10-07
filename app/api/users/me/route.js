@@ -1,16 +1,14 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow } from "../../../../lib/sandbox";
+import { serverError, signInRequired } from "../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../lib/session";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  const netID = session?.user?.netID;
-  const userRole = session?.user?.role;
+  const { netID, role: userRole } = await getSessionUser();
   if (!netID) {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    return signInRequired();
   }
 
   const { data, error } = await supabaseServer
@@ -19,7 +17,7 @@ export async function GET() {
     .eq("net_id", netID)
     .single();
 
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
 
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
     return NextResponse.json(await getEffectiveRow(netID, "users", netID, data));

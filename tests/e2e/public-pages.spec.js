@@ -1,22 +1,14 @@
 import { test, expect } from "./fixtures";
-import { insertStaff, insertProject, insertEventAttendance, clearAllTestTables } from "../helpers/db";
+import { insertStaff, insertProject, clearAllTestTables } from "../helpers/db";
 
 // None of these tests call loginAs() - that's the point. They lock in the
-// contract that leaderboard/course_staff/hall_of_fame render real data for a
+// contract that course_staff/hall_of_fame render real data for a
 // fully signed-out visitor, now that they're served through the public API
 // routes instead of a direct (and, per the investigation that led to this,
 // broken) anon-key Supabase call.
 test.describe("public pages require no auth", () => {
   test.beforeEach(clearAllTestTables);
 
-  test("leaderboard renders real group standings while signed out", async ({ page }) => {
-    // Total is worth 10 points/unit - see app/api/public/leaderboard/route.js.
-    await insertEventAttendance([{ name: "Public Student", netid: "pub-stu1", group: 3, total: 3 }]);
-
-    await page.goto("/leaderboard");
-    await expect(page.getByText("Group: 3")).toBeVisible();
-    await expect(page.getByText("30")).toBeVisible();
-  });
 
   test("course staff page renders real staff while signed out", async ({ page }) => {
     await insertStaff({ name: "Publicly Visible Staffer", semester: "Test Semester" });
@@ -43,7 +35,7 @@ test("a project with no optional members or image does not crash the hall of fam
   expect(errors).toEqual([]);
 });
 
-for (const path of ["/", "/resources", "/timeline", "/leaderboard", "/course_staff", "/hall_of_fame", "/signin"]) {
+for (const path of ["/", "/resources", "/timeline", "/course_staff", "/hall_of_fame", "/signin"]) {
   test(`public smoke: ${path} renders on desktop and mobile without script errors`, async ({ page }) => {
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));

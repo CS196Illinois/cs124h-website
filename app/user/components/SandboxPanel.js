@@ -63,7 +63,7 @@ export default function SandboxPanel() {
         <span style={{ color: "#f9f9f9", fontFamily: "Inter", fontWeight: 600 }}>Sandbox Mode</span>
       </div>
       <p style={{ color: "rgba(249,249,249,0.5)", fontFamily: "Inter", fontSize: "0.78rem", lineHeight: 1.5, marginBottom: "0.9rem" }}>
-        When on, your changes to events, sprints, and action items never touch real data - only you see them.
+        When on, your changes to events, sprints, and grades never touch real data - only you see them.
       </p>
 
       {loading ? (

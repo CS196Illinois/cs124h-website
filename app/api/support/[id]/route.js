@@ -1,16 +1,15 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { notifySupportTicket } from "../../../../lib/supportServer";
+import { getSessionUser } from "../../../../lib/session";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function GET(request, { params }) {
-  const session = await getServerSession(authOptions);
-  if (session?.user?.role !== "lead_web_dev") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const caller = await getSessionUser();
+  if (caller.role !== "lead_web_dev") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const { data, error } = await supabaseServer.from(table("supportTickets")).select("id, attachments").eq("id", (await params).id).maybeSingle();
   if (error) return NextResponse.json({ error: "Screenshots could not be loaded." }, { status: 503 });
   if (!data) return NextResponse.json({ error: "Ticket not found." }, { status: 404 });
@@ -18,8 +17,8 @@ export async function GET(request, { params }) {
 }
 
 export async function PATCH(request, { params }) {
-  const session = await getServerSession(authOptions);
-  if (session?.user?.role !== "lead_web_dev") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const caller = await getSessionUser();
+  if (caller.role !== "lead_web_dev") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (request.headers.get("origin") !== new URL(request.url).origin) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
   const { id } = await params;
   const body = await request.json().catch(() => null);

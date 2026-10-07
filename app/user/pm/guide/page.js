@@ -20,20 +20,16 @@ export default function PMGuidePage() {
           <section className={guide.section}>
             <h2>Each week</h2>
             <ol>
-              <li><strong>Prepare:</strong> Confirm your roster in My Students, review Action Items, and select the current sprint’s check questions.</li>
+              <li><strong>Prepare:</strong> Confirm your roster in My Students and select the current sprint’s check questions.</li>
               <li><strong>Meet:</strong> Open your group’s understanding check, review submissions, then close it.</li>
               <li><strong>Take attendance:</strong> Check the event’s audience, open check-in, and display the current code or QR code. Review attendees and close check-in afterward.</li>
-              <li><strong>Follow up:</strong> Grade completed work, leave feedback, and assign next steps with an owner and due date.</li>
+              <li><strong>Follow up:</strong> Grade submitted checks and leave feedback.</li>
             </ol>
           </section>
 
           <section className={guide.section}>
             <h2>Quick reference</h2>
             <dl className={guide.reference}>
-              <div>
-                <dt>Action Items & grades</dt>
-                <dd>Enable Gradable and set a maximum when assigning scored work. Only the assigner can grade completed items; scores range from 0 to the maximum. Reopening clears the grade. Edit instead of deleting to preserve history.</dd>
-              </div>
               <div>
                 <dt>Sprints & checks</dt>
                 <dd>Future sprints stay hidden until their start date. Saved check questions are required; you can add questions, but a Course Lead must change existing ones. Completion totals cover your group only. Students can answer only while their group’s check is open.</dd>

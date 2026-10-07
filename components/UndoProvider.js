@@ -8,11 +8,11 @@ import styles from "./UndoToast.module.css";
  * removals). Update UI state optimistically, then schedule the real request
  * instead of firing it immediately:
  *
- *   setItems(prev => prev.filter(i => i.id !== item.id));
+ *   setEvents(prev => prev.filter(e => e.id !== event.id));
  *   scheduleUndo({
- *     message: `Deleted "${item.title}"`,
- *     onExpire: () => fetch(`/api/action_items/${item.id}`, { method: "DELETE" }),
- *     onCancel: () => setItems(prev => [...prev, item]),
+ *     message: `Deleted "${event.title}"`,
+ *     onExpire: () => fetch(`/api/events/${event.id}`, { method: "DELETE" }),
+ *     onCancel: () => setEvents(prev => [...prev, event]),
  *   });
  *
  * Mounted at the root layout so the toast survives client-side navigation;

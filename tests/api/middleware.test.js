@@ -31,10 +31,10 @@ it("rejects a legacy cookie that NextAuth's session endpoint does not recognize"
 });
 
 it("preserves query parameters and stops invalid sessions at the recovery screen", async () => {
-  const req = new NextRequest("http://localhost/user/student/action_items?tab=done", { headers: { cookie: "next-auth.session-token=invalid" } });
+  const req = new NextRequest("http://localhost/user/student/sprints?tab=done", { headers: { cookie: "next-auth.session-token=invalid" } });
   const res = await middleware(req);
   const target = new URL(res.headers.get("location"));
-  expect(target.searchParams.get("callbackUrl")).toBe("/user/student/action_items?tab=done");
+  expect(target.searchParams.get("callbackUrl")).toBe("/user/student/sprints?tab=done");
   expect(target.searchParams.get("error")).toBe("SessionExpired");
 });
 

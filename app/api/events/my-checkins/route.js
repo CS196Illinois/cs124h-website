@@ -1,18 +1,16 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows } from "../../../../lib/sandbox";
+import { serverError, signInRequired } from "../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../lib/session";
 
 // Returns the list of event IDs the current user has checked into
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
 
   if (!userRole || userRole === "error") {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    return signInRequired();
   }
 
   const { data, error } = await supabaseServer
@@ -21,7 +19,7 @@ export async function GET() {
     .eq("net_id", netID)
     .order("checked_in_at", { ascending: false });
 
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
 
   let rows = data;
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {

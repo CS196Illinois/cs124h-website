@@ -9,8 +9,6 @@ const { POST: POST_USER } = await import("../../app/api/users/route");
 const { PATCH: PATCH_USER } = await import("../../app/api/users/[net_id]/route");
 const { POST: POST_SPRINT } = await import("../../app/api/sprints/route");
 const { PATCH: PATCH_SPRINT } = await import("../../app/api/sprints/[id]/route");
-const { POST: POST_ITEM } = await import("../../app/api/action_items/route");
-const { PATCH: PATCH_ITEM } = await import("../../app/api/action_items/[id]/route");
 
 const json = (url, method, body) => makeRequest(`http://localhost${url}`, { method, body });
 
@@ -81,16 +79,4 @@ describe("API validation matches database requirements", () => {
     expect(res.status).toBe(400);
   });
 
-  it("action items reject a non-positive max score and an emptied title", async () => {
-    await insertUser({ net_id: "lead1", role: "LEAD" });
-    await insertUser({ net_id: "stu1", role: "STUDENT", group_number: 1 });
-    asRole("course_lead", "lead1");
-    const badScore = await POST_ITEM(json("/api/action_items", "POST", {
-      title: "Essay", target_type: "individual", target_net_ids: ["stu1"], is_gradable: true, max_score: -5,
-    }));
-    expect(badScore.status).toBe(400);
-    const item = await insertActionItem({ net_id: "stu1", assigned_by: "lead1", title: "Essay" });
-    const res = await PATCH_ITEM(json(`/api/action_items/${item.id}`, "PATCH", { title: "  " }), { params: Promise.resolve({ id: item.id }) });
-    expect(res.status).toBe(400);
-  });
 });

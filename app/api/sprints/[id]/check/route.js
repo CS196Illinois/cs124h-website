@@ -1,14 +1,14 @@
 import { CHECK_MANAGE_ROLES } from "../../../../../lib/sprintCheckAccess";
 import { getUserGroup, groupSprintChecks, fetchGroupChecks, applyGroupQuestions } from "../../../../../lib/groupSprintChecks";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows } from "../../../../../lib/sandbox";
 import { resolveMaxScore } from "../../../../../lib/sprintChecks";
 import { actsAsPm } from "../../../../../lib/roles";
 import { isSprintVisibleToRole } from "../../../../../lib/sprintVisibility";
+import { signInRequired } from "../../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../../lib/session";
 
 async function fetchWindows(sprintId, netID, userRole, groupNumber) {
   if (groupNumber === null) return [];
@@ -37,7 +37,7 @@ async function fetchSubmissions(sprintId, netID, userRole, studentNetIDs) {
 }
 
 // `item` is the full action_items row when submitted, shaped exactly as
-// GradeActionItemModal expects - so a roster's "Grade" button can hand it
+// GradeCheckModal expects - so a roster's "Grade" button can hand it
 // the row directly with no extra fetch.
 function rosterFor(students, submissionsByNetID) {
   return students.map((s) => {
@@ -47,11 +47,9 @@ function rosterFor(students, submissionsByNetID) {
 }
 
 export async function GET(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
   if (!userRole || userRole === "error") {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    return signInRequired();
   }
   const { id } = await params;
   const { data: baseSprint } = await supabaseServer.from(table("sprints")).select("*").eq("id", id).maybeSingle();
@@ -128,5 +126,5 @@ export async function GET(request, { params }) {
     return NextResponse.json({ hasCheck: hasCheck || groups.some((g) => g.questions.length > 0), questions: hasCheck ? sprint.check_questions : null, maxScore, groups });
   }
 
-  return NextResponse.json({ error: "Please sign in to continue." }, { status: 403 });
+  return signInRequired(403);
 }

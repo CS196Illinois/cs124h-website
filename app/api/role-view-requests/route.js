@@ -1,8 +1,8 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
+import { invalidInput, serverError, signInRequired } from "../../../lib/apiResponses";
+import { getSessionUser } from "../../../lib/session";
 
 const REQUESTABLE_ROLES = ["course_lead", "head_pm", "pm", "student"];
 
@@ -16,16 +16,14 @@ async function purgeExpired() {
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
 
   if (!userRole || userRole === "error") {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    return signInRequired();
   }
 
   if (userRole !== "lead_web_dev" && userRole !== "web_dev") {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 403 });
+    return signInRequired(403);
   }
 
   // Lazily clean up expired approved rows on every read
@@ -41,21 +39,19 @@ export async function GET() {
   }
 
   const { data, error } = await query;
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
   return NextResponse.json(data);
 }
 
 export async function POST(request) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
 
   if (userRole !== "web_dev") {
     return NextResponse.json({ error: "Only Web Devs can request access to another role’s pages." }, { status: 403 });
   }
 
   const body = await request.json().catch(() => null);
-  if (!body) return NextResponse.json({ error: "Please check the information you entered and try again." }, { status: 400 });
+  if (!body) return invalidInput();
 
   const { requested_role } = body;
   if (!REQUESTABLE_ROLES.includes(requested_role)) {
@@ -93,6 +89,6 @@ export async function POST(request) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
   return NextResponse.json(data, { status: 201 });
 }

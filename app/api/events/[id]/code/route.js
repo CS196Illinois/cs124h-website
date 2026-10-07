@@ -1,10 +1,10 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../../../auth/[...nextauth]/route";
 import { getManagedEvent, eventHasEnded } from "../../../../../lib/events";
 import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
 import crypto from "crypto";
+import { signInRequired } from "../../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../../lib/session";
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 export const WINDOW_MS = 30_000; // 30-second rotation
@@ -24,15 +24,15 @@ export function deriveCode(eventId, windowOffset = 0) {
 
 // Staff only - returns the current code + seconds until rotation
 export async function GET(request, { params }) {
-  const session = await getServerSession(authOptions);
-  if (!STAFF_ROLES.includes(session?.user?.role)) {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 403 });
+  const caller = await getSessionUser();
+  if (!STAFF_ROLES.includes(caller.role)) {
+    return signInRequired(403);
   }
 
   const { id } = await params;
-  const netID = session?.user?.netID;
+  const netID = caller.netID;
 
-  const event = await getManagedEvent(id, netID, session?.user?.role, "id, title, created_by, end_time, check_in_open");
+  const event = await getManagedEvent(id, netID, caller.role, "id, title, created_by, end_time, check_in_open");
   if (!event) {
     return NextResponse.json({ error: "That event could not be found, or you do not have permission to manage it." }, { status: 403 });
   }

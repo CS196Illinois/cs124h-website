@@ -1,15 +1,13 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
+import { invalidInput, serverError } from "../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../lib/session";
 
 const DEFAULT_DURATION_DAYS = 7;
 
 export async function PATCH(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
 
   if (userRole !== "lead_web_dev") {
     return NextResponse.json({ error: "Only Lead Web Devs can review access requests." }, { status: 403 });
@@ -17,7 +15,7 @@ export async function PATCH(request, { params }) {
 
   const { id } = await params;
   const body = await request.json().catch(() => null);
-  if (!body) return NextResponse.json({ error: "Please check the information you entered and try again." }, { status: 400 });
+  if (!body) return invalidInput();
 
   const { status, duration_days } = body;
   if (!["approved", "denied"].includes(status)) {
@@ -58,15 +56,14 @@ export async function PATCH(request, { params }) {
   // doesn't exist OR isn't pending anymore - both are "not found" here, not
   // a server error.
   if (error && error.code !== "PGRST116") {
-    return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+    return serverError();
   }
   if (!data) return NextResponse.json({ error: "That request could not be found or has already been reviewed." }, { status: 404 });
   return NextResponse.json(data);
 }
 
 export async function DELETE(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
+  const { role: userRole } = await getSessionUser();
 
   if (userRole !== "lead_web_dev") {
     return NextResponse.json({ error: "Only Lead Web Devs can remove role-view access." }, { status: 403 });
@@ -80,6 +77,6 @@ export async function DELETE(request, { params }) {
     .eq("id", id)
     .eq("status", "approved");
 
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
   return NextResponse.json({ success: true });
 }

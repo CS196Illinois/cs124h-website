@@ -3,14 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import styles from "../../dashboard.module.css";
-import { courseTodayISO } from "../../../../lib/dateFormat";
-
-function getCurrentSprint(sprints) {
-  if (!sprints.length) return null;
-  const today = courseTodayISO();
-  const active = sprints.find((s) => s.start_date && s.end_date && s.start_date <= today && today <= s.end_date);
-  return active || sprints[0];
-}
+import { getCurrentSprint } from "../../../../lib/sprintVisibility";
 
 export default function StudentSprints() {
   const { status } = useSession();

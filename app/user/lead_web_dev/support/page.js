@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import styles from "../../dashboard.module.css";
-import ticketStyles from "../../components/CompletedItems.module.css";
+import ticketStyles from "./support.module.css";
 import { formatLocalDate } from "../../../../lib/dateFormat";
 
 export default function SupportInbox() {

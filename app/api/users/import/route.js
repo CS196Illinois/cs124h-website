@@ -1,17 +1,17 @@
-import { getServerSession } from "next-auth";
 import { NextResponse, after } from "next/server";
-import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { syncSheetAccessForRole, SHEET_ACCESS_ROLES } from "../../../../lib/sheetAccess";
 import { ALL_ROLES, WEB_TEAM_ROLE_IDS, DEFAULT_WEB_SANDBOX_MODE } from "../../../../lib/roles";
 import { parseGroupNumber } from "../../../../lib/fieldRules";
+import { serverError, signInRequired } from "../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../lib/session";
 
 // GET: proxy-fetch a Google Sheets CSV to avoid CORS
 export async function GET(request) {
-  const session = await getServerSession(authOptions);
-  if (!["course_lead", "lead_web_dev", "web_dev"].includes(session?.user?.role)) {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 403 });
+  const caller = await getSessionUser();
+  if (!["course_lead", "lead_web_dev", "web_dev"].includes(caller.role)) {
+    return signInRequired(403);
   }
 
   const { searchParams } = new URL(request.url);
@@ -49,9 +49,9 @@ function toSheetsCsvUrl(url) {
 
 // POST: perform the bulk import
 export async function POST(request) {
-  const session = await getServerSession(authOptions);
-  if (!["course_lead", "lead_web_dev", "web_dev"].includes(session?.user?.role)) {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 403 });
+  const caller = await getSessionUser();
+  if (!["course_lead", "lead_web_dev", "web_dev"].includes(caller.role)) {
+    return signInRequired(403);
   }
 
   const body = await request.json();
@@ -91,7 +91,7 @@ export async function POST(request) {
   let existingQuery = supabaseServer.from(table("users")).select("net_id, role, sub, name");
   if (roleScope) existingQuery = existingQuery.eq("role", roleScope);
   const { data: existing, error: fetchErr } = await existingQuery;
-  if (fetchErr) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (fetchErr) return serverError();
 
   const existingMap = new Map(existing.map((u) => [u.net_id, u]));
   const importSet = new Set(validRows.map((r) => r.net_id));
@@ -117,7 +117,7 @@ export async function POST(request) {
     const { error: upsertErr } = await supabaseServer
       .from(table("users"))
       .upsert(toUpsert, { onConflict: "net_id" });
-    if (upsertErr) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+    if (upsertErr) return serverError();
     written.push(...validRows);
 
     for (const r of validRows) {
@@ -136,7 +136,7 @@ export async function POST(request) {
         .from(table("users"))
         .delete()
         .in("net_id", toDelete);
-      if (delErr) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+      if (delErr) return serverError();
       deleted = toDelete.length;
       for (const net_id of toDelete) {
         if (SHEET_ACCESS_ROLES.has(existingMap.get(net_id)?.role)) {
@@ -164,7 +164,7 @@ export async function POST(request) {
 
     if (toInsert.length > 0) {
       const { error: insErr } = await supabaseServer.from(table("users")).insert(toInsert);
-      if (insErr) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+      if (insErr) return serverError();
       inserted = toInsert.length;
       written.push(...toInsert);
       for (const row of toInsert) {
@@ -178,7 +178,7 @@ export async function POST(request) {
         .update({ role: row.role, name: row.name, group_number: row.group_number })
         .eq("net_id", row.net_id);
       // note: row.name is already the preserved DB name (set above when building toUpdate)
-      if (upErr) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+      if (upErr) return serverError();
       updated++;
       written.push(row);
       const oldRole = existingMap.get(row.net_id)?.role;

@@ -5,17 +5,8 @@ import { useSession } from "next-auth/react";
 import { isPmViewRole } from "../lib/roles";
 import { useUndo } from "./UndoProvider";
 import styles from "../app/user/dashboard.module.css";
-import { courseTodayISO } from "../lib/dateFormat";
 import { parseMaxScore, parseSprintNumber } from "../lib/fieldRules";
-
-function getCurrentSprint(sprints) {
-  if (!sprints.length) return null;
-  const today = courseTodayISO();
-  const active = sprints.find(
-    (s) => s.start_date && s.end_date && s.start_date <= today && today <= s.end_date
-  );
-  return active || sprints[0];
-}
+import { getCurrentSprint } from "../lib/sprintVisibility";
 
 /**
  * `pmView` (the PM sprints page) scopes everything to the viewer's own group

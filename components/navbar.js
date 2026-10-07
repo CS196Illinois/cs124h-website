@@ -21,7 +21,7 @@ export default function Navbar() {
       // full row of nav buttons doesn't fit on one line (labels wrap inside
       // the fixed-height bar and later items get pushed off-screen), so the
       // mobile hamburger menu takes over well before the old 768px cutoff.
-      setIsMobile(window.innerWidth <= 1400);
+      setIsMobile(window.innerWidth <= 1280);
     };
 
     checkScreenSize();
@@ -120,15 +120,6 @@ export default function Navbar() {
               Course Staff
             </button>
           </Link>
-          <Link href="/leaderboard">
-            <button
-              className={`${styles["nav-button"]} ${
-                pathname === "/leaderboard" ? styles.active : ""
-              }`}
-            >
-              Leaderboard
-            </button>
-          </Link>
           <Link href="/timeline">
             <button
               className={`${styles["nav-button"]} ${
@@ -224,15 +215,6 @@ export default function Navbar() {
                   }`}
                 >
                   Course Staff
-                </button>
-              </Link>
-              <Link href="/leaderboard" onClick={handleLinkClick}>
-                <button
-                  className={`${styles["nav-button"]} ${
-                    pathname === "/leaderboard" ? styles.active : ""
-                  }`}
-                >
-                  Leaderboard
                 </button>
               </Link>
               <Link href="/timeline" onClick={handleLinkClick}>

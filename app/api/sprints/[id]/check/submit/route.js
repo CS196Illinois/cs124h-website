@@ -1,18 +1,15 @@
 import { getUserGroup, groupSprintChecks } from "../../../../../../lib/groupSprintChecks";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../../../lib/supabaseServer";
 import { table } from "../../../../../../lib/tables";
 import { resolveMaxScore, formatCheckAnswers } from "../../../../../../lib/sprintChecks";
 import { isSprintVisibleToRole } from "../../../../../../lib/sprintVisibility";
+import { getSessionUser } from "../../../../../../lib/session";
 
 // Student only - web_dev/lead_web_dev sandbox previews never reach here,
 // since neither role can itself be "student".
 export async function POST(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
   if (userRole !== "student") {
     return NextResponse.json({ error: "Only students can submit an understanding check" }, { status: 403 });
   }

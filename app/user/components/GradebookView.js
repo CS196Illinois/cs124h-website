@@ -12,7 +12,7 @@ import { buildAssignments, groupAveragePct } from "../../../lib/grading";
  * a student's full grade history, plus a "By Assignment" view doing the same
  * drill-down one assignment at a time.
  */
-export default function GradebookView({ students, items, groupBy = false, emptyMessage = "No gradable action items yet." }) {
+export default function GradebookView({ students, items, groupBy = false, emptyMessage = "No understanding checks submitted yet." }) {
   const [tab, setTab] = useState("overview");
 
   if (students.length === 0) {

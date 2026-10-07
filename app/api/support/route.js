@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { parseSupportForm, limitSupportSubmission, notifySupportTicket, SupportError } from "../../../lib/supportServer";
+import { getSessionUser } from "../../../lib/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,8 +26,8 @@ export async function POST(request) {
 }
 
 export async function GET(request) {
-  const session = await getServerSession(authOptions);
-  if (session?.user?.role !== "lead_web_dev") return NextResponse.json({ error: "Only the lead web developer can view support tickets." }, { status: 403 });
+  const caller = await getSessionUser();
+  if (caller.role !== "lead_web_dev") return NextResponse.json({ error: "Only the lead web developer can view support tickets." }, { status: 403 });
   const offset = Math.max(0, Number(new URL(request.url).searchParams.get("offset")) || 0);
   const { data, error } = await supabaseServer.from(table("supportTickets"))
     .select("id, net_id, full_name, subject, category, description, status, created_at, notification_status, notified_at")

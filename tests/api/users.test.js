@@ -366,24 +366,6 @@ describe("users table - sandbox mode", () => {
     expect(stillReal.name).toBe("Real Name");
   });
 
-  it("action items can target a sandbox-only fake person", async () => {
-    await insertUser({ net_id: "leadweb1", role: "LEAD_WEB", sandbox_mode: "persistent" });
-    asRole("lead_web_dev", "leadweb1");
-
-    await POST(makeRequest("http://localhost/api/users", { method: "POST", body: { net_id: "fakeweb1", role: "WEB", group_number: 7 } }));
-
-    const { POST: POST_ACTION_ITEM } = await import("../../app/api/action_items/route");
-    const res = await POST_ACTION_ITEM(makeRequest("http://localhost/api/action_items", {
-      method: "POST",
-      body: { title: "test item", target_type: "individual", target_net_ids: ["fakeweb1"] },
-    }));
-    expect(res.status).toBe(201);
-    const json = await res.json();
-    expect(json.data[0].net_id).toBe("fakeweb1");
-
-    const { data: realItems } = await testClient().from(table("actionItems")).select("*");
-    expect(realItems).toHaveLength(0);
-  });
 });
 
 describe("GET /api/roles", () => {

@@ -178,16 +178,6 @@ export async function insertSandboxOverlay(overrides = {}) {
   return data;
 }
 
-// Matches production's actual (mixed-case) column names on
-// event_attendance_sp26 - the leaderboard route resolves them
-// case-insensitively, so tests exercise that instead of assuming a
-// convenient lowercase schema.
-export async function insertEventAttendance(rows) {
-  const mapped = rows.map((r) => ({ NAME: r.name, NETID: r.netid, GROUP: r.group, Total: r.total }));
-  const { error } = await client().from(table("eventAttendanceSp26")).insert(mapped);
-  if (error) throw new Error(`insertEventAttendance: ${error.message}`);
-}
-
 // ── Cleanup ───────────────────────────────────────────────────────────────
 
 // Primary key column per table key - used to build a delete-everything filter
@@ -201,7 +191,6 @@ const TABLE_PK = {
   roleViewRequests: "id",
   sprints: "id",
   events: "id",
-  eventAttendanceSp26: "id",
   staff: "id",
   resources: "id",
   projects: "id",
@@ -212,7 +201,7 @@ const TABLE_PK = {
 // Children before parents, though FKs are ON DELETE CASCADE anyway.
 const CLEAR_ORDER = [
   "sprintGroupChecks", "sprintCompletions", "sprintCheckWindows", "eventCheckins", "actionItems", "roleViewRequests",
-  "sprints", "events", "eventAttendanceSp26", "staff", "resources", "projects",
+  "sprints", "events", "staff", "resources", "projects",
   "sandboxOverlay", "users",
 ];
 

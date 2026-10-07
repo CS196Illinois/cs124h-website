@@ -1,20 +1,18 @@
-import { getServerSession } from "next-auth";
 import { NextResponse, after } from "next/server";
-import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { MANAGEABLE_BY as MANAGEABLE_ROLES, WEB_TEAM_ROLE_IDS, DEFAULT_WEB_SANDBOX_MODE } from "../../../lib/roles";
 import { parseGroupNumber } from "../../../lib/fieldRules";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../lib/sandbox";
 import { syncSheetAccessForRole, SHEET_ACCESS_ROLES } from "../../../lib/sheetAccess";
+import { forbidden, serverError, signInRequired } from "../../../lib/apiResponses";
+import { getSessionUser } from "../../../lib/session";
 
 export async function GET(request) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
 
   if (!userRole || userRole === "error") {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    return signInRequired();
   }
 
   const { searchParams } = new URL(request.url);
@@ -27,7 +25,7 @@ export async function GET(request) {
   if (groupFilter) query = query.eq("group_number", Number(groupFilter));
 
   const { data, error } = await query;
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
 
   let rows = data;
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
@@ -43,17 +41,15 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
 
   if (!userRole || userRole === "error") {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    return signInRequired();
   }
 
   const allowed = MANAGEABLE_ROLES[userRole];
   if (!allowed) {
-    return NextResponse.json({ error: "You do not have permission to do that." }, { status: 403 });
+    return forbidden();
   }
 
   const body = await request.json();
@@ -101,7 +97,7 @@ export async function POST(request) {
     if (error.code === "23505") {
       return NextResponse.json({ error: `A user with NetID "${cleanNetId}" already exists.` }, { status: 409 });
     }
-    return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+    return serverError();
   }
 
   if (SHEET_ACCESS_ROLES.has(role)) {
@@ -114,11 +110,9 @@ export async function POST(request) {
 const BULK_DELETE_ROLES = ["course_lead", "lead_web_dev", "web_dev"];
 
 export async function DELETE(request) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
   if (!BULK_DELETE_ROLES.includes(userRole)) {
-    return NextResponse.json({ error: "You do not have permission to do that." }, { status: 403 });
+    return forbidden();
   }
 
   const { searchParams } = new URL(request.url);
@@ -142,7 +136,7 @@ export async function DELETE(request) {
     .eq("role", role)
     .select("net_id");
 
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
 
   // Hygiene, not a security requirement (a deleted user can never reach a
   // sandboxed route again either way) - avoid leaving orphaned overlay rows
