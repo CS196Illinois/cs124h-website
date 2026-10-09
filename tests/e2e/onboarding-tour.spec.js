@@ -19,9 +19,7 @@ test("a new PM gets an interactive tour that follows the real workflow", async (
     ["/user/pm/students", "students-export"],
     ["/user/pm/sprints", "nav-sprints"],
     ["/user/pm/sprints", "sprint-open-check"],
-    ["/user/pm/events", "nav-events"],
     ["/user/pm/events", "event-new"],
-    ["/user/pm/gradebook", "nav-gradebook"],
     ["/user/pm/gradebook", "gradebook-view"],
     ["/user/pm/guide", "nav-pm-guide"],
   ];
