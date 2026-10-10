@@ -6,7 +6,8 @@ import { isPmViewRole } from "../lib/roles";
 import { useUndo } from "./UndoProvider";
 import styles from "../app/user/dashboard.module.css";
 import { parseMaxScore, parseSprintNumber } from "../lib/fieldRules";
-import { getCurrentSprint } from "../lib/sprintVisibility";
+import { getCurrentSprint, defaultSprintDates } from "../lib/sprintVisibility";
+import { resolveMaxScore } from "../lib/sprintChecks";
 
 /**
  * `pmView` (the PM sprints page) scopes everything to the viewer's own group
@@ -104,7 +105,14 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
 
   const openCreate = () => {
     const nextNum = sprints.length ? Math.max(...sprints.map((s) => s.number)) + 1 : 0;
-    setForm({ number: String(nextNum), goal: "", start_date: "", end_date: "", check_questions: [], check_max_score: "" });
+    const previous = sprints.find((s) => s.number === nextNum - 1);
+    setForm({
+      number: String(nextNum),
+      goal: "",
+      ...defaultSprintDates(sprints),
+      check_questions: [],
+      check_max_score: String(resolveMaxScore(previous)),
+    });
     setEditingSprint(null);
     setModalError(null);
     setNewBankQuestion("");
@@ -265,7 +273,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
           ))
         )}
         {canManage && (
-          <button data-tour="sprint-new" className={styles.btnPrimary} style={{ marginLeft: "auto" }} onClick={openCreate}>
+          <button data-tour="sprint-new" className={styles.btnPrimary} style={{ marginLeft: "auto" }} onClick={openCreate} disabled={loading}>
             + New Sprint
           </button>
         )}

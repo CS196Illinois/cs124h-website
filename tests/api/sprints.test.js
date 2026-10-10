@@ -73,6 +73,23 @@ describe("sprints CRUD", () => {
     expect(delRes.status).toBe(204);
   });
 
+  it("rejects a sprint number that is already used, on create and on edit", async () => {
+    const one = await insertSprint({ number: 1, goal: "One" });
+    const two = await insertSprint({ number: 2, goal: "Two" });
+    asRole("course_lead", "lead1");
+    const dup = await POST(makeRequest("http://localhost/api/sprints", { method: "POST", body: { number: 1, goal: "Dup" } }));
+    expect(dup.status).toBe(409);
+    expect((await dup.json()).error).toBe("Sprint 1 already exists. Choose a different number.");
+
+    const clash = await PATCH(makeRequest(`http://localhost/api/sprints/${two.id}`, { method: "PATCH", body: { number: 1 } }), { params: { id: two.id } });
+    expect(clash.status).toBe(409);
+    // Saving a sprint with its own unchanged number is fine.
+    const same = await PATCH(makeRequest(`http://localhost/api/sprints/${one.id}`, { method: "PATCH", body: { number: 1, goal: "One again" } }), { params: { id: one.id } });
+    expect(same.status).toBe(200);
+    const { data } = await testClient().from(table("sprints")).select("number");
+    expect(data.map((r) => r.number).sort()).toEqual([1, 2]);
+  });
+
   it("requires number and goal on create", async () => {
     asRole("course_lead", "lead1");
     const res = await POST(makeRequest("http://localhost/api/sprints", { method: "POST", body: { goal: "" } }));

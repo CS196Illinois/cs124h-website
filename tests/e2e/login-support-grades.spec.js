@@ -53,6 +53,14 @@ test("an invalid session lands on a stable recovery screen with its callback int
   await expect(page.getByRole("button", { name: "Sign in with Illinois" })).toBeVisible();
 });
 
+test("support prefills a signed-in visitor's name and NetID", async ({ page, loginAs }) => {
+  await insertUser({ net_id: "e2e-stu", role: "STUDENT" });
+  await loginAs({ netID: "e2e-stu", role: "student" });
+  await page.goto("/support");
+  await expect(page.getByLabel("Full name")).toHaveValue("e2e-stu");
+  await expect(page.getByLabel("NetID")).toHaveValue("e2e-stu");
+});
+
 test("public support accepts a screenshot, preserves form on failure, and shows a receipt", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   let attempts = 0;
