@@ -3,6 +3,7 @@ import { asRole, asAnonymous } from "../helpers/mockAuth";
 import { makeRequest } from "../helpers/request";
 import { insertUser, insertEvent, clearAllTestTables, testClient } from "../helpers/db";
 import { table } from "../../lib/tables";
+import { recentCodes } from "../helpers/checkinCode";
 
 const { GET, POST } = await import("../../app/api/events/route");
 const { PATCH, DELETE } = await import("../../app/api/events/[id]/route");
@@ -214,7 +215,7 @@ describe("events - sandbox mode", () => {
 
     const after = await GET_CODE(makeRequest(`http://localhost/api/events/${real.id}/code`), { params: { id: real.id } });
     expect(after.status).toBe(200);
-    expect((await after.json()).code).toBe(deriveCode(real.id));
+    expect(recentCodes(real.id)).toContain((await after.json()).code);
 
     const { data: stillReal } = await testClient().from(table("events")).select("check_in_open").eq("id", real.id).single();
     expect(stillReal.check_in_open).toBe(false);
@@ -342,7 +343,7 @@ describe("attendance code + check-in", () => {
     asRole("pm", "pm1");
     const res = await GET_CODE(makeRequest(`http://localhost/api/events/${event.id}/code`), { params: { id: event.id } });
     const json = await res.json();
-    expect(json.code).toBe(deriveCode(event.id));
+    expect(recentCodes(event.id)).toContain(json.code);
     expect(json.expiresIn).toBeGreaterThan(0);
   });
 

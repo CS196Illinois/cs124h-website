@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures";
 import { insertUser, insertEvent, insertEventCheckin, clearAllTestTables, testClient } from "../helpers/db";
-import { deriveCode } from "../../app/api/events/[id]/code/route";
+import { recentCodes } from "../helpers/checkinCode";
 import { table } from "../../lib/tables";
 
 // The event form requires a start time (events.start_time is NOT NULL). A few
@@ -75,8 +75,9 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await loginAs({ netID: "e2e-pm", role: "pm" });
     await page.goto("/user/pm/events");
 
-    const code = deriveCode(event.id);
-    await expect(page.getByText(code, { exact: true })).toBeVisible();
+    const shownCode = page.locator("text=/^\\d{6}$/");
+    await expect(shownCode).toBeVisible();
+    expect(recentCodes(event.id)).toContain(await shownCode.textContent());
 
     await page.getByRole("button", { name: "Enlarge check-in code" }).click();
     // The enlarged view shows the same code and event title, full-screen -
@@ -85,7 +86,9 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await expect(page.getByRole("button", { name: "Close enlarged code" })).toBeVisible();
     const enlarged = page.locator('[class*="enlargeContent"]');
     await expect(enlarged.getByText("Live Workshop", { exact: true })).toBeVisible();
-    await expect(enlarged.getByText(code, { exact: true })).toBeVisible();
+    const enlargedCode = enlarged.locator('[class*="enlargeDigits"]');
+    await expect(enlargedCode).toHaveText(/^\d{6}$/);
+    expect(recentCodes(event.id)).toContain(await enlargedCode.textContent());
 
     // Regression coverage: the enlarged view also has a QR code + URL for
     // the shared, role-agnostic check-in route, deep-linked to this event.
@@ -213,8 +216,9 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await expect(page.getByText("Events (1)")).toBeVisible();
     await expect(page.getByText("Guest Lecture", { exact: true })).toBeVisible();
     await expect(page.getByText("● Open")).toBeVisible();
-    const code = deriveCode(event.id);
-    await expect(page.getByText(code, { exact: true })).toBeVisible();
+    const shownCode = page.locator("text=/^\\d{6}$/");
+    await expect(shownCode).toBeVisible();
+    expect(recentCodes(event.id)).toContain(await shownCode.textContent());
 
     await page.getByRole("button", { name: "Delete" }).click();
     await expect(page.getByText("Events (0)")).toBeVisible();
@@ -228,7 +232,8 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await expect(page.getByText("Events (1)")).toBeVisible();
     await expect(page.getByText("Guest Lecture", { exact: true })).toBeVisible();
     await expect(page.getByText("● Open")).toBeVisible();
-    await expect(page.getByText(code, { exact: true })).toBeVisible();
+    await expect(shownCode).toBeVisible();
+    expect(recentCodes(event.id)).toContain(await shownCode.textContent());
 
     // Undo cancels the pending request outright - nothing was ever sent
     // server-side, so every field is exactly as originally inserted.
