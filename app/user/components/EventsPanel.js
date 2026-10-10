@@ -5,11 +5,12 @@ import { useSession } from "next-auth/react";
 import QRCode from "qrcode";
 import { MagnifyingGlassIcon, ArrowSquareOutIcon, X } from "@phosphor-icons/react";
 import { useUndo } from "../../../components/UndoProvider";
-import { formatLocalDateTime, datetimeLocalToISO } from "../../../lib/dateFormat";
+import { formatLocalDateTime, datetimeLocalToISO, defaultEventTimes } from "../../../lib/dateFormat";
 import styles from "../dashboard.module.css";
 import panelStyles from "./EventsPanel.module.css";
 import EventAudiencePicker from "./EventAudiencePicker";
 import { isPmViewRole, roleLabel } from "../../../lib/roles";
+import { isStaffAudience, STAFF_AUDIENCE } from "../../../lib/eventAudience";
 import { CHECKIN_NETID_MAX, EVENT_TEXT_MAX } from "../../../lib/fieldRules";
 
 // Roles with standing Editor access to the shared attendance sheet (kept in
@@ -32,6 +33,7 @@ function audienceSummary(event) {
   const values = Array.isArray(event.audience_values) ? event.audience_values : [];
   if (!event.audience_type || event.audience_type === "all") return "Open to everyone in the course";
   if (event.audience_type === "people") return `${values.length} selected ${values.length === 1 ? "person" : "people"}`;
+  if (isStaffAudience(event)) return "Open to all staff";
   if (event.audience_type === "roles") return `Open to: ${values.map(roleLabel).join(", ")}`;
   if (event.audience_type === "groups") return `Groups: ${values.join(", ")}`;
   return "Restricted audience";
@@ -341,14 +343,16 @@ export default function EventsPanel() {
   const openCreate = () => {
     const role = session?.user?.role;
     let audience = { audience_type: "all", audience_values: [] };
-    if (role === "lead_web_dev" || (role === "web_dev" && myGroup == null)) {
+    if (["course_lead", "head_pm", "lead_web_dev"].includes(role)) {
+      audience = { ...STAFF_AUDIENCE, audience_values: [...STAFF_AUDIENCE.audience_values] };
+    } else if (role === "web_dev" && myGroup == null) {
       audience = { audience_type: "roles", audience_values: ["WEB", "LEAD_WEB"] };
-    } else if (role === "head_pm") {
-      audience = { audience_type: "roles", audience_values: ["PM"] };
     } else if (isPmViewRole(role)) {
       audience = { audience_type: "groups", audience_values: myGroup != null ? [String(myGroup)] : [] };
     }
-    setForm({ title: "", description: "", location: "", presenter: "", start_time: "", end_time: "", ...audience });
+    // Real values, not just what the browser shows: some browsers (Safari)
+    // display today's date in an empty date field without submitting it.
+    setForm({ title: "", description: "", location: "", presenter: "", ...defaultEventTimes(), ...audience });
     setFormError("");
     setShowModal(true);
   };

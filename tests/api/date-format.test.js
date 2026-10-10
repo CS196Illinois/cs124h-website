@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatDueDate, formatLocalDate, formatLocalDateTime, localTodayISO, courseTodayISO, datetimeLocalToISO } from "../../lib/dateFormat";
+import { formatDueDate, formatLocalDate, formatLocalDateTime, localTodayISO, courseTodayISO, datetimeLocalToISO, toDatetimeLocal, defaultEventTimes } from "../../lib/dateFormat";
 
 describe("dateFormat", () => {
   it("formats a due date (UTC-midnight) as the same calendar day everywhere", () => {
@@ -37,5 +37,15 @@ describe("dateFormat", () => {
     expect(back.getHours()).toBe(15);
     expect(back.getMinutes()).toBe(30);
     expect(datetimeLocalToISO("")).toBeNull();
+  });
+
+  it("toDatetimeLocal formats a Date as a local datetime-local value", () => {
+    expect(toDatetimeLocal(new Date(2026, 8, 5, 7, 3))).toBe("2026-09-05T07:03");
+  });
+
+  it("defaultEventTimes starts at the most recent half hour and runs 1.5 hours", () => {
+    expect(defaultEventTimes(new Date(2026, 9, 10, 14, 17, 45))).toEqual({ start_time: "2026-10-10T14:00", end_time: "2026-10-10T15:30" });
+    expect(defaultEventTimes(new Date(2026, 9, 10, 14, 30))).toEqual({ start_time: "2026-10-10T14:30", end_time: "2026-10-10T16:00" });
+    expect(defaultEventTimes(new Date(2026, 9, 10, 23, 45))).toEqual({ start_time: "2026-10-10T23:30", end_time: "2026-10-11T01:00" });
   });
 });

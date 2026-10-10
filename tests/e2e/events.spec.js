@@ -43,6 +43,45 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     });
   }
 
+  for (const [role, dbRole] of [["course_lead", "LEAD"], ["head_pm", "HEAD"], ["lead_web_dev", "LEAD_WEB"]]) {
+    test(`${role} defaults new events to all staff`, async ({ page, loginAs }) => {
+      await insertUser({ net_id: "staff-owner", role: dbRole });
+      await loginAs({ netID: "staff-owner", role });
+      await page.goto(`/user/${role}/events`);
+      await page.getByRole("button", { name: "+ New Event" }).click();
+      await expect(page.getByRole("radio", { name: /All staff/ })).toBeChecked();
+      await page.getByPlaceholder("e.g. Week 5 Guest Lecture").fill("Staff meeting");
+      await page.getByRole("button", { name: "Create Event" }).click();
+      await expect(page.getByText("Open to all staff", { exact: true })).toBeVisible();
+      const { data } = await testClient().from(table("events")).select("audience_type, audience_values").eq("title", "Staff meeting").single();
+      expect(data.audience_type).toBe("roles");
+      expect([...data.audience_values].sort()).toEqual(["HEAD", "LEAD", "LEAD_WEB", "PM", "WEB"]);
+    });
+  }
+
+  test("a new event saves its prefilled start and end times without touching them", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
+    await loginAs({ netID: "e2e-pm", role: "pm" });
+    await page.goto("/user/pm/events");
+
+    const before = Date.now();
+    await page.getByRole("button", { name: "+ New Event" }).click();
+    await expect(page.getByLabel("Start Time")).not.toHaveValue("");
+    await expect(page.getByLabel("End Time")).not.toHaveValue("");
+    await page.getByPlaceholder("e.g. Week 5 Guest Lecture").fill("Defaults test");
+    await page.getByRole("button", { name: "Create Event" }).click();
+    await expect(page.getByText("Defaults test", { exact: true })).toBeVisible();
+
+    const { data } = await testClient().from(table("events")).select("start_time, end_time").eq("title", "Defaults test").single();
+    const start = new Date(data.start_time).getTime();
+    const end = new Date(data.end_time).getTime();
+    const HALF_HOUR = 30 * 60_000;
+    expect(start % HALF_HOUR).toBe(0);
+    expect(start).toBeLessThanOrEqual(Date.now());
+    expect(start).toBeGreaterThan(before - HALF_HOUR);
+    expect(end - start).toBe(3 * HALF_HOUR);
+  });
+
   test("pm creates an event and opens check-in, exposing a live rotating code", async ({ page, loginAs }) => {
     await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
     await loginAs({ netID: "e2e-pm", role: "pm" });
