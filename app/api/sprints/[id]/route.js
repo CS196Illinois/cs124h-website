@@ -9,6 +9,7 @@ import { normalizeQuestions, resolveMaxScore } from "../../../../lib/sprintCheck
 import { isSprintVisibleToRole, validateSprintDates } from "../../../../lib/sprintVisibility";
 import { forbidden, invalidInput, serverError } from "../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../lib/session";
+import { sprintNumberTaken, sprintNumberTakenMessage } from "../../../../lib/sprintNumbers";
 
 const MANAGE_ROLES = ["course_lead", "head_pm", "lead_web_dev", "web_dev", "pm"];
 
@@ -47,6 +48,11 @@ export async function PATCH(request, { params }) {
     const sprintNumber = parseSprintNumber(updates.number);
     if (sprintNumber.error) return NextResponse.json({ error: sprintNumber.error }, { status: 400 });
     updates.number = sprintNumber.value;
+    try {
+      if (await sprintNumberTaken(updates.number, { netID, role: userRole, exceptId: id })) {
+        return NextResponse.json({ error: sprintNumberTakenMessage(updates.number) }, { status: 409 });
+      }
+    } catch { return serverError(); }
   }
   if ("check_questions" in updates) updates.check_questions = normalizeQuestions(updates.check_questions);
   if (pmView && "check_questions" in updates) {

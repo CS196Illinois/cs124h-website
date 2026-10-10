@@ -144,7 +144,8 @@ export default function EventsPanel() {
   }, []);
 
   useEffect(() => {
-    const openIds = events.filter(e => e.check_in_open).map(e => e.id);
+    // Only an event's creator can read its code (see getManagedEvent).
+    const openIds = events.filter(e => e.check_in_open && e.created_by === session?.user?.netID).map(e => e.id);
     const trackedIds = Object.keys(rotateTimers.current);
 
     // Stop tracking events that closed
@@ -164,7 +165,7 @@ export default function EventsPanel() {
         fetchCode(id);
       }
     });
-  }, [events, fetchCode]);
+  }, [events, fetchCode, session?.user?.netID]);
 
   // Cosmetic per-second countdown display only - derived fresh from the
   // authoritative expiresAt each tick (not decremented independently), so

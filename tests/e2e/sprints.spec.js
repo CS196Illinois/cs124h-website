@@ -5,6 +5,23 @@ import { table } from "../../lib/tables";
 test.describe("sprints: course lead manages sprints, pm marks completions", () => {
   test.beforeEach(clearAllTestTables);
 
+  test("a new sprint defaults to the week after the latest one and a max score of 100", async ({ page, loginAs }) => {
+    await insertSprint({ number: 3, start_date: "2026-10-05", end_date: "2026-10-11" });
+    await loginAs({ netID: "e2e-lead", role: "course_lead" });
+    await page.goto("/user/course_lead/sprints");
+
+    await expect(page.getByRole("button", { name: "Sprint 3" })).toBeVisible();
+    await page.getByRole("button", { name: "+ New Sprint" }).click();
+    await expect(page.locator('input[type="date"]').first()).toHaveValue("2026-10-12");
+    await expect(page.locator('input[type="date"]').last()).toHaveValue("2026-10-18");
+    await page.getByPlaceholder("What should students accomplish this sprint?").fill("Next week");
+    await page.getByRole("button", { name: "Create Sprint" }).click();
+    await expect(page.getByRole("button", { name: "Sprint 4" })).toBeVisible();
+
+    const { data } = await testClient().from(table("sprints")).select("start_date, end_date, check_max_score").eq("number", 4).single();
+    expect(data).toEqual({ start_date: "2026-10-12", end_date: "2026-10-18", check_max_score: 100 });
+  });
+
   test("course lead creates, edits, and deletes a sprint", async ({ page, loginAs }) => {
     await loginAs({ netID: "e2e-lead", role: "course_lead" });
     await page.goto("/user/course_lead/sprints");

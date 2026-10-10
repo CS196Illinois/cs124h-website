@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { SUPPORT_CATEGORIES, SUPPORT_MAX_BYTES, SUPPORT_MAX_FILES, SUPPORT_TYPES } from "../../lib/support";
 import styles from "./Support.module.css";
@@ -12,6 +13,17 @@ export default function SupportPage() {
   const [files, setFiles] = useState([]);
   const requestID = useRef(null);
   const inFlight = useRef(false);
+  const formRef = useRef(null);
+  const { data: session } = useSession();
+
+  // Signed-in visitors get their name and NetID filled in; anything already
+  // typed is left alone, and both stay editable.
+  useEffect(() => {
+    const fields = formRef.current?.elements;
+    if (!fields || !session?.user) return;
+    if (!fields.full_name.value && session.user.name) fields.full_name.value = session.user.name;
+    if (!fields.net_id.value && session.user.netID) fields.net_id.value = session.user.netID;
+  }, [session]);
 
   async function submit(event) {
     event.preventDefault();
@@ -44,7 +56,7 @@ export default function SupportPage() {
       <Link href="/">Back to the course website</Link>
     </> : <>
       <p>Report a login problem, ask about the website, or tell us what isn’t working. You don’t need to sign in.</p>
-      <form className={styles.form} onSubmit={submit}>
+      <form ref={formRef} className={styles.form} onSubmit={submit}>
         <div className={styles.row}>
           <label className={styles.field}>Full name<input name="full_name" autoComplete="name" required minLength={2} maxLength={120} /></label>
           <div className={styles.field}><label htmlFor="support-netid">NetID</label><input id="support-netid" name="net_id" autoComplete="username" required pattern="[A-Za-z][A-Za-z0-9]{1,15}" maxLength={16} aria-describedby="netid-hint" /><span id="netid-hint" className={styles.hint}>Without @illinois.edu. We’ll reply to your Illinois email.</span></div>

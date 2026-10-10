@@ -10,6 +10,7 @@ import { normalizeQuestions } from "../../../lib/sprintChecks";
 import { isSprintVisibleToRole, validateSprintDates } from "../../../lib/sprintVisibility";
 import { forbidden, invalidInput, serverError, signInRequired } from "../../../lib/apiResponses";
 import { getSessionUser } from "../../../lib/session";
+import { sprintNumberTaken, sprintNumberTakenMessage } from "../../../lib/sprintNumbers";
 
 const MANAGE_ROLES = ["course_lead", "head_pm", "lead_web_dev", "web_dev"];
 
@@ -57,6 +58,11 @@ export async function POST(request) {
   const parsedNumber = parseSprintNumber(number);
   if (parsedNumber.error) return NextResponse.json({ error: parsedNumber.error }, { status: 400 });
   const sprintNumber = parsedNumber.value;
+  try {
+    if (await sprintNumberTaken(sprintNumber, { netID, role: userRole })) {
+      return NextResponse.json({ error: sprintNumberTakenMessage(sprintNumber) }, { status: 409 });
+    }
+  } catch { return serverError(); }
   const dateError = validateSprintDates(start_date, end_date);
   if (dateError) return NextResponse.json({ error: dateError }, { status: 400 });
   if (check_max_score != null && check_max_score !== "" && (!Number.isFinite(Number(check_max_score)) || Number(check_max_score) <= 0)) {

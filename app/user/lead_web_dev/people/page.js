@@ -251,7 +251,7 @@ export default function LeadWebDevPeople() {
           </div>
           <div className={styles.modalActions}>
             <button className={styles.btnSecondary} onClick={() => setShowAddModal(false)}>Cancel</button>
-            <button className={styles.btnPrimary} onClick={handleAdd} disabled={addLoading}>{addLoading ? "Adding…" : "Add"}</button>
+            <button className={styles.btnPrimary} onClick={handleAdd} disabled={addLoading || roles.length === 0}>{addLoading ? "Adding…" : "Add"}</button>
           </div>
         </Modal>
       )}

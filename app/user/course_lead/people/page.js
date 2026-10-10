@@ -119,11 +119,20 @@ export default function CourseLeadPeople() {
   };
 
   const handleRoleChange = async (net_id, role) => {
-    await fetch(`/api/users/${encodeURIComponent(net_id)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role }),
-    });
+    setSaveError("");
+    try {
+      const res = await fetch(`/api/users/${encodeURIComponent(net_id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSaveError(data.error || "The role could not be changed. Please try again.");
+      }
+    } catch {
+      setSaveError("The role could not be changed. Check your connection and try again.");
+    }
     await fetchAll();
   };
 
@@ -139,12 +148,15 @@ export default function CourseLeadPeople() {
     });
   };
 
-  const handleGroupChange = async (net_id, group_number) => {
+  const handleGroupChange = async (net_id, group_number, input) => {
+    const saved = users.find((u) => u.net_id === net_id)?.group_number ?? "";
     const { value, error } = parseGroupNumber(group_number);
     if (error) {
       setSaveError(error);
+      input.value = saved; // show what is actually stored, not the rejected entry
       return;
     }
+    if (value === (saved === "" ? null : saved)) return;
     setSaveError("");
     try {
       const res = await fetch(`/api/users/${encodeURIComponent(net_id)}`, {
@@ -317,7 +329,7 @@ export default function CourseLeadPeople() {
                           style={{ width: 70 }}
                           placeholder="Grp"
                           defaultValue={u.group_number ?? ""}
-                          onBlur={(e) => handleGroupChange(u.net_id, e.target.value)}
+                          onBlur={(e) => handleGroupChange(u.net_id, e.target.value, e.target)}
                         />
                         <button className={styles.btnDanger} onClick={() => handleRemoveUser(u.net_id)}>
                           Remove
