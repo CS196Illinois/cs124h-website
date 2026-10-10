@@ -1,21 +1,19 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
 import { eventHasEnded, validateEventAudience, getManagedEvent } from "../../../../lib/events";
 import { EVENT_TEXT_MAX } from "../../../../lib/fieldRules";
+import { serverError, signInRequired } from "../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../lib/session";
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 
 export async function PATCH(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
 
   if (!STAFF_ROLES.includes(userRole)) {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 403 });
+    return signInRequired(403);
   }
 
   const { id } = await params;
@@ -70,7 +68,7 @@ export async function PATCH(request, { params }) {
   let query = supabaseServer.from(table("events")).update(updates).eq("id", id);
   query = query.eq("created_by", netID);
   const { data, error } = await query.select().maybeSingle();
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
   if (!data) {
     return NextResponse.json({ error: "That event could not be found, or you do not have permission to edit it." }, { status: 403 });
   }
@@ -78,12 +76,10 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
 
   if (!STAFF_ROLES.includes(userRole)) {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 403 });
+    return signInRequired(403);
   }
 
   const { id } = await params;
@@ -101,7 +97,7 @@ export async function DELETE(request, { params }) {
   let query = supabaseServer.from(table("events")).delete().eq("id", id);
   query = query.eq("created_by", netID);
   const { data, error } = await query.select("id");
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
   // A scoped delete matching 0 rows means either the event doesn't exist, or
   // (more likely) it belongs to someone else and this caller isn't full-access -
   // surface that instead of silently no-opping.

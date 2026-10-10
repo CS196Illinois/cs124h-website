@@ -37,5 +37,3 @@ The form uses a stable submission ID to avoid duplicate reports when a response 
 The automated tests never send live mail when `USE_TEST_TABLES=true`. SMTP unit tests replace the transport and database with mocks. Browser support tests intercept submission responses to check the public UI independently of deployment setup.
 
 The `support-mailer` dependency is an npm alias for patched Nodemailer 10. This avoids NextAuth v4's optional Nodemailer 7 peer constraint; the site uses CILogon, not NextAuth's email provider.
-
-The grade view borrows the current-average, assignment-score, and feedback hierarchy from [Canvas's student Grades view](https://community.instructure.com/en/kb/articles/661305-how-do-i-view-my-grades-in-a-current-course). It keeps this site's equal-assignment weighting and labels the result as an action-item average, not a final course grade.

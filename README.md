@@ -13,7 +13,6 @@ The course website hosts:
 - Hall of Fame Projects
 - Resources designed by course staff
 - Current and past course staff
-- Leaderboard
 - Schedule & Calendar
 
 

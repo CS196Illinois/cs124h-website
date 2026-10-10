@@ -17,13 +17,9 @@ test("a new PM gets an interactive tour that follows the real workflow", async (
   const steps = [
     ["/user/pm/students", "nav-my-students"],
     ["/user/pm/students", "students-export"],
-    ["/user/pm/action_items", "nav-action-items"],
-    ["/user/pm/action_items", "action-assign"],
     ["/user/pm/sprints", "nav-sprints"],
     ["/user/pm/sprints", "sprint-open-check"],
-    ["/user/pm/events", "nav-events"],
     ["/user/pm/events", "event-new"],
-    ["/user/pm/gradebook", "nav-gradebook"],
     ["/user/pm/gradebook", "gradebook-view"],
     ["/user/pm/guide", "nav-pm-guide"],
   ];

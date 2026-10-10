@@ -4,22 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import styles from "../../dashboard.module.css";
 import { downloadCsv } from "../../../../lib/csvExport";
-import { courseTodayISO } from "../../../../lib/dateFormat";
-
-function getCurrentSprint(sprints) {
-  if (!sprints.length) return null;
-  const today = courseTodayISO();
-  const active = sprints.find(
-    (s) => s.start_date && s.end_date && s.start_date <= today && today <= s.end_date
-  );
-  return active || sprints[0];
-}
+import { getCurrentSprint } from "../../../../lib/sprintVisibility";
 
 export default function PMStudents() {
   const { data: session, status } = useSession();
   const [myRecord, setMyRecord] = useState(null);
   const [students, setStudents] = useState([]);
-  const [actionItems, setActionItems] = useState([]);
   const [sprints, setSprints] = useState([]);
   const [selectedSprint, setSelectedSprint] = useState(null);
   const [completions, setCompletions] = useState([]);
@@ -30,14 +20,12 @@ export default function PMStudents() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [meRes, itemsRes, spRes] = await Promise.all([
+    const [meRes, spRes] = await Promise.all([
       fetch("/api/users/me"),
-      fetch("/api/action_items?group_scope=true"),
       fetch("/api/sprints"),
     ]);
     let me = null;
     if (meRes.ok) { me = await meRes.json(); setMyRecord(me); }
-    if (itemsRes.ok) setActionItems(await itemsRes.json());
     if (spRes.ok) {
       const spData = await spRes.json();
       setSprints(spData);
@@ -103,11 +91,6 @@ export default function PMStudents() {
       [
         { key: "name", label: "Name" },
         { key: "net_id", label: "NetID" },
-        {
-          key: "open_items",
-          label: "Open Items",
-          value: (u) => actionItems.filter((a) => a.net_id === u.net_id && !a.is_done).length,
-        },
         ...(selectedSprint
           ? [{
               key: "sprint_status",
@@ -186,7 +169,6 @@ export default function PMStudents() {
                   <tr>
                     <th>Name</th>
                     <th>NetID</th>
-                    <th>Open Items</th>
                     <th>Sprint</th>
                   </tr>
                 </thead>
@@ -195,7 +177,6 @@ export default function PMStudents() {
                     <tr key={i}>
                       <td><div className={styles.skeletonBlock} style={{ height: "0.85rem", width: "65%" }} /></td>
                       <td><div className={styles.skeletonBlock} style={{ height: "0.85rem", width: "55%" }} /></td>
-                      <td><div className={styles.skeletonBlock} style={{ height: "0.85rem", width: "25%" }} /></td>
                       <td><div className={styles.skeletonBlock} style={{ height: "1.6rem", width: "70px", borderRadius: "5px" }} /></td>
                     </tr>
                   ))}
@@ -213,24 +194,17 @@ export default function PMStudents() {
                   <tr>
                     <th>Name</th>
                     <th>NetID</th>
-                    <th>Open Items</th>
                     {selectedSprint && <th>Sprint {selectedSprint.number}</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {filteredStudents.map((u) => {
-                    const studentOpenItems = actionItems.filter((a) => a.net_id === u.net_id && !a.is_done).length;
                     const done = completedIds.has(u.net_id);
                     const busy = toggling.has(u.net_id);
                     return (
                       <tr key={u.net_id}>
                         <td>{u.name || <span style={{ opacity: 0.4 }}>-</span>}</td>
                         <td className={styles.cellMono}>{u.net_id}</td>
-                        <td>
-                          <span style={{ color: studentOpenItems > 0 ? "#fbbf24" : "#4ade80", fontWeight: 600 }}>
-                            {studentOpenItems}
-                          </span>
-                        </td>
                         {selectedSprint && (
                           <td>
                             <button

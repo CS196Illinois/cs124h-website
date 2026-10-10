@@ -69,7 +69,7 @@ export default function CourseLeadGradebook() {
           students={students}
           items={items}
           groupBy
-          emptyMessage="No gradable action items assigned to students yet."
+          emptyMessage="No understanding checks submitted yet."
         />
       )}
     </div>

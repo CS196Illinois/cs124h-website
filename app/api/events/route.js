@@ -1,22 +1,20 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, mergeSandboxRows, sandboxWrite } from "../../../lib/sandbox";
 import { canAdminEvents, validateEventAudience, audienceMatches, eventHasEnded } from "../../../lib/events";
 import { EVENT_TEXT_MAX } from "../../../lib/fieldRules";
+import { invalidInput, serverError, signInRequired } from "../../../lib/apiResponses";
+import { getSessionUser } from "../../../lib/session";
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 
 export async function GET(request) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
 
   if (!userRole || userRole === "error") {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    return signInRequired();
   }
 
   // Attendance: eligible open events plus the viewer's attendance history.
@@ -28,7 +26,7 @@ export async function GET(request) {
     .select("id, title, description, location, presenter, start_time, end_time, check_in_open, check_in_opened_at, created_by, created_at, point_value, sheet_synced_at, sheet_sync_error, audience_type, audience_values")
     .order("created_at", { ascending: false });
 
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
 
   let rows = data;
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
@@ -60,16 +58,14 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
 
   if (!STAFF_ROLES.includes(userRole)) {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 403 });
+    return signInRequired(403);
   }
 
   const body = await request.json().catch(() => null);
-  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Please check the information you entered and try again." }, { status: 400 });
+  if (!body || typeof body !== "object" || Array.isArray(body)) return invalidInput();
   const { title, description, location, presenter, start_time, end_time } = body;
   let { audience_type, audience_values = [] } = body;
   if (audience_type === undefined && ["pm", "web_dev"].includes(userRole)) {

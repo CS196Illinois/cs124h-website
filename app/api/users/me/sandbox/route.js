@@ -1,16 +1,14 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../../../auth/[...nextauth]/route";
 import { isSandboxRole, getSandboxMode, setSandboxMode, resetSandbox, deactivateEphemeral } from "../../../../../lib/sandbox";
+import { signInRequired } from "../../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../../lib/session";
 
 // Self-service only - a user can only ever change their own sandbox
 // settings, never another user's. Restricted to the roles the sandbox
 // feature is actually for (web_dev / lead_web_dev).
 async function requireSandboxUser() {
-  const session = await getServerSession(authOptions);
-  const netID = session?.user?.netID;
-  const role = session?.user?.role;
-  if (!netID || !role) return { error: NextResponse.json({ error: "Please sign in to continue." }, { status: 401 }) };
+  const { netID, role } = await getSessionUser();
+  if (!netID || !role) return { error: signInRequired() };
   if (!isSandboxRole(role)) return { error: NextResponse.json({ error: "Sandbox mode is only available to web devs" }, { status: 403 }) };
   return { netID };
 }

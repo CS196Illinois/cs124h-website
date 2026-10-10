@@ -12,7 +12,7 @@ Gradebook UX tests save desktop and 320px mobile screenshots under `test-results
 
 Grading behavior checked by the suite:
 
-- Students only receive their own action items. PM queries are limited to their group plus their own items; head PM queries cover PM/student recipients plus their own items.
+- Students only receive their own understanding-check submissions. PM queries are limited to their group plus their own items; head PM queries cover PM/student recipients plus their own items.
 - Course leads and the web team retain their existing broader API access. A web developer's own gradebook is a PM-style view of their assigned group. Lead web developers can use the course-lead gradebook through role navigation.
 - Only the assigner can grade. Reopening or disabling grading clears the score and feedback. Invalid scores and incompatible simultaneous edits are rejected.
 - Averages give assignments equal weight within a student's results, and students equal weight within the group/course. Ungraded work is excluded; zero is a valid grade.
@@ -24,6 +24,6 @@ Login regression checks cover same-identity concurrent roster claims, alternate 
 
 The onboarding tour is skipped in browser automation with `NEXT_PUBLIC_E2E=true`; real users see it once per net ID and role, with a local completion marker and a skip option.
 
-Event lists show created or joined events; only lead web developers receive the full list. Attendance shows eligible open events and joined history. PM and web developer event creation defaults to their assigned group, with explicit audience selection required when no group is assigned. Browser tests cover audience selection and editing. Sprint completion reads and writes are restricted to the assigned group for both PMs and web developers; an unassigned manager gets an empty roster. Developer PM screens request `group_scope=true` for action items while developer previews retain their existing tools.
+Event lists show created or joined events; only lead web developers receive the full list. Attendance shows eligible open events and joined history. PM and web developer event creation defaults to their assigned group, with explicit audience selection required when no group is assigned. Browser tests cover audience selection and editing. Sprint completion reads and writes are restricted to the assigned group for both PMs and web developers; an unassigned manager gets an empty roster. Developer PM screens request `group_scope=true` for gradebook data while developer previews retain their existing tools.
 
 The dependency lockfile includes compatible security updates. Next.js's PostCSS dependency is overridden within the PostCSS 8 release line to avoid its older vulnerable pin; verify this override whenever upgrading Next.js. Run `npm audit` along with the build after dependency updates.

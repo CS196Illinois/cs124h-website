@@ -4,7 +4,7 @@ import { useState } from "react";
 import Modal from "./Modal";
 import styles from "../dashboard.module.css";
 
-export default function GradeActionItemModal({ item, onClose, onSaved }) {
+export default function GradeCheckModal({ item, onClose, onSaved }) {
   const [grade, setGrade] = useState(item.grade != null ? String(item.grade) : "");
   const [note, setNote] = useState(item.grade_note || "");
   const [loading, setLoading] = useState(false);

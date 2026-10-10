@@ -1,13 +1,13 @@
-import { getServerSession } from "next-auth";
 import { NextResponse, after } from "next/server";
 import { randomUUID } from "crypto";
-import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../../../lib/supabaseServer";
 import { table } from "../../../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../../../../lib/sandbox";
 import { getManagedEvent } from "../../../../../../lib/events";
 import { syncEventAttendance } from "../../../../../../lib/eventAttendanceSync";
 import { CHECKIN_NETID_MAX } from "../../../../../../lib/fieldRules";
+import { serverError, signInRequired } from "../../../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../../../lib/session";
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 
@@ -16,11 +16,9 @@ const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 // post-insert sheet sync as the real check-in path (checkin/route.js); the
 // only differences are that staff pick the net_id and no code is required.
 export async function POST(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
   if (!STAFF_ROLES.includes(userRole)) {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 403 });
+    return signInRequired(403);
   }
 
   const { id } = await params;
@@ -62,7 +60,7 @@ export async function POST(request, { params }) {
     if (error.code === "23505") {
       return NextResponse.json({ error: `${cleanNetId} is already checked in.` }, { status: 409 });
     }
-    return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+    return serverError();
   }
 
   after(() => syncEventAttendance(id).catch((e) => console.error(`manual add sheet sync failed for event ${id}:`, e.message)));
@@ -74,11 +72,9 @@ export async function POST(request, { params }) {
 // friend's behalf. Full clear-and-rewrite sync means the removal actually
 // disappears from the sheet too, not just stops the count from growing.
 export async function DELETE(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
   if (!STAFF_ROLES.includes(userRole)) {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 403 });
+    return signInRequired(403);
   }
 
   const { id } = await params;
@@ -110,7 +106,7 @@ export async function DELETE(request, { params }) {
     .eq("event_id", id)
     .eq("net_id", netId);
 
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
 
   after(() => syncEventAttendance(id).catch((e) => console.error(`manual remove sheet sync failed for event ${id}:`, e.message)));
 

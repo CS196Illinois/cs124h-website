@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import styles from "../app/user/dashboard.module.css";
-import GradeActionItemModal from "../app/user/components/GradeActionItemModal";
+import GradeCheckModal from "../app/user/components/GradeCheckModal";
 
 function RosterTable({ roster, onGrade }) {
   return (
@@ -218,7 +218,7 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
       )}
 
       {grading && (
-        <GradeActionItemModal item={grading} onClose={() => setGrading(null)} onSaved={fetchData} />
+        <GradeCheckModal item={grading} onClose={() => setGrading(null)} onSaved={fetchData} />
       )}
     </div>
   );

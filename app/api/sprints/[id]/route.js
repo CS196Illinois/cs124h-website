@@ -1,30 +1,28 @@
 import { getUserGroup, applyGroupQuestions, saveGroupSprintCheck } from "../../../../lib/groupSprintChecks";
 import { actsAsPm } from "../../../../lib/roles";
 import { parseSprintNumber } from "../../../../lib/fieldRules";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
 import { normalizeQuestions, resolveMaxScore } from "../../../../lib/sprintChecks";
 import { isSprintVisibleToRole, validateSprintDates } from "../../../../lib/sprintVisibility";
+import { forbidden, invalidInput, serverError } from "../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../lib/session";
 
 const MANAGE_ROLES = ["course_lead", "head_pm", "lead_web_dev", "web_dev", "pm"];
 
 export async function PATCH(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
   if (!MANAGE_ROLES.includes(userRole)) {
-    return NextResponse.json({ error: "You do not have permission to do that." }, { status: 403 });
+    return forbidden();
   }
   const { id } = await params;
   const { data: existingSprint } = await supabaseServer.from(table("sprints")).select("*").eq("id", id).maybeSingle();
   if (!existingSprint) return NextResponse.json({ error: "We could not find that sprint. It may have been removed or is not available yet." }, { status: 404 });
   if (!isSprintVisibleToRole(existingSprint, userRole)) return NextResponse.json({ error: "This sprint is not available yet." }, { status: 404 });
   const body = await request.json().catch(() => null);
-  if (!body) return NextResponse.json({ error: "Please check the information you entered and try again." }, { status: 400 });
+  if (!body) return invalidInput();
   // PMs (and a lead web dev previewing the PM page) edit their group's additions.
   const pmView = actsAsPm(userRole, new URL(request.url).searchParams.get("view"));
 
@@ -96,18 +94,16 @@ export async function PATCH(request, { params }) {
 
   const query = supabaseServer.from(table("sprints")).update(updates).eq("id", id);
   const { data, error } = await query.select().maybeSingle();
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
   if (!data) return NextResponse.json({ error: "This sprint changed while you were editing. Reload it and try again." }, { status: 409 });
   return NextResponse.json(groupQuestions ? applyGroupQuestions(data, groupQuestions) : data);
 }
 
 export async function DELETE(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
   if (userRole === "pm") return NextResponse.json({ error: "PMs cannot delete sprints." }, { status: 403 });
   if (!MANAGE_ROLES.includes(userRole)) {
-    return NextResponse.json({ error: "You do not have permission to do that." }, { status: 403 });
+    return forbidden();
   }
   const { id } = await params;
   const { data: existingSprint } = await supabaseServer.from(table("sprints")).select("start_date").eq("id", id).maybeSingle();
@@ -120,6 +116,6 @@ export async function DELETE(request, { params }) {
   }
 
   const { error } = await supabaseServer.from(table("sprints")).delete().eq("id", id);
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
   return new NextResponse(null, { status: 204 });
 }

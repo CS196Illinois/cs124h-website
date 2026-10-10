@@ -47,9 +47,9 @@ for (const [role, dbRole] of [["pm", "PM"], ["web_dev", "WEB"]]) {
 
 test("an invalid session lands on a stable recovery screen with its callback intact", async ({ page, context }) => {
   await context.addCookies([{ name: "next-auth.session-token", value: "corrupt", domain: "localhost", path: "/", httpOnly: true }]);
-  await page.goto("/user/student/action_items?tab=done");
+  await page.goto("/user/student/sprints?tab=done");
   await expect(page).toHaveURL(/\/signin\?/);
-  expect(new URL(page.url()).searchParams.get("callbackUrl")).toBe("/user/student/action_items?tab=done");
+  expect(new URL(page.url()).searchParams.get("callbackUrl")).toBe("/user/student/sprints?tab=done");
   await expect(page.getByRole("button", { name: "Sign in with Illinois" })).toBeVisible();
 });
 
@@ -84,32 +84,6 @@ test("public support accepts a screenshot, preserves form on failure, and shows 
   await page.getByRole("button", { name: "Submit support ticket" }).click();
   await expect(page.getByRole("heading", { name: "Your ticket is saved" })).toBeVisible();
   await expect(page.getByRole("status")).toContainText(firstID);
-});
-
-test("student grades include zero, exclude pending grades, and expose feedback on mobile", async ({ page, loginAs }) => {
-  const base = { net_id: "gradeview", is_done: true, is_gradable: true, max_score: 10, assigned_by: "pm1", created_at: "2026-09-10T12:00:00Z", completion_date: "2026-09-12T12:00:00Z" };
-  await page.route("**/api/action_items", (route) => route.fulfill({ json: [
-    { ...base, id: "zero", title: "Sprint 1 reflection", grade: 0, grade_note: "Please explain your design choices." },
-    { ...base, id: "eight", title: "Sprint 2 reflection", grade: 8 },
-    { ...base, id: "pending", title: "Sprint 3 reflection", grade: null },
-    { ...base, id: "ungraded", title: "Join the team", is_gradable: false, grade: null },
-  ] }));
-  await loginAs({ netID: "gradeview", role: "student" });
-  await page.goto("/user/student/action_items");
-  await expect(page.getByText("40.0%", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Completed & Grades" }).click();
-  await expect(page.getByText("0/10", { exact: true })).toBeVisible();
-  await expect(page.getByText("8/10", { exact: true })).toBeVisible();
-  await page.getByText("View feedback and details").click();
-  await expect(page.getByText("Please explain your design choices.")).toBeVisible();
-  await page.screenshot({ path: "test-results/student-grades-desktop.png", fullPage: true });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: "test-results/student-grades-mobile.png", fullPage: true });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.getByLabel("Show", { exact: true }).selectOption("waiting");
-  await expect(page.getByRole("heading", { name: "Sprint 3 reflection" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Sprint 1 reflection" })).toHaveCount(0);
-  await expect(page.getByText("40.0%", { exact: true })).toBeVisible();
 });
 
 test("lead developer can read and resolve a ticket and retry a pending notification", async ({ page, loginAs }) => {

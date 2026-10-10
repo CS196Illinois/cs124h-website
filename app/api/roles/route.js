@@ -1,14 +1,13 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
-import { authOptions } from "../auth/[...nextauth]/route";
 import { ALL_ROLES, MANAGEABLE_BY } from "../../../lib/roles";
+import { signInRequired } from "../../../lib/apiResponses";
+import { getSessionUser } from "../../../lib/session";
 
 export async function GET(request) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
+  const { role: userRole } = await getSessionUser();
 
   if (!userRole || userRole === "error") {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    return signInRequired();
   }
 
   const manageable = new URL(request.url).searchParams.get("manageable") === "true";

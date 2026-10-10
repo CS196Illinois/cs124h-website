@@ -88,3 +88,23 @@
 .reference dd {
   margin-top: 0.25rem;
 }
+
+.section p + p {
+  margin-top: 0.65rem;
+}
+
+.section ul {
+  padding-inline-start: 1.25rem;
+}
+
+.figure {
+  margin: 1rem 0 0;
+}
+
+.figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+}

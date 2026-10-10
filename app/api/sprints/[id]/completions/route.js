@@ -1,20 +1,18 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { authOptions } from "../../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../../../lib/sandbox";
 import { isSprintVisibleToRole } from "../../../../../lib/sprintVisibility";
 import { isPmViewRole } from "../../../../../lib/roles";
 import { groupStudentIds } from "../../../../../lib/groupScope";
+import { forbidden, serverError, signInRequired } from "../../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../../lib/session";
 
 export async function GET(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
   if (!userRole || userRole === "error") {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    return signInRequired();
   }
   const { id } = await params;
   const { data: sprint } = await supabaseServer.from(table("sprints")).select("start_date").eq("id", id).maybeSingle();
@@ -23,7 +21,7 @@ export async function GET(request, { params }) {
     .from(table("sprintCompletions"))
     .select("*")
     .eq("sprint_id", id);
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
 
   let rows = data ?? [];
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
@@ -38,12 +36,10 @@ export async function GET(request, { params }) {
 }
 
 export async function POST(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const userNetId = session?.user?.netID;
+  const { role: userRole, netID: userNetId } = await getSessionUser();
 
   if (!["pm", "head_pm", "course_lead", "lead_web_dev", "web_dev"].includes(userRole)) {
-    return NextResponse.json({ error: "You do not have permission to do that." }, { status: 403 });
+    return forbidden();
   }
 
   const { id } = await params;
@@ -89,17 +85,15 @@ export async function POST(request, { params }) {
     )
     .select()
     .single();
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
   return NextResponse.json(data, { status: 201 });
 }
 
 export async function DELETE(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const userNetId = session?.user?.netID;
+  const { role: userRole, netID: userNetId } = await getSessionUser();
 
   if (!["pm", "head_pm", "course_lead", "lead_web_dev", "web_dev"].includes(userRole)) {
-    return NextResponse.json({ error: "You do not have permission to do that." }, { status: 403 });
+    return forbidden();
   }
 
   const { id } = await params;
@@ -133,6 +127,6 @@ export async function DELETE(request, { params }) {
     .delete()
     .eq("sprint_id", id)
     .eq("student_net_id", studentNetId);
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
   return new NextResponse(null, { status: 204 });
 }

@@ -1,24 +1,22 @@
-import { getServerSession } from "next-auth";
 import { NextResponse, after } from "next/server";
-import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../../lib/sandbox";
 import { syncSheetAccessForRole } from "../../../../lib/sheetAccess";
 import { parseGroupNumber } from "../../../../lib/fieldRules";
 import { WEB_TEAM_ROLE_IDS, DEFAULT_WEB_SANDBOX_MODE } from "../../../../lib/roles";
+import { forbidden, serverError, signInRequired } from "../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../lib/session";
 
 const FULL_USER_ACCESS = ["course_lead", "web_dev"];
 const WEB_TEAM_ROLES   = WEB_TEAM_ROLE_IDS;
 const HEAD_PM_ROLES    = ["PM", "STUDENT"];
 
 export async function PATCH(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const callerNetId = session?.user?.netID;
+  const { role: userRole, netID: callerNetId } = await getSessionUser();
 
   if (!userRole || userRole === "error" || userRole === "student") {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    return signInRequired();
   }
 
   const { net_id } = await params;
@@ -91,7 +89,7 @@ export async function PATCH(request, { params }) {
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
 
   // "until their access is revoked" - a role change away from the web team
   // clears any sandbox (ephemeral or persistent) regardless of the user's
@@ -111,13 +109,11 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const callerNetId = session?.user?.netID;
+  const { role: userRole, netID: callerNetId } = await getSessionUser();
 
   const canDelete = FULL_USER_ACCESS.includes(userRole) || userRole === "lead_web_dev" || userRole === "head_pm";
   if (!canDelete) {
-    return NextResponse.json({ error: "You do not have permission to do that." }, { status: 403 });
+    return forbidden();
   }
 
   const { net_id } = await params;
@@ -145,7 +141,7 @@ export async function DELETE(request, { params }) {
     .delete()
     .eq("net_id", net_id);
 
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
 
   // Hygiene: a removed user can never reach a sandboxed route again, so
   // this is just avoiding an orphaned overlay, not a security requirement.

@@ -1,30 +1,28 @@
 import { getUserGroup, groupSprintChecks } from "../../../lib/groupSprintChecks";
 import { actsAsPm } from "../../../lib/roles";
 import { parseSprintNumber } from "../../../lib/fieldRules";
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { authOptions } from "../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../lib/sandbox";
 import { normalizeQuestions } from "../../../lib/sprintChecks";
 import { isSprintVisibleToRole, validateSprintDates } from "../../../lib/sprintVisibility";
+import { forbidden, invalidInput, serverError, signInRequired } from "../../../lib/apiResponses";
+import { getSessionUser } from "../../../lib/session";
 
 const MANAGE_ROLES = ["course_lead", "head_pm", "lead_web_dev", "web_dev"];
 
 export async function GET(request) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
   if (!userRole || userRole === "error") {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    return signInRequired();
   }
   const { data, error } = await supabaseServer
     .from(table("sprints"))
     .select("*")
     .order("number", { ascending: false });
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
 
   let rows = data ?? [];
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
@@ -46,14 +44,12 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
   if (!MANAGE_ROLES.includes(userRole)) {
-    return NextResponse.json({ error: "You do not have permission to do that." }, { status: 403 });
+    return forbidden();
   }
   const body = await request.json().catch(() => null);
-  if (!body) return NextResponse.json({ error: "Please check the information you entered and try again." }, { status: 400 });
+  if (!body) return invalidInput();
   const { number, goal, start_date, end_date, check_questions, check_max_score } = body;
   if (number == null || typeof goal !== "string" || !goal.trim()) {
     return NextResponse.json({ error: "Please enter both a sprint number and a goal." }, { status: 400 });
@@ -86,6 +82,6 @@ export async function POST(request) {
     .insert(row)
     .select()
     .single();
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
   return NextResponse.json(data, { status: 201 });
 }

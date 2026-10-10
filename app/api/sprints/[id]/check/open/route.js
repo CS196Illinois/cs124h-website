@@ -1,19 +1,17 @@
-import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../../../lib/supabaseServer";
 import { table } from "../../../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../../../../lib/sandbox";
 import { resolveActorGroup } from "../../../../../../lib/sprintCheckAccess";
 import { isSprintVisibleToRole } from "../../../../../../lib/sprintVisibility";
+import { serverError, signInRequired } from "../../../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../../../lib/session";
 
 export async function POST(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
   if (!userRole || userRole === "error") {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    return signInRequired();
   }
   const { id } = await params;
   const { data: sprint } = await supabaseServer.from(table("sprints")).select("start_date").eq("id", id).maybeSingle();
@@ -50,6 +48,6 @@ export async function POST(request, { params }) {
     )
     .select()
     .single();
-  if (dbError) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (dbError) return serverError();
   return NextResponse.json(data);
 }

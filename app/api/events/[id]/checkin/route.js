@@ -1,7 +1,5 @@
-import { getServerSession } from "next-auth";
 import { NextResponse, after } from "next/server";
 import { randomUUID } from "crypto";
-import { authOptions } from "../../../auth/[...nextauth]/route";
 import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
 import { deriveCode } from "../code/route";
@@ -9,16 +7,16 @@ import { isSandboxRole, getSandboxMode, getEffectiveRow, mergeSandboxRows, sandb
 import { getManagedEvent } from "../../../../../lib/events";
 import { syncEventAttendance } from "../../../../../lib/eventAttendanceSync";
 import { audienceMatches, eventHasEnded } from "../../../../../lib/events";
+import { serverError, signInRequired } from "../../../../../lib/apiResponses";
+import { getSessionUser } from "../../../../../lib/session";
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 
 // The event's creator: view its attendee list
 export async function GET(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
   if (!STAFF_ROLES.includes(userRole)) {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 403 });
+    return signInRequired(403);
   }
 
   const { id } = await params;
@@ -31,7 +29,7 @@ export async function GET(request, { params }) {
     .eq("event_id", id)
     .order("checked_in_at", { ascending: true });
 
-  if (error) return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+  if (error) return serverError();
 
   let rows = data;
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
@@ -43,12 +41,10 @@ export async function GET(request, { params }) {
 
 // Any authenticated user: submit a check-in code
 export async function POST(request, { params }) {
-  const session = await getServerSession(authOptions);
-  const userRole = session?.user?.role;
-  const netID = session?.user?.netID;
+  const { role: userRole, netID } = await getSessionUser();
 
   if (!userRole || userRole === "error") {
-    return NextResponse.json({ error: "Please sign in to continue." }, { status: 401 });
+    return signInRequired();
   }
 
   const { id } = await params;
@@ -112,7 +108,7 @@ export async function POST(request, { params }) {
       if (e.code === "23505") {
         return NextResponse.json({ error: "You've already checked in to this event." }, { status: 409 });
       }
-      return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+      return serverError();
     }
     return NextResponse.json({ success: true, event_title: event.title }, { status: 201 });
   }
@@ -129,7 +125,7 @@ export async function POST(request, { params }) {
         { status: 409 }
       );
     }
-    return NextResponse.json({ error: "Something went wrong while processing your request. Please try again. If the problem continues, contact your course staff." }, { status: 500 });
+    return serverError();
   }
 
   // Fire-and-forget: after() keeps this running past the response instead of

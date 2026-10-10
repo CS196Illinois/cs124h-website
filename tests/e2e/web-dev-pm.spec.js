@@ -39,10 +39,6 @@ test.describe("web dev doubling as a PM", () => {
     await expect(page.getByRole("heading", { name: "Gradebook" })).toBeVisible(SLOW);
     await expect(page.getByText("Group 4", { exact: false })).toBeVisible(SLOW);
 
-    await page.getByRole("link", { name: "Action Items" }).click();
-    await expect(page).toHaveURL(/\/user\/web_dev\/action_items$/);
-    await expect(page.getByRole("heading", { name: "Group Action Items" })).toBeVisible(SLOW);
-
     await page.getByRole("link", { name: "Sprints" }).click();
     await expect(page).toHaveURL(/\/user\/web_dev\/sprints$/);
     await expect(page.getByRole("heading", { name: "Sprints" })).toBeVisible(SLOW);

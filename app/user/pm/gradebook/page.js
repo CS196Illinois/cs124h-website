@@ -85,7 +85,7 @@ export default function PMGradebook() {
           students={students}
           items={items}
           groupBy={false}
-          emptyMessage="No gradable action items assigned to your group yet."
+          emptyMessage="No understanding checks submitted by your group yet."
         />
         </div>
       )}
