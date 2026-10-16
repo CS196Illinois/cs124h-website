@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
-import { eventHasEnded, validateEventAudience, getManagedEvent } from "../../../../lib/events";
+import { eventHasEnded, validateEventAudience, validateEventHosts, getManagedEvent, getCheckInEvent, canRunCheckIn } from "../../../../lib/events";
 import { EVENT_TEXT_MAX } from "../../../../lib/fieldRules";
 import { serverError, signInRequired } from "../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../lib/session";
@@ -19,9 +19,19 @@ export async function PATCH(request, { params }) {
   const { id } = await params;
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Invalid event update." }, { status: 400 });
-  const managed = await getManagedEvent(id, netID, userRole, "*");
-  if (!managed) return NextResponse.json({ error: "Only the creator can change this event." }, { status: 403 });
+  // Opening/closing check-in is also open to hosts and course leads; every
+  // other change stays creator-only.
+  const checkInOnly = Object.keys(body).length > 0 && Object.keys(body).every((key) => key === "check_in_open");
+  const managed = checkInOnly ? await getCheckInEvent(id, netID, userRole, "*") : await getManagedEvent(id, netID, userRole, "*");
+  if (!managed) {
+    return NextResponse.json({ error: checkInOnly ? "Only the event's creator, hosts, or a course lead can run its check-in." : "Only the creator can change this event." }, { status: 403 });
+  }
   const updates = {};
+  if (body.hosts !== undefined) {
+    const hosts = await validateEventHosts(body.hosts, netID, userRole);
+    if (hosts.error) return NextResponse.json({ error: hosts.error }, { status: hosts.status || 400 });
+    updates.hosts = hosts.values;
+  }
   if ("audience_type" in body || "audience_values" in body) {
     const type = body.audience_type ?? managed.audience_type ?? "all";
     const audience = await validateEventAudience(type, body.audience_values ?? managed.audience_values ?? [], netID, userRole);
@@ -56,7 +66,7 @@ export async function PATCH(request, { params }) {
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
     const { data: realRow } = await supabaseServer.from(table("events")).select("*").eq("id", id).maybeSingle();
     const current = await getEffectiveRow(netID, "events", id, realRow);
-    if (!current || current.created_by !== netID) {
+    if (!current || !(checkInOnly ? canRunCheckIn(current, netID, userRole) : current.created_by === netID)) {
       return NextResponse.json({ error: "That event could not be found, or you do not have permission to edit it." }, { status: 403 });
     }
     const merged = { ...current, ...updates };
@@ -64,9 +74,9 @@ export async function PATCH(request, { params }) {
     return NextResponse.json(merged);
   }
 
-  // Only the event's creator can manage it.
+  // Only the event's creator can edit it; check-in access was checked above.
   let query = supabaseServer.from(table("events")).update(updates).eq("id", id);
-  query = query.eq("created_by", netID);
+  if (!checkInOnly) query = query.eq("created_by", netID);
   const { data, error } = await query.select().maybeSingle();
   if (error) return serverError();
   if (!data) {

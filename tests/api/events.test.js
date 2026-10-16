@@ -70,7 +70,7 @@ describe("PATCH/DELETE /api/events/[id]", () => {
     );
     expect(headBlocked.status).toBe(403);
 
-    // Course leads also cannot manage another creator's event.
+    // Course leads can run check-in for any event, but not edit or delete it.
     asRole("course_lead", "lead1");
     const leadEdit = await PATCH(
       makeRequest(`http://localhost/api/events/${others.id}`, { method: "PATCH", body: { title: "cleaned up" } }),
@@ -112,7 +112,7 @@ describe("GET /api/events scoping", () => {
     expect(events.map((event) => event.title)).toEqual(["joined"]);
     const attendance = await (await GET(makeRequest("http://localhost/api/events?scope=checkin"))).json();
     expect(attendance.map((event) => event.title).sort()).toEqual(["invited", "joined"]);
-    for (const role of ["course_lead", "head_pm", "web_dev"]) {
+    for (const role of ["head_pm", "web_dev"]) {
       asRole(role, "unrelated");
       expect(await (await GET(makeRequest("http://localhost/api/events"))).json()).toEqual([]);
     }
@@ -128,7 +128,7 @@ describe("GET /api/events scoping", () => {
     expect((await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "No group", start_time: "2026-01-01T18:00:00.000Z" } }))).status).toBe(400);
   });
 
-  it("the Events tab returns created events, while the lead web developer sees all", async () => {
+  it("the Events tab returns created events, while the lead web developer and course lead see all", async () => {
     await insertEvent({ title: "pm1 event", created_by: "pm1" });
     await insertEvent({ title: "pm2 event", created_by: "pm2" });
 
@@ -139,6 +139,10 @@ describe("GET /api/events scoping", () => {
     asRole("lead_web_dev", "lead1");
     const all = await (await GET(makeRequest("http://localhost/api/events"))).json();
     expect(all.map((e) => e.title).sort()).toEqual(["pm1 event", "pm2 event"]);
+
+    asRole("course_lead", "cl1");
+    const leadView = await (await GET(makeRequest("http://localhost/api/events"))).json();
+    expect(leadView.map((e) => e.title).sort()).toEqual(["pm1 event", "pm2 event"]);
   });
 
   it("the Attendance tab (scope=checkin) returns open events plus ones you've attended", async () => {
@@ -150,6 +154,64 @@ describe("GET /api/events scoping", () => {
     asRole("student", "stu1");
     const list = await (await GET(makeRequest("http://localhost/api/events?scope=checkin"))).json();
     expect(list.map((e) => e.title).sort()).toEqual(["closed attended", "open"]);
+  });
+});
+
+describe("event hosts and course-lead check-in override", () => {
+  beforeEach(clearAllTestTables);
+
+  const patch = (id, body) => PATCH(makeRequest(`http://localhost/api/events/${id}`, { method: "PATCH", body }), { params: { id } });
+  const code = (id) => GET_CODE(makeRequest(`http://localhost/api/events/${id}/code`), { params: { id } });
+
+  it("a host can run check-in but cannot edit, re-host, or delete the event", async () => {
+    const event = await insertEvent({ title: "Workshop", created_by: "pm1", hosts: ["pm2"] });
+    asRole("pm", "pm2");
+
+    expect((await patch(event.id, { check_in_open: true })).status).toBe(200);
+    expect((await code(event.id)).status).toBe(200);
+    expect((await GET_CHECKIN(makeRequest(`http://localhost/api/events/${event.id}/checkin`), { params: { id: event.id } })).status).toBe(200);
+    expect((await POST_MANUAL(makeRequest(`http://localhost/api/events/${event.id}/checkin/manual`, { method: "POST", body: { net_id: "stu1" } }), { params: { id: event.id } })).status).toBe(201);
+
+    expect((await patch(event.id, { title: "renamed" })).status).toBe(403);
+    expect((await patch(event.id, { check_in_open: false, title: "renamed" })).status).toBe(403);
+    expect((await patch(event.id, { hosts: [] })).status).toBe(403);
+    expect((await DELETE(makeRequest(`http://localhost/api/events/${event.id}`, { method: "DELETE" }), { params: { id: event.id } })).status).toBe(403);
+    const { data } = await testClient().from(table("events")).select("title, check_in_open").eq("id", event.id).single();
+    expect(data).toEqual({ title: "Workshop", check_in_open: true });
+  });
+
+  it("a course lead can run check-in for any event; other staff cannot", async () => {
+    const event = await insertEvent({ title: "Workshop", created_by: "pm1" });
+    asRole("head_pm", "head1");
+    expect((await patch(event.id, { check_in_open: true })).status).toBe(403);
+
+    asRole("course_lead", "lead1");
+    expect((await patch(event.id, { check_in_open: true })).status).toBe(200);
+    expect((await code(event.id)).status).toBe(200);
+    expect((await patch(event.id, { title: "renamed" })).status).toBe(403);
+  });
+
+  it("hosts are set by the creator, must be staff, and see the event in their list", async () => {
+    await insertUser({ net_id: "pm1", role: "PM", group_number: 1 });
+    await insertUser({ net_id: "pm2", role: "PM", group_number: 2 });
+    await insertUser({ net_id: "stu1", role: "STUDENT", group_number: 1 });
+    asRole("pm", "pm1");
+    const start = "2026-01-01T18:00:00.000Z";
+    const bad = await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "x", start_time: start, audience_type: "all", hosts: ["stu1"] } }));
+    expect(bad.status).toBe(400);
+    const res = await POST(makeRequest("http://localhost/api/events", { method: "POST", body: { title: "Hosted", start_time: start, audience_type: "all", hosts: ["PM2", "pm1"] } }));
+    expect(res.status).toBe(201);
+    const created = await res.json();
+    expect(created.hosts).toEqual(["pm2"]);
+
+    asRole("pm", "pm2");
+    const list = await (await GET(makeRequest("http://localhost/api/events"))).json();
+    expect(list.map((e) => e.title)).toEqual(["Hosted"]);
+
+    asRole("pm", "pm1");
+    expect((await (await patch(created.id, { hosts: [] })).json()).hosts).toEqual([]);
+    asRole("pm", "pm2");
+    expect((await patch(created.id, { check_in_open: true })).status).toBe(403);
   });
 });
 
@@ -323,7 +385,7 @@ describe("event check-ins - sandbox mode", () => {
 describe("attendance code + check-in", () => {
   beforeEach(clearAllTestTables);
 
-  it("code endpoint is creator-only and requires check-in to be open", async () => {
+  it("code endpoint is limited to the creator, hosts, and course leads, and requires check-in to be open", async () => {
     const event = await insertEvent({ title: "e", check_in_open: false, created_by: "pm1" });
     asRole("student", "stu1");
     const forbidden = await GET_CODE(makeRequest(`http://localhost/api/events/${event.id}/code`), { params: { id: event.id } });

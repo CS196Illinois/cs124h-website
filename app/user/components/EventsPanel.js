@@ -9,6 +9,7 @@ import { formatLocalDateTime, datetimeLocalToISO, defaultEventTimes } from "../.
 import styles from "../dashboard.module.css";
 import panelStyles from "./EventsPanel.module.css";
 import EventAudiencePicker from "./EventAudiencePicker";
+import EventHostsPicker from "./EventHostsPicker";
 import { isPmViewRole, roleLabel } from "../../../lib/roles";
 import { isStaffAudience, STAFF_AUDIENCE } from "../../../lib/eventAudience";
 import { CHECKIN_NETID_MAX, EVENT_TEXT_MAX } from "../../../lib/fieldRules";
@@ -58,7 +59,8 @@ export default function EventsPanel() {
   // Create-event modal
   const [showModal, setShowModal]   = useState(false);
   const [audienceEvent, setAudienceEvent] = useState(null);
-  const [form, setForm]             = useState({ title: "", description: "", location: "", presenter: "", start_time: "", end_time: "", audience_type: "all", audience_values: [] });
+  const [hostsEvent, setHostsEvent] = useState(null);
+  const [form, setForm]             = useState({ title: "", description: "", location: "", presenter: "", start_time: "", end_time: "", audience_type: "all", audience_values: [], hosts: [] });
   const [formError, setFormError]   = useState("");
   const [formLoading, setFormLoading] = useState(false);
 
@@ -143,9 +145,15 @@ export default function EventsPanel() {
     }, expiresInMs);
   }, []);
 
+  // Mirrors lib/events.js canRunCheckIn: creator, a listed host, or a course lead.
+  const canRunCheckIn = useCallback((event) => {
+    const me = session?.user?.netID;
+    return !!me && (event.created_by === me || (event.hosts || []).includes(me) || session?.user?.role === "course_lead");
+  }, [session?.user?.netID, session?.user?.role]);
+
   useEffect(() => {
-    // Only an event's creator can read its code (see getManagedEvent).
-    const openIds = events.filter(e => e.check_in_open && e.created_by === session?.user?.netID).map(e => e.id);
+    // Only people who can run an event's check-in can read its code.
+    const openIds = events.filter(e => e.check_in_open && canRunCheckIn(e)).map(e => e.id);
     const trackedIds = Object.keys(rotateTimers.current);
 
     // Stop tracking events that closed
@@ -165,7 +173,7 @@ export default function EventsPanel() {
         fetchCode(id);
       }
     });
-  }, [events, fetchCode, session?.user?.netID]);
+  }, [events, fetchCode, canRunCheckIn]);
 
   // Cosmetic per-second countdown display only - derived fresh from the
   // authoritative expiresAt each tick (not decremented independently), so
@@ -322,7 +330,7 @@ export default function EventsPanel() {
       const json = await res.json();
       if (!res.ok) { setFormError(json.error || "Failed to create event."); return; }
       setShowModal(false);
-      setForm({ title: "", description: "", location: "", presenter: "", start_time: "", end_time: "", audience_type: "all", audience_values: [] });
+      setForm({ title: "", description: "", location: "", presenter: "", start_time: "", end_time: "", audience_type: "all", audience_values: [], hosts: [] });
       await fetchEvents();
     } catch { setFormError("The event could not be saved. Check your connection and try again."); }
     finally { setFormLoading(false); }
@@ -340,6 +348,18 @@ export default function EventsPanel() {
     finally { setFormLoading(false); }
   };
 
+  const saveHosts = async () => {
+    setFormLoading(true); setFormError("");
+    try {
+      const response = await fetch(`/api/events/${hostsEvent.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hosts: form.hosts }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setHostsEvent(null);
+      await fetchEvents();
+    } catch (error) { setFormError(error.message || "The hosts could not be updated."); }
+    finally { setFormLoading(false); }
+  };
+
   const myGroup = roster.find((person) => person.net_id === session?.user?.netID)?.group_number ?? null;
   const openCreate = () => {
     const role = session?.user?.role;
@@ -353,7 +373,7 @@ export default function EventsPanel() {
     }
     // Real values, not just what the browser shows: some browsers (Safari)
     // display today's date in an empty date field without submitting it.
-    setForm({ title: "", description: "", location: "", presenter: "", ...defaultEventTimes(), ...audience });
+    setForm({ title: "", description: "", location: "", presenter: "", hosts: [], ...defaultEventTimes(), ...audience });
     setFormError("");
     setShowModal(true);
   };
@@ -386,7 +406,7 @@ export default function EventsPanel() {
         </div>
       </div>
 
-      <p style={{ color: "#c0cbe0", fontSize: ".85rem", marginBottom: "1rem" }}>{session?.user?.role === "lead_web_dev" ? "All course events. Only the creator can manage an event." : "Events you created or joined. Visit Attendance to join an event that is open to you."}</p>
+      <p style={{ color: "#c0cbe0", fontSize: ".85rem", marginBottom: "1rem" }}>{["lead_web_dev", "course_lead"].includes(session?.user?.role) ? "All course events. Only the creator can edit an event; its hosts and course leads can also run check-in." : "Events you created, host, or joined. Visit Attendance to join an event that is open to you."}</p>
       {/* Event list */}
       {loading ? (
         <div className={styles.loading}>Loading events…</div>
@@ -421,7 +441,10 @@ export default function EventsPanel() {
                     <td style={{ color: "rgba(249,249,249,0.55)", fontSize: "0.85rem" }}>
                       {formatLocalDateTime(event.start_time) ?? "-"}
                     </td>
-                    <td className={styles.cellMono}>{event.created_by ?? "-"}</td>
+                    <td className={styles.cellMono}>
+                      {event.created_by ?? "-"}
+                      {event.hosts?.length > 0 && <div style={{ color: "rgba(249,249,249,0.45)", fontSize: "0.75rem", marginTop: "0.2rem" }}>Hosts: {event.hosts.join(", ")}</div>}
+                    </td>
                     <td>
                       {event.check_in_open
                         ? <span style={{ color: "#4ade80", fontWeight: 600, fontSize: "0.85rem" }}>● Open</span>
@@ -429,13 +452,13 @@ export default function EventsPanel() {
                     </td>
                     <td>
                       <div className={styles.cellActions}>
-                        {event.created_by === session?.user?.netID && <button
+                        {canRunCheckIn(event) && <button
                           className={`${styles.btnSmall} ${event.check_in_open ? styles.btnDanger : styles.btnComplete}`}
                           onClick={() => toggleCheckIn(event.id, event.check_in_open)}
                         >
                           {event.check_in_open ? "Close Check-in" : "Open Check-in"}
                         </button>}
-                        {event.created_by === session?.user?.netID && <button
+                        {canRunCheckIn(event) && <button
                           className={styles.btnSmall}
                           style={{ background: expandedId === event.id ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.07)", color: "#f9f9f9", border: "1px solid rgba(255,255,255,0.15)" }}
                           onClick={() => viewAttendees(event.id)}
@@ -443,6 +466,7 @@ export default function EventsPanel() {
                           Attendees
                         </button>}
                         {event.created_by === session?.user?.netID && <button className={styles.btnSmall} disabled={rosterLoading} onClick={() => { setAudienceEvent(event); setForm({ ...event, audience_type: event.audience_type || "all", audience_values: (event.audience_values || []).map(String) }); setFormError(""); }}>Edit audience</button>}
+                        {event.created_by === session?.user?.netID && <button className={styles.btnSmall} disabled={rosterLoading} onClick={() => { setHostsEvent(event); setForm({ ...event, hosts: [...(event.hosts || [])] }); setFormError(""); }}>Hosts</button>}
                         {event.created_by === session?.user?.netID && <button className={styles.btnDanger} onClick={() => deleteEvent(event.id)}>
                           Delete
                         </button>}
@@ -649,6 +673,9 @@ export default function EventsPanel() {
               </div>
             </div>
             <EventAudiencePicker value={form} roster={roster} groupNumber={myGroup} onChange={(audience) => setForm((previous) => ({ ...previous, ...audience }))} />
+            <div style={{ marginTop: "1rem" }}>
+              <EventHostsPicker value={form.hosts} roster={roster} creator={session?.user?.netID} onChange={(hosts) => setForm((previous) => ({ ...previous, hosts }))} />
+            </div>
             <div className={styles.modalActions}>
               <button className={styles.btnSecondary} onClick={() => setShowModal(false)}>Cancel</button>
               <button className={styles.btnPrimary} onClick={handleCreate} disabled={formLoading || (form.audience_type !== "all" && !form.audience_values.length)}>
@@ -665,6 +692,13 @@ export default function EventsPanel() {
         <p style={{ color: "#c0cbe0", marginTop: "1rem", fontSize: ".85rem" }}>Changes apply to future check-ins. Existing attendance records are kept.</p>
         {formError && <p role="alert" className={styles.alertError}>{formError}</p>}
         <div className={styles.modalActions}><button className={styles.btnSecondary} onClick={() => setAudienceEvent(null)}>Cancel</button><button className={styles.btnPrimary} onClick={saveAudience} disabled={formLoading || (form.audience_type !== "all" && !form.audience_values.length)}>{formLoading ? "Saving…" : "Save audience"}</button></div>
+      </div></div>}
+
+      {hostsEvent && <div className={styles.overlay}><div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="edit-hosts-title">
+        <h2 id="edit-hosts-title">Hosts for {hostsEvent.title}</h2>
+        <EventHostsPicker value={form.hosts} roster={roster} creator={hostsEvent.created_by} onChange={(hosts) => setForm((previous) => ({ ...previous, hosts }))} />
+        {formError && <p role="alert" className={styles.alertError}>{formError}</p>}
+        <div className={styles.modalActions}><button className={styles.btnSecondary} onClick={() => setHostsEvent(null)}>Cancel</button><button className={styles.btnPrimary} onClick={saveHosts} disabled={formLoading}>{formLoading ? "Saving…" : "Save hosts"}</button></div>
       </div></div>}
 
       {/* Enlarged check-in code, for projecting - closes itself if check-in

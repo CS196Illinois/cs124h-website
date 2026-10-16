@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, mergeSandboxRows, sandboxWrite } from "../../../lib/sandbox";
-import { canAdminEvents, validateEventAudience, audienceMatches, eventHasEnded } from "../../../lib/events";
+import { canAdminEvents, validateEventAudience, validateEventHosts, audienceMatches, eventHasEnded, eventHosts } from "../../../lib/events";
 import { EVENT_TEXT_MAX } from "../../../lib/fieldRules";
 import { invalidInput, serverError, signInRequired } from "../../../lib/apiResponses";
 import { getSessionUser } from "../../../lib/session";
@@ -18,13 +18,18 @@ export async function GET(request) {
   }
 
   // Attendance: eligible open events plus the viewer's attendance history.
-  // Events: created or joined events. Only lead web developers see all.
+  // Events: created, hosted, or joined events. Lead web devs and course leads see all.
   const scope = new URL(request.url).searchParams.get("scope") || "mine";
 
+  const columns = "id, title, description, location, presenter, start_time, end_time, check_in_open, check_in_opened_at, created_by, created_at, point_value, sheet_synced_at, sheet_sync_error, audience_type, audience_values";
   let { data, error } = await supabaseServer
     .from(table("events"))
-    .select("id, title, description, location, presenter, start_time, end_time, check_in_open, check_in_opened_at, created_by, created_at, point_value, sheet_synced_at, sheet_sync_error, audience_type, audience_values")
+    .select(`${columns}, hosts`)
     .order("created_at", { ascending: false });
+  // Before the hosts migration runs, list events without them.
+  if (error && (error.code === "PGRST204" || error.code === "42703")) {
+    ({ data, error } = await supabaseServer.from(table("events")).select(columns).order("created_at", { ascending: false }));
+  }
 
   if (error) return serverError();
 
@@ -51,7 +56,7 @@ export async function GET(request) {
     }
     rows = rows.filter((e) => attendedIds.has(e.id) || (scope === "checkin"
       ? e.check_in_open && audienceMatches(e, { netID, role: userRole, groupNumber: viewerGroup })
-      : e.created_by === netID));
+      : e.created_by === netID || eventHosts(e).includes(netID)));
   }
 
   return NextResponse.json(rows);
@@ -84,6 +89,8 @@ export async function POST(request) {
   const audience = await validateEventAudience(audience_type, audience_values, netID, userRole);
   if (audience.error) return NextResponse.json({ error: audience.error }, { status: audience.status || 400 });
   const cleanAudience = audience.values;
+  const hosts = await validateEventHosts(body.hosts ?? [], netID, userRole);
+  if (hosts.error) return NextResponse.json({ error: hosts.error }, { status: hosts.status || 400 });
 
   if ([description, location, presenter].some((value) => value != null && typeof value !== "string")) {
     return NextResponse.json({ error: "Description, location and presenter must be text" }, { status: 400 });
@@ -115,6 +122,8 @@ export async function POST(request) {
     created_by: netID,
     audience_type,
     audience_values: audience_type === "all" ? [] : cleanAudience,
+    // Only sent when set, so events without hosts still save before the hosts migration.
+    ...(hosts.values.length ? { hosts: hosts.values } : {}),
   };
 
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
@@ -128,6 +137,7 @@ export async function POST(request) {
       checked_in_students: [],
       qr_code_secret: null,
       join_link: null,
+      hosts: [],
       ...row,
       audience_type,
       audience_values: audience_type === "all" ? [] : cleanAudience,
@@ -153,7 +163,7 @@ export async function POST(request) {
   if (error) {
     console.error("Event creation failed", { code: error.code, message: error.message });
     const message = error.code === "PGRST204" || error.code === "42703"
-      ? "Events need a database update before they can be created. Ask the website administrator to apply the event audience migration, then try again."
+      ? "Events need a database update before they can be created. Ask the website administrator to apply the event audience and hosts migrations, then try again."
       : error.code === "23502"
         ? "The event could not be saved because the database requires additional information. Try adding a start time. If it still fails, contact the website administrator."
         : error.code === "23503"
