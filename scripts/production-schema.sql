@@ -120,6 +120,8 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS sheet_sync_error      text;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS sheet_sync_version    integer NOT NULL DEFAULT 0;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS audience_type          text NOT NULL DEFAULT 'all';
 ALTER TABLE events ADD COLUMN IF NOT EXISTS audience_values        jsonb NOT NULL DEFAULT '[]'::jsonb;
+-- NetIDs of staff who can run check-in alongside the creator.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS hosts                  jsonb NOT NULL DEFAULT '[]'::jsonb;
 ALTER TABLE events ALTER COLUMN title DROP DEFAULT;
 
 -- Atomically increments and returns an event's sheet_sync_version. Takes

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getManagedEvent, eventHasEnded } from "../../../../../lib/events";
+import { getCheckInEvent, eventHasEnded } from "../../../../../lib/events";
 import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
 import crypto from "crypto";
@@ -32,7 +32,7 @@ export async function GET(request, { params }) {
   const { id } = await params;
   const netID = caller.netID;
 
-  const event = await getManagedEvent(id, netID, caller.role, "id, title, created_by, end_time, check_in_open");
+  const event = await getCheckInEvent(id, netID, caller.role, "id, title, created_by, end_time, check_in_open");
   if (!event) {
     return NextResponse.json({ error: "That event could not be found, or you do not have permission to manage it." }, { status: 403 });
   }

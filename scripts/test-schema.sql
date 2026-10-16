@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS test_events (
   sheet_sync_version    integer NOT NULL DEFAULT 0
   ,audience_type        text NOT NULL DEFAULT 'all'
   ,audience_values      jsonb NOT NULL DEFAULT '[]'::jsonb
+  ,hosts                jsonb NOT NULL DEFAULT '[]'::jsonb
 );
 
 CREATE TABLE IF NOT EXISTS test_event_checkins (

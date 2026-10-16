@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { supabaseServer } from "../../../../../../lib/supabaseServer";
 import { table } from "../../../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../../../../lib/sandbox";
-import { getManagedEvent } from "../../../../../../lib/events";
+import { getCheckInEvent } from "../../../../../../lib/events";
 import { syncEventAttendance } from "../../../../../../lib/eventAttendanceSync";
 import { CHECKIN_NETID_MAX } from "../../../../../../lib/fieldRules";
 import { serverError, signInRequired } from "../../../../../../lib/apiResponses";
@@ -22,7 +22,7 @@ export async function POST(request, { params }) {
   }
 
   const { id } = await params;
-  if (!(await getManagedEvent(id, netID, userRole))) {
+  if (!(await getCheckInEvent(id, netID, userRole))) {
     return NextResponse.json({ error: "That event could not be found, or you do not have permission to manage it." }, { status: 403 });
   }
   const { net_id } = await request.json().catch(() => ({}));
@@ -78,7 +78,7 @@ export async function DELETE(request, { params }) {
   }
 
   const { id } = await params;
-  if (!(await getManagedEvent(id, netID, userRole))) {
+  if (!(await getCheckInEvent(id, netID, userRole))) {
     return NextResponse.json({ error: "That event could not be found, or you do not have permission to manage it." }, { status: 403 });
   }
   const { searchParams } = new URL(request.url);

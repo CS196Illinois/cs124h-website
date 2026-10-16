@@ -4,7 +4,7 @@ import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
 import { deriveCode } from "../code/route";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, mergeSandboxRows, sandboxWrite } from "../../../../../lib/sandbox";
-import { getManagedEvent } from "../../../../../lib/events";
+import { getCheckInEvent } from "../../../../../lib/events";
 import { syncEventAttendance } from "../../../../../lib/eventAttendanceSync";
 import { audienceMatches, eventHasEnded } from "../../../../../lib/events";
 import { serverError, signInRequired } from "../../../../../lib/apiResponses";
@@ -12,7 +12,7 @@ import { getSessionUser } from "../../../../../lib/session";
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 
-// The event's creator: view its attendee list
+// The event's creator, hosts, or a course lead: view its attendee list
 export async function GET(request, { params }) {
   const { role: userRole, netID } = await getSessionUser();
   if (!STAFF_ROLES.includes(userRole)) {
@@ -20,7 +20,7 @@ export async function GET(request, { params }) {
   }
 
   const { id } = await params;
-  if (!(await getManagedEvent(id, netID, userRole))) {
+  if (!(await getCheckInEvent(id, netID, userRole))) {
     return NextResponse.json({ error: "That event could not be found, or you do not have permission to manage it." }, { status: 403 });
   }
   const { data, error } = await supabaseServer

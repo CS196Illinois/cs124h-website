@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isSandboxRole, getSandboxMode } from "../../../../../lib/sandbox";
-import { getManagedEvent } from "../../../../../lib/events";
+import { getCheckInEvent } from "../../../../../lib/events";
 import { syncEventAttendance } from "../../../../../lib/eventAttendanceSync";
 import { serverError, signInRequired } from "../../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../../lib/session";
@@ -17,7 +17,7 @@ export async function POST(request, { params }) {
   }
 
   const { id } = await params;
-  if (!(await getManagedEvent(id, netID, userRole))) {
+  if (!(await getCheckInEvent(id, netID, userRole))) {
     return NextResponse.json({ error: "That event could not be found, or you do not have permission to manage it." }, { status: 403 });
   }
 
