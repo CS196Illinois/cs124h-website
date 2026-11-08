@@ -1,255 +1,111 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import styles from "./Navbar.module.css";
 import { signOut, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { List, X, Sun, Moon, SquaresFour, SignIn, SignOut } from "@phosphor-icons/react";
+import styles from "./Navbar.module.css";
+import { NAV_ITEMS, SITE } from "../lib/siteConfig";
 
-export default function Navbar() {
-  const pathname = usePathname();
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+const isActive = (pathname, href) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
+
+function ThemeToggle() {
+  // null until mounted: the server can't know the viewer's theme, and the
+  // inline script in layout.js has already applied it before paint.
+  const [dark, setDark] = useState(null);
 
   useEffect(() => {
-    const checkScreenSize = () => {
-      // Matches the CSS breakpoint in Navbar.module.css: below this width the
-      // full row of nav buttons doesn't fit on one line (labels wrap inside
-      // the fixed-height bar and later items get pushed off-screen), so the
-      // mobile hamburger menu takes over well before the old 768px cutoff.
-      setIsMobile(window.innerWidth <= 1280);
-    };
-
-    checkScreenSize();
-    window.addEventListener("resize", checkScreenSize);
-
-    return () => window.removeEventListener("resize", checkScreenSize);
+    const root = document.documentElement;
+    const resolve = () => root.dataset.theme === "dark" || (!root.dataset.theme && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    setDark(resolve());
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setDark(resolve());
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
   }, []);
 
-  const handleLinkClick = () => {
-    setIsSidebarOpen(false);
-  };
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+  const toggle = () => {
+    const next = dark ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("theme", next); } catch {}
+    setDark(!dark);
   };
 
   return (
-    <div>
-      <nav className={styles.navbar}>
-        {/* Logo - left side, links to home */}
-        <div className={styles.logoContainer}>
-          <Link href="/" className={styles.logoLink} aria-label="Go to home">
-            <Image
-              src="/images/cs124h-logo.png"
-              alt="CS124H Logo"
-              height={40}
-              width={40}
-              className={styles.logo}
-              priority
-            />
-          </Link>
-        </div>
+    <button type="button" className={styles.iconButton} onClick={toggle} aria-label={dark ? "Switch to light theme" : "Switch to dark theme"} title={dark ? "Light theme" : "Dark theme"}>
+      {dark ? <Sun size={18} weight="bold" /> : <Moon size={18} weight="bold" />}
+    </button>
+  );
+}
 
-        {/* Mobile hamburger menu */}
-        {isMobile && (
+export default function Navbar() {
+  const pathname = usePathname() || "/";
+  const { data: session, status } = useSession();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Close the mobile menu on navigation and on Escape.
+  useEffect(() => setMenuOpen(false), [pathname]);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e) => e.key === "Escape" && setMenuOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
+  const account = status === "loading" ? (
+    <span className={styles.accountPlaceholder} aria-hidden="true" />
+  ) : session ? (
+    <>
+      <Link href="/user" className={`${styles.accountLink} ${pathname.startsWith("/user") ? styles.accountActive : ""}`}>
+        <SquaresFour size={17} weight="bold" /> Dashboard
+      </Link>
+      <button type="button" className={styles.signOut} onClick={() => signOut({ callbackUrl: "/" })}>
+        <SignOut size={17} weight="bold" /> Sign out
+      </button>
+    </>
+  ) : (
+    <Link href="/signin" className={styles.accountLink}>
+      <SignIn size={17} weight="bold" /> Sign in
+    </Link>
+  );
+
+  return (
+    <header className={styles.header}>
+      <nav className={styles.navbar} aria-label="Main">
+        <Link href="/" className={styles.brand} aria-label={`${SITE.shortName} home`}>
+          <Image src="/images/cs124h-logo.png" alt="" width={30} height={30} priority />
+          <span>{SITE.shortName}</span>
+        </Link>
+
+        <ul id="main-nav" className={`${styles.links} ${menuOpen ? styles.linksOpen : ""}`}>
+          {NAV_ITEMS.map((item) => (
+            <li key={item.href}>
+              <Link href={item.href} className={`${styles.link} ${isActive(pathname, item.href) ? styles.active : ""}`} aria-current={isActive(pathname, item.href) ? "page" : undefined}>
+                {item.label}
+              </Link>
+            </li>
+          ))}
+          <li className={styles.mobileAccount}>{account}</li>
+        </ul>
+
+        <div className={styles.actions}>
+          <ThemeToggle />
+          <div className={styles.desktopAccount}>{account}</div>
           <button
-            className={styles["hamburger-menu"]}
-            onClick={toggleSidebar}
+            type="button"
+            className={`${styles.iconButton} ${styles.menuButton}`}
+            onClick={() => setMenuOpen((open) => !open)}
             aria-label="Toggle menu"
+            aria-expanded={menuOpen}
+            aria-controls="main-nav"
           >
-            <span className={styles["hamburger-line"]}></span>
-            <span className={styles["hamburger-line"]}></span>
-            <span className={styles["hamburger-line"]}></span>
+            {menuOpen ? <X size={20} weight="bold" /> : <List size={20} weight="bold" />}
           </button>
-        )}
-
-        {/* Desktop navigation */}
-        <div
-          className={`${styles["nav-items"]} ${isMobile ? styles.hidden : ""}`}
-        >
-          <Link href="/">
-            <button
-              className={`${styles["nav-button"]} ${styles["home-button"]}  ${
-                pathname === "/" ? styles.active : ""
-              }`}
-            >
-              Home
-            </button>
-          </Link>
-          <div>
-            <button
-              onClick={() => {
-                router.push(session ? "/user" : "/signin");
-              }}
-              className={`${styles["nav-button"]} ${
-                pathname === `/user/${session?.user?.role}` ? styles.active : ""
-              }`}
-            >
-              Dashboard
-            </button>
-          </div>
-          <Link href="/hall_of_fame">
-            <button
-              className={`${styles["nav-button"]} ${
-                pathname === "/hall_of_fame" ? styles.active : ""
-              }`}
-            >
-              ⭐ Hall Of Fame ⭐
-            </button>
-          </Link>
-          <Link href="/resources">
-            <button
-              className={`${styles["nav-button"]} ${
-                pathname === "/resources" ? styles.active : ""
-              }`}
-            >
-              Resources
-            </button>
-          </Link>
-          <Link href="/course_staff">
-            <button
-              className={`${styles["nav-button"]} ${
-                pathname === "/course_staff" ? styles.active : ""
-              }`}
-            >
-              Course Staff
-            </button>
-          </Link>
-          <Link href="/timeline">
-            <button
-              className={`${styles["nav-button"]} ${
-                pathname === "/timeline" ? styles.active : ""
-              }`}
-            >
-              Timeline
-            </button>
-          </Link>
-          <Link href="/support" className={`${styles["nav-button"]} ${styles.supportLink} ${pathname === "/support" ? styles.active : ""}`}>Support</Link>
-          <div>
-            {status === "loading" ? (
-              <button className={styles["nav-button"]}>Loading…</button>
-            ) : session ? (
-              <button
-                className={styles["nav-button"]}
-                onClick={() => signOut({ callbackUrl: "/" })}
-              >
-                Logout
-              </button>
-            ) : (
-              <button
-                className={styles["nav-button"]}
-                onClick={() => router.push("/signin")}
-              >
-                Login
-              </button>
-            )}
-          </div>
         </div>
       </nav>
-
-      {/* Mobile Sidebar */}
-      {isMobile && (
-        <div>
-          {/* Overlay */}
-          <div
-            className={`${styles.overlay} ${
-              isSidebarOpen ? styles.active : ""
-            }`}
-            onClick={handleLinkClick}
-          ></div>
-
-          {/* Sidebar */}
-          <div
-            className={`${styles.sidebar} ${isSidebarOpen ? styles.open : ""}`}
-          >
-            <div className={styles["sidebar-content"]}>
-              <Link href="/" onClick={handleLinkClick}>
-                <button
-                  className={`${styles["nav-button"]} ${
-                    styles["home-button"]
-                  } ${pathname === "/" ? styles.active : ""}`}
-                >
-                  Home
-                </button>
-              </Link>
-              <div>
-                <button
-                  onClick={() => {
-                    handleLinkClick();
-                    router.push(session ? "/user" : "/signin");
-                  }}
-                  className={`${styles["nav-button"]} ${
-                    pathname === `/user/${session?.user?.role}` ? styles.active : ""
-                  }`}
-                >
-                  Dashboard
-                </button>
-              </div>
-              <Link href="/hall_of_fame" onClick={handleLinkClick}>
-                <button
-                  className={`${styles["nav-button"]} ${
-                    pathname === "/hall_of_fame" ? styles.active : ""
-                  }`}
-                >
-                  ⭐ Hall Of Fame ⭐
-                </button>
-              </Link>
-              <Link href="/resources" onClick={handleLinkClick}>
-                <button
-                  className={`${styles["nav-button"]} ${
-                    pathname === "/resources" ? styles.active : ""
-                  }`}
-                >
-                  Resources
-                </button>
-              </Link>
-              <Link href="/course_staff" onClick={handleLinkClick}>
-                <button
-                  className={`${styles["nav-button"]} ${
-                    pathname === "/course_staff" ? styles.active : ""
-                  }`}
-                >
-                  Course Staff
-                </button>
-              </Link>
-              <Link href="/timeline" onClick={handleLinkClick}>
-                <button
-                  className={`${styles["nav-button"]} ${
-                    pathname === "/timeline" ? styles.active : ""
-                  }`}
-                >
-                  Timeline
-                </button>
-              </Link>
-              <Link href="/support" onClick={handleLinkClick} className={`${styles["nav-button"]} ${styles.supportLink} ${pathname === "/support" ? styles.active : ""}`}>Support</Link>
-              <div>
-                {status === "loading" ? (
-                  <button className={styles["nav-button"]}>Loading…</button>
-                ) : session ? (
-                  <button
-                    className={styles["nav-button"]}
-                    onClick={() => { handleLinkClick(); signOut({ callbackUrl: "/" }); }}
-                  >
-                    Logout
-                  </button>
-                ) : (
-                  <button
-                    className={styles["nav-button"]}
-                    onClick={() => { handleLinkClick(); router.push("/signin"); }}
-                  >
-                    Login
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      {menuOpen && <div className={styles.backdrop} onClick={() => setMenuOpen(false)} aria-hidden="true" />}
+    </header>
   );
 }

@@ -1,194 +1,205 @@
-/* Desktop navbar styles */
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 2em;
-  background-color: #c0c0d3;
-  height: 3.5em;
-  position: relative;
+/* Stays exactly --navbar-height tall: the dashboard layouts size themselves
+   to 100vh minus this. */
+.header {
+  position: sticky;
+  top: 0;
   z-index: 1000;
 }
 
-.logoContainer {
-  width: calc(220px - 12px);
-  flex-shrink: 0;
-  align-self: stretch;
-  margin: 6px 6px 6px calc(-2em + 6px);
+.navbar {
+  height: var(--navbar-height);
   display: flex;
-  justify-content: center;
-  border-radius: 6px;
-}
-
-.logoLink {
-  display: flex;
-}
-
-.logo {
-  object-fit: contain;
-  transition: opacity 0.15s;
-}
-
-.logoLink:hover .logo {
-  opacity: 0.85;
-}
-
-.nav-items {
-  display: flex;
-  flex-direction: row;
   align-items: center;
-  gap: 1em;
+  gap: 1.25rem;
+  padding: 0 var(--gutter);
+  background: var(--nav-bg);
+  border-bottom: 3px solid var(--illini-orange);
+  font-family: var(--font-sans);
 }
 
-.nav-button,
-.nav-button a {
-  background-color: transparent;
-  color: black;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 5px;
-  align-self: flex-start;
-  cursor: pointer;
-  font-size: medium;
-  transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
-  width: 100%;
-  text-align: center;
-}
-
-.supportLink { width: auto; flex-shrink: 0; align-self: center; font-family: Inter, sans-serif; text-decoration: none; }
-
-.nav-button:hover {
-  color: white;
-  background-color: #112a67;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
   text-decoration: none;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(17, 42, 103, 0.3);
+  flex-shrink: 0;
 }
 
-.nav-button:active {
-  transform: translateY(0);
-  box-shadow: none;
-}
-
-.nav-button.active {
-  background-color: hsl(223, 44%, 47%);
-  text-underline-offset: 8px;
-  color: white;
-}
-
-.home-button {
-  align-self: left;
-  background-color: #112a67;
-  color: white;
-}
-
-/* Sidebar for mobile phone */
-.hamburger-menu {
-  display: none;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  margin-top: 0.75rem;
-  margin-left: auto;
-  margin-right: 1rem;
-}
-
-.hamburger-line {
-  width: 25px;
-  height: 3px;
-  background-color: #112a67;
-  margin: 3px 0;
-  transition: 0.3s;
-}
-
-.sidebar {
-  position: fixed;
-  top: 0;
-  right: -300px;
-  width: 300px;
-  height: 100vh;
-  background-color: #c0c0d3;
-  transition: right 0.3s ease;
-  z-index: 1001;
-  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.sidebar.open {
-  right: 0;
-}
-
-.sidebar-content {
+.links {
   display: flex;
-  flex-direction: column;
-  padding: 4rem 1rem 2rem 1rem;
+  align-items: center;
+  gap: 0.15rem;
+  list-style: none;
+  margin-right: auto;
+}
+
+.link {
+  display: block;
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--radius-sm);
+  color: var(--nav-text);
+  font-size: 0.92rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.link:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+
+.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 -2px 0 var(--illini-orange);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
-.sidebar .nav-button {
-  margin-bottom: 0.5rem;
-  padding: 15px 20px;
-  text-align: left;
-  border-radius: 8px;
-  font-size: 1rem;
+.desktopAccount {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
+.mobileAccount {
+  display: none;
 }
 
-.overlay.active {
-  opacity: 1;
-  visibility: visible;
+.iconButton {
+  display: inline-grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: var(--nav-text);
+  cursor: pointer;
 }
 
-.hidden {
-  display: none !important;
+.iconButton:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
 }
 
-/* Matches the isMobile check in navbar.js - below this width the full nav
-   row doesn't fit on one line within the bar's fixed height. */
-@media (max-width: 1280px) {
-  .navbar {
-    justify-content: space-between;
-    padding: 0 1em;
+.accountLink,
+.signOut {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.42rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.accountLink {
+  background: var(--illini-orange);
+  color: #fff;
+  border: 1px solid var(--illini-orange);
+}
+
+.accountLink:hover {
+  background: #e55400;
+}
+
+.accountActive {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.signOut {
+  background: transparent;
+  color: var(--nav-text);
+  border: 1px solid transparent;
+}
+
+.signOut:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.accountPlaceholder {
+  display: inline-block;
+  width: 6.5rem;
+  height: 2rem;
+}
+
+.menuButton {
+  display: none;
+}
+
+.backdrop {
+  display: none;
+}
+
+/* Below this width the full row doesn't fit; links move into a drop-down
+   panel under the bar. */
+@media (max-width: 1080px) {
+  .menuButton {
+    display: inline-grid;
   }
 
-  .logoLink {
-    width: auto;
-  }
-  
-  .hamburger-menu {
-    display: flex;
-  }
-  
-  .nav-items {
+  .desktopAccount {
     display: none;
   }
 
-  .sidebar.open ~ .navbar .hamburger-line:nth-child(1) {
-    transform: rotate(-45deg) translate(-5px, 6px);
+  .links {
+    display: none;
+    position: absolute;
+    top: var(--navbar-height);
+    left: 0;
+    right: 0;
+    z-index: 2;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.15rem;
+    padding: 0.75rem var(--gutter) 1rem;
+    background: var(--nav-bg);
+    border-bottom: 3px solid var(--illini-orange);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.25);
+    max-height: calc(100vh - var(--navbar-height));
+    overflow-y: auto;
   }
-  
-  .sidebar.open ~ .navbar .hamburger-line:nth-child(2) {
-    opacity: 0;
+
+  .linksOpen {
+    display: flex;
   }
-  
-  .sidebar.open ~ .navbar .hamburger-line:nth-child(3) {
-    transform: rotate(45deg) translate(-5px, -6px);
+
+  .link {
+    padding: 0.7rem 0.8rem;
+    font-size: 1rem;
+  }
+
+  .mobileAccount {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    margin-top: 0.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    top: var(--navbar-height);
+    z-index: 1;
+    background: rgba(3, 8, 28, 0.45);
   }
 }

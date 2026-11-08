@@ -271,7 +271,7 @@ test("events: edit audience, close check-in, and sign out", async ({ page, login
   await page.getByRole("button", { name: "Close Check-in" }).click();
   await expect.soft(page.getByText("● Closed")).toBeVisible(SLOW);
 
-  await page.getByRole("button", { name: "Logout" }).first().click();
+  await page.getByRole("button", { name: "Sign out" }).first().click();
   await page.waitForURL((u) => new URL(u).pathname === "/", SLOW);
   await page.goto("/user/course_lead");
   await expect.soft(page).toHaveURL(/signin/);

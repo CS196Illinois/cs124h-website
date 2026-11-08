@@ -54,8 +54,8 @@ test.describe("event check-in", () => {
     // layout.js (that's the whole point - it's role-agnostic), which at
     // first meant it rendered with no sidebar at all. checkin/layout.js
     // picks the signed-in user's own sidebar dynamically instead.
-    await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Attendance" })).toBeVisible();
+    await expect(page.locator("aside").getByRole("link", { name: "Dashboard" })).toBeVisible();
+    await expect(page.locator("aside").getByRole("link", { name: "Attendance" })).toBeVisible();
 
     await expect(page.getByText("All-Staff Social")).toBeVisible();
     await page.getByPlaceholder("6-digit code").fill(deriveCode(event.id));

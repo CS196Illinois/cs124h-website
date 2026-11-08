@@ -2,7 +2,7 @@ import { test, expect } from "./fixtures";
 import { clearAllTestTables, insertSprint, insertUser, testClient } from "../helpers/db";
 import { table } from "../../lib/tables";
 
-test("signed-out Dashboard starts no OAuth attempt until the user chooses sign-in", async ({ page, context }) => {
+test("signed-out Sign in starts no OAuth attempt until the user chooses sign-in", async ({ page, context }) => {
   let attempts = 0;
   await page.route("**/api/auth/csrf", (route) => route.fulfill({ json: { csrfToken: "test-csrf" } }));
   await page.route("**/api/auth/signin/cilogon", (route) => {
@@ -14,7 +14,7 @@ test("signed-out Dashboard starts no OAuth attempt until the user chooses sign-i
   const supportLink = page.getByRole("link", { name: "Support", exact: true });
   await expect(supportLink).toBeVisible();
   await expect(supportLink).toHaveCSS("text-decoration-line", "none");
-  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  await page.getByRole("link", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/signin$/);
   await expect(page.getByRole("button", { name: "Sign in with Illinois" })).toBeVisible();
   await expect(page.getByText("— no login needed.", { exact: false })).toHaveCount(0);
