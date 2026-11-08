@@ -10,7 +10,7 @@ export default function SchedulePage() {
         <h1>Schedule</h1>
         <p>Every sprint, MP, event, and deadline for {SITE.semester} on one timeline.</p>
       </header>
-      <div className="card" style={{ padding: "1.25rem 1.4rem" }}>
+      <div>
         <p>
           The timeline is being built. For now, see the{" "}
           <a href={SITE.links.calendar} target="_blank" rel="noopener noreferrer">course Google Calendar</a>.

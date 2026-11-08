@@ -14,9 +14,9 @@
   --illini-blue: #13294b;
   --illini-orange: #ff5f05;
 
-  --bg: #f6f7f9;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f0f2f5;
+  --surface-2: #f3f4f6;
   --text: #111827;
   --text-muted: #5b6472;
   --line: #e3e6eb;
@@ -40,24 +40,22 @@
   --warning: #b45309;
   --danger: #b91c1c;
 
-  --radius: 12px;
-  --radius-sm: 8px;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 6px 18px rgba(16, 24, 40, 0.06);
-  --shadow-hover: 0 2px 4px rgba(16, 24, 40, 0.06), 0 12px 28px rgba(16, 24, 40, 0.12);
-  --content-width: 1120px;
+  --radius: 4px;
+  --radius-sm: 3px;
+  --content-width: 1040px;
   --gutter: clamp(16px, 4vw, 32px);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0b1120;
-    --surface: #121a2c;
-    --surface-2: #18223a;
+    --bg: #10141c;
+    --surface: #10141c;
+    --surface-2: #1a202b;
     --text: #e6e9ef;
     --text-muted: #9aa4b5;
-    --line: #233049;
-    --line-strong: #31405f;
+    --line: #2a3140;
+    --line-strong: #3a4354;
     --accent: #ff8a4c;
     --accent-strong: #ff7a33;
     --accent-tint: rgba(255, 122, 51, 0.14);
@@ -72,20 +70,18 @@
     --success: #4ade80;
     --warning: #fbbf24;
     --danger: #f87171;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.25);
-    --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.35), 0 12px 28px rgba(0, 0, 0, 0.4);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #0b1120;
-  --surface: #121a2c;
-  --surface-2: #18223a;
+  --bg: #10141c;
+  --surface: #10141c;
+  --surface-2: #1a202b;
   --text: #e6e9ef;
   --text-muted: #9aa4b5;
-  --line: #233049;
-  --line-strong: #31405f;
+  --line: #2a3140;
+  --line-strong: #3a4354;
   --accent: #ff8a4c;
   --accent-strong: #ff7a33;
   --accent-tint: rgba(255, 122, 51, 0.14);
@@ -100,8 +96,6 @@
   --success: #4ade80;
   --warning: #fbbf24;
   --danger: #f87171;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.25);
-  --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.35), 0 12px 28px rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }
 
@@ -133,8 +127,7 @@ body {
 h1, h2, h3, h4 {
   color: var(--text);
   font-family: var(--font-sans);
-  line-height: 1.2;
-  letter-spacing: -0.015em;
+  line-height: 1.25;
 }
 
 a {
@@ -175,69 +168,65 @@ input[type="number"] {
   width: 100%;
   max-width: var(--content-width);
   margin: 0 auto;
-  padding: 2.5rem var(--gutter) 4rem;
+  padding: 2rem var(--gutter) 3rem;
   flex: 1;
 }
 
 .pageHeading {
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
 }
 
 .pageHeading h1 {
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
-  font-weight: 800;
+  font-size: 2rem;
+  font-weight: 700;
 }
 
 .pageHeading p {
   color: var(--text-muted);
-  margin-top: 0.4rem;
-  max-width: 62ch;
+  margin-top: 0.25rem;
 }
 
+/* Plain bordered box. No shadow, no lift. */
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
 }
 
 .btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.65rem 1.1rem;
-  border-radius: 999px;
+  display: inline-block;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius);
   border: 1px solid var(--line-strong);
   background: var(--surface);
   color: var(--text);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   text-decoration: none;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
 .btn:hover {
-  border-color: var(--text-muted);
-  transform: translateY(-1px);
+  background: var(--surface-2);
 }
 
 .btnPrimary {
-  background: var(--illini-orange);
-  border-color: var(--illini-orange);
+  background: var(--illini-blue);
+  border-color: var(--illini-blue);
   color: #fff;
 }
 
 .btnPrimary:hover {
-  background: #e55400;
-  border-color: #e55400;
+  background: #1d3a66;
 }
 
 .skeleton {
   background: linear-gradient(90deg, var(--surface-2) 25%, var(--line) 50%, var(--surface-2) 75%);
   background-size: 200% 100%;
   animation: skeletonShimmer 1.4s ease-in-out infinite;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 @keyframes skeletonShimmer {

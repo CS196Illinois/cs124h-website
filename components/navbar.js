@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { List, X, Sun, Moon, SquaresFour, SignIn, SignOut } from "@phosphor-icons/react";
+import { List, X, Sun, Moon } from "@phosphor-icons/react";
 import styles from "./Navbar.module.css";
 import { NAV_ITEMS, SITE } from "../lib/siteConfig";
 
@@ -35,7 +35,7 @@ function ThemeToggle() {
 
   return (
     <button type="button" className={styles.iconButton} onClick={toggle} aria-label={dark ? "Switch to light theme" : "Switch to dark theme"} title={dark ? "Light theme" : "Dark theme"}>
-      {dark ? <Sun size={18} weight="bold" /> : <Moon size={18} weight="bold" />}
+      {dark ? <Sun size={17} /> : <Moon size={17} />}
     </button>
   );
 }
@@ -59,15 +59,15 @@ export default function Navbar() {
   ) : session ? (
     <>
       <Link href="/user" className={`${styles.accountLink} ${pathname.startsWith("/user") ? styles.accountActive : ""}`}>
-        <SquaresFour size={17} weight="bold" /> Dashboard
+        Dashboard
       </Link>
       <button type="button" className={styles.signOut} onClick={() => signOut({ callbackUrl: "/" })}>
-        <SignOut size={17} weight="bold" /> Sign out
+        Sign out
       </button>
     </>
   ) : (
     <Link href="/signin" className={styles.accountLink}>
-      <SignIn size={17} weight="bold" /> Sign in
+      Sign in
     </Link>
   );
 
@@ -75,7 +75,7 @@ export default function Navbar() {
     <header className={styles.header}>
       <nav className={styles.navbar} aria-label="Main">
         <Link href="/" className={styles.brand} aria-label={`${SITE.shortName} home`}>
-          <Image src="/images/cs124h-logo.png" alt="" width={30} height={30} priority />
+          <Image src="/images/cs124h-logo.png" alt="" width={26} height={26} priority />
           <span>{SITE.shortName}</span>
         </Link>
 

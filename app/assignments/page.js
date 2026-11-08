@@ -10,7 +10,7 @@ export default function AssignmentsPage() {
         <h1>Assignments</h1>
         <p>MPs and sprint work for {SITE.semester}, with your progress and links to PrairieLearn.</p>
       </header>
-      <div className="card" style={{ padding: "1.25rem 1.4rem" }}>
+      <div>
         <p>Assignments will be listed here once the {SITE.semester} MPs are posted.</p>
       </div>
     </main>

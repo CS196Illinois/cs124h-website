@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Warning } from "@phosphor-icons/react/dist/ssr";
 import styles from "./CourseInfo.module.css";
 import { SITE } from "../../lib/siteConfig";
 import { getSupabaseServer } from "../../lib/supabaseServer";
@@ -37,7 +36,7 @@ export default async function CourseInfoPage() {
 
       <div className={styles.layout}>
         <nav className={styles.toc} aria-label="On this page">
-          <p>On this page</p>
+          <p>On this page:</p>
           {SECTIONS.map((s) => <a key={s.id} href={`#${s.id}`}>{s.label}</a>)}
         </nav>
 
@@ -73,15 +72,15 @@ export default async function CourseInfoPage() {
               <li>
                 <h3>Enroll the right way</h3>
                 <div className={styles.paths}>
-                  <div className="card">
+                  <div>
                     <h4>James Scholars (or taking it for honors credit)</h4>
                     <p>
                       Complete an Honors Credit Learning Agreement (HCLA) form stating that you are completing the
                       extra work for CS 124 honors credit.
                     </p>
-                    <p className={styles.callout}><Warning size={16} weight="bold" /> Do not enroll in CS 199 124.</p>
+                    <p className={styles.callout}><strong>Do not</strong> enroll in CS 199 124.</p>
                   </div>
-                  <div className="card">
+                  <div>
                     <h4>Everyone else</h4>
                     <p>
                       Enroll in <strong>CS 199 124</strong> (CRN <code>{SITE.crn}</code>) on Self-Service. It&apos;s zero
@@ -103,7 +102,7 @@ export default async function CourseInfoPage() {
                   <a href={SITE.links.enrollmentForm} target="_blank" rel="noopener noreferrer">Open the enrollment confirmation form</a>.
                 </p>
                 <p className={styles.callout}>
-                  <Warning size={16} weight="bold" /> If you don&apos;t fill out this form, you&apos;ll receive an unsatisfactory grade.
+                  Required: if you don&apos;t fill out this form, you&apos;ll receive an unsatisfactory grade.
                 </p>
               </li>
               <li>
