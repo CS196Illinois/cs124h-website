@@ -6,7 +6,7 @@ import { deriveCode } from "../code/route";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, mergeSandboxRows, sandboxWrite } from "../../../../../lib/sandbox";
 import { getCheckInEvent } from "../../../../../lib/events";
 import { syncEventAttendance } from "../../../../../lib/eventAttendanceSync";
-import { audienceMatches, eventHasEnded } from "../../../../../lib/events";
+import { audienceMatches, checkInWindowClosed } from "../../../../../lib/events";
 import { serverError, signInRequired } from "../../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../../lib/session";
 
@@ -71,9 +71,9 @@ export async function POST(request, { params }) {
   if (!event) {
     return NextResponse.json({ error: "We could not find that event. It may have been removed." }, { status: 404 });
   }
-  if (eventHasEnded(event)) {
+  if (checkInWindowClosed(event)) {
     if (!sandboxed) await supabaseServer.from(table("events")).update({ check_in_open: false }).eq("id", id).eq("check_in_open", true);
-    return NextResponse.json({ error: "This event has ended, so check-in is closed." }, { status: 400 });
+    return NextResponse.json({ error: "This event has ended and its check-in window has closed." }, { status: 400 });
   }
   if (!event.check_in_open) {
     return NextResponse.json({ error: "Check-in is not open for this event." }, { status: 400 });

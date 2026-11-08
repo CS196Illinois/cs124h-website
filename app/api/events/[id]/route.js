@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
-import { eventHasEnded, validateEventAudience, validateEventHosts, getManagedEvent, getCheckInEvent, canRunCheckIn } from "../../../../lib/events";
+import { checkInWindowClosed, CHECK_IN_GRACE_MS, validateEventAudience, validateEventHosts, getManagedEvent, getCheckInEvent, canRunCheckIn } from "../../../../lib/events";
 import { EVENT_TEXT_MAX } from "../../../../lib/fieldRules";
 import { serverError, signInRequired } from "../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../lib/session";
@@ -43,7 +43,7 @@ export async function PATCH(request, { params }) {
   if (body.check_in_open !== undefined) {
     if (typeof body.check_in_open !== "boolean") return NextResponse.json({ error: "Invalid check-in state." }, { status: 400 });
     if (body.check_in_open) {
-      if (eventHasEnded(managed)) return NextResponse.json({ error: "This event has already ended, so check-in cannot be opened." }, { status: 400 });
+      if (checkInWindowClosed(managed)) return NextResponse.json({ error: `This event ended more than ${CHECK_IN_GRACE_MS / 60000} minutes ago, so check-in can no longer be opened.` }, { status: 400 });
     }
     updates.check_in_open = body.check_in_open;
     if (body.check_in_open) {

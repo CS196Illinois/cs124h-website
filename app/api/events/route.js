@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, mergeSandboxRows, sandboxWrite } from "../../../lib/sandbox";
-import { canAdminEvents, validateEventAudience, validateEventHosts, audienceMatches, eventHasEnded, eventHosts } from "../../../lib/events";
+import { canAdminEvents, validateEventAudience, validateEventHosts, audienceMatches, checkInWindowClosed, eventHosts } from "../../../lib/events";
 import { EVENT_TEXT_MAX } from "../../../lib/fieldRules";
 import { invalidInput, serverError, signInRequired } from "../../../lib/apiResponses";
 import { getSessionUser } from "../../../lib/session";
@@ -39,7 +39,7 @@ export async function GET(request) {
     rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
   // Reading a sandbox preview must not mutate the real event table.
-  rows = rows.map((event) => event.check_in_open && eventHasEnded(event) ? { ...event, check_in_open: false } : event);
+  rows = rows.map((event) => event.check_in_open && checkInWindowClosed(event) ? { ...event, check_in_open: false } : event);
 
   const { data: viewer, error: viewerError } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
   if (viewerError) return NextResponse.json({ error: "Your event access could not be checked. Please try again." }, { status: 503 });

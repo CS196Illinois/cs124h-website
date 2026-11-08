@@ -11,6 +11,7 @@ const { GET: GET_CHECKIN, POST: POST_CHECKIN } = await import("../../app/api/eve
 const { GET: GET_CODE, deriveCode } = await import("../../app/api/events/[id]/code/route");
 const { GET: GET_MY_CHECKINS } = await import("../../app/api/events/my-checkins/route");
 const { POST: POST_MANUAL, DELETE: DELETE_MANUAL } = await import("../../app/api/events/[id]/checkin/manual/route");
+const { CHECK_IN_GRACE_MS } = await import("../../lib/events");
 
 afterAll(clearAllTestTables);
 
@@ -400,6 +401,25 @@ describe("attendance code + check-in", () => {
     expect(notOpen.status).toBe(400);
   });
 
+  it("check-in stays available for a grace period after the end time, then closes", async () => {
+    const minutesAgo = (m) => new Date(Date.now() - m * 60 * 1000).toISOString();
+    const runningLong = await insertEvent({ title: "running long", check_in_open: false, created_by: "pm1", start_time: minutesAgo(90), end_time: minutesAgo(10) });
+    const longOver = await insertEvent({ title: "long over", check_in_open: true, created_by: "pm1", start_time: minutesAgo(120), end_time: minutesAgo(CHECK_IN_GRACE_MS / 60000 + 5) });
+    const patch = (id) => PATCH(makeRequest(`http://localhost/api/events/${id}`, { method: "PATCH", body: { check_in_open: true } }), { params: { id } });
+    const submit = (id) => POST_CHECKIN(makeRequest(`http://localhost/api/events/${id}/checkin`, { method: "POST", body: { code: deriveCode(id) } }), { params: { id } });
+
+    asRole("pm", "pm1");
+    expect((await patch(runningLong.id)).status).toBe(200);
+    expect((await GET_CODE(makeRequest(`http://localhost/api/events/${runningLong.id}/code`), { params: { id: runningLong.id } })).status).toBe(200);
+    expect((await patch(longOver.id)).status).toBe(400);
+
+    asRole("student", "stu1");
+    expect((await submit(runningLong.id)).status).toBe(201);
+    expect((await submit(longOver.id)).status).toBe(400);
+    const { data } = await testClient().from(table("events")).select("check_in_open").eq("id", longOver.id).single();
+    expect(data.check_in_open).toBe(false);
+  });
+
   it("returns a code matching deriveCode() once check-in is open", async () => {
     const event = await insertEvent({ title: "e", check_in_open: true, created_by: "pm1" });
     asRole("pm", "pm1");
@@ -450,5 +470,18 @@ describe("attendance code + check-in", () => {
     asRole("student", "stu1");
     const mine = await (await GET_MY_CHECKINS(makeRequest("http://localhost/api/events/my-checkins"))).json();
     expect(mine.map((c) => c.event_id)).toEqual([event.id]);
+  });
+});
+
+describe("checkInWindowClosed", () => {
+  it("only closes once the grace period after the end time has passed", async () => {
+    const { checkInWindowClosed } = await import("../../lib/events");
+    const end = Date.parse("2026-11-07T18:00:00Z");
+    const event = { end_time: new Date(end).toISOString() };
+    expect(checkInWindowClosed(event, end - 1)).toBe(false);
+    expect(checkInWindowClosed(event, end + 1)).toBe(false);
+    expect(checkInWindowClosed(event, end + CHECK_IN_GRACE_MS - 1)).toBe(false);
+    expect(checkInWindowClosed(event, end + CHECK_IN_GRACE_MS)).toBe(true);
+    expect(checkInWindowClosed({ end_time: null }, end)).toBe(false);
   });
 });

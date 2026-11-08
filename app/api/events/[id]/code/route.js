@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCheckInEvent, eventHasEnded } from "../../../../../lib/events";
+import { getCheckInEvent, checkInWindowClosed } from "../../../../../lib/events";
 import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
 import crypto from "crypto";
@@ -39,9 +39,9 @@ export async function GET(request, { params }) {
   if (!event.check_in_open) {
     return NextResponse.json({ error: "Check-in is not open for this event." }, { status: 400 });
   }
-  if (eventHasEnded(event)) {
+  if (checkInWindowClosed(event)) {
     await supabaseServer.from(table("events")).update({ check_in_open: false }).eq("id", id).eq("check_in_open", true);
-    return NextResponse.json({ error: "This event has ended, so check-in is closed." }, { status: 400 });
+    return NextResponse.json({ error: "This event has ended and its check-in window has closed." }, { status: 400 });
   }
 
   const code = deriveCode(id);
