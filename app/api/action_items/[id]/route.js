@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
-import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
 import { canManageCheckSubmission } from "../../../../lib/sprintCheckAccess";
 import { forbidden, invalidInput, serverError, signInRequired } from "../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../lib/session";
@@ -28,9 +27,7 @@ export async function PATCH(request, { params }) {
   }
   if (body.grade_note != null && typeof body.grade_note !== "string") return NextResponse.json({ error: "Feedback must be text" }, { status: 400 });
 
-  const sandboxed = isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off";
-  const { data: realItem } = await supabaseServer.from(table("actionItems")).select("*").eq("id", id).maybeSingle();
-  const item = sandboxed ? await getEffectiveRow(netID, "actionItems", id, realItem) : realItem;
+  const { data: item } = await supabaseServer.from(table("actionItems")).select("*").eq("id", id).maybeSingle();
   if (!item) return NextResponse.json({ error: "We could not find that item." }, { status: 404 });
   if (!item.sprint_id || !item.is_gradable) {
     return NextResponse.json({ error: "This work item does not accept a grade." }, { status: 400 });
@@ -62,12 +59,6 @@ export async function PATCH(request, { params }) {
     updates.graded_by = netID;
     updates.graded_at = new Date().toISOString();
     if (body.grade_note !== undefined) updates.grade_note = body.grade_note?.trim() || null;
-  }
-
-  if (sandboxed) {
-    const merged = { ...item, ...updates };
-    await sandboxWrite(netID, "actionItems", "update", id, merged);
-    return NextResponse.json(merged);
   }
 
   // Only write if the item is still in the state that was validated above.

@@ -1,27 +1,36 @@
 import { NextResponse, after } from "next/server";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
-import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../../lib/sandbox";
 import { syncSheetAccessForRole } from "../../../../lib/sheetAccess";
 import { parseGroupNumber } from "../../../../lib/fieldRules";
-import { WEB_TEAM_ROLE_IDS, DEFAULT_WEB_SANDBOX_MODE } from "../../../../lib/roles";
-import { forbidden, serverError, signInRequired } from "../../../../lib/apiResponses";
+import { ROLES_BY_ID } from "../../../../lib/roles";
+import { forbidden, serverError } from "../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../lib/session";
 
-const FULL_USER_ACCESS = ["course_lead", "web_dev"];
-const WEB_TEAM_ROLES   = WEB_TEAM_ROLE_IDS;
-const HEAD_PM_ROLES    = ["PM", "STUDENT"];
+// Course leads manage everyone. Head PMs manage PMs and students, but can't
+// change anyone's role. Nobody else edits or removes people.
+const FULL_USER_ACCESS = ["course_lead"];
+const HEAD_PM_ROLES = ["PM", "STUDENT"];
+const canManagePeople = (role) => FULL_USER_ACCESS.includes(role) || role === "head_pm";
+
+/** For a head PM, the target must be a PM or student; course leads may act on anyone. */
+async function checkTarget(userRole, netId) {
+  if (FULL_USER_ACCESS.includes(userRole)) return null;
+  const { data: target, error } = await supabaseServer.from(table("users")).select("role").eq("net_id", netId).maybeSingle();
+  if (error) return serverError();
+  if (!target || !HEAD_PM_ROLES.includes(target.role)) {
+    return NextResponse.json({ error: "You do not have permission to change this person." }, { status: 403 });
+  }
+  return null;
+}
 
 export async function PATCH(request, { params }) {
-  const { role: userRole, netID: callerNetId } = await getSessionUser();
-
-  if (!userRole || userRole === "error" || userRole === "student") {
-    return signInRequired();
-  }
+  const { role: userRole } = await getSessionUser();
+  if (!canManagePeople(userRole)) return forbidden();
 
   const { net_id } = await params;
   const body = await request.json().catch(() => null);
-  if (!body || typeof body !== "object") return NextResponse.json({ error: "Please provide the changes to save." }, { status: 400 });
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Please provide the changes to save." }, { status: 400 });
   const updates = {};
 
   if (body.name !== undefined) {
@@ -33,53 +42,21 @@ export async function PATCH(request, { params }) {
     if (group.error) return NextResponse.json({ error: group.error }, { status: 400 });
     updates.group_number = group.value;
   }
-
   if (body.role !== undefined) {
-    if (!FULL_USER_ACCESS.includes(userRole) && userRole !== "lead_web_dev") {
-      return NextResponse.json({ error: "You do not have permission to change this person’s role." }, { status: 403 });
+    if (!FULL_USER_ACCESS.includes(userRole)) {
+      return NextResponse.json({ error: "Only a course lead can change someone's role." }, { status: 403 });
     }
-    if (userRole === "lead_web_dev" && !WEB_TEAM_ROLES.includes(body.role)) {
-      return NextResponse.json({ error: "Lead Web Devs can only assign WEB or LEAD_WEB roles" }, { status: 403 });
+    if (typeof body.role !== "string" || !ROLES_BY_ID[body.role]) {
+      return NextResponse.json({ error: "Choose a valid role." }, { status: 400 });
     }
     updates.role = body.role;
   }
 
-  const sandboxed = isSandboxRole(userRole) && (await getSandboxMode(callerNetId)) !== "off";
-
-  // Scope checks: lead_web_dev and head_pm can only edit their own team members
-  if (userRole === "lead_web_dev" || userRole === "head_pm") {
-    const allowed = userRole === "lead_web_dev" ? WEB_TEAM_ROLES : HEAD_PM_ROLES;
-    const { data: realTarget } = await supabaseServer.from(table("users")).select("*").eq("net_id", net_id).maybeSingle();
-    const target = sandboxed ? await getEffectiveRow(callerNetId, "users", net_id, realTarget) : realTarget;
-    if (!target || !allowed.includes(target.role)) {
-      return NextResponse.json({ error: "You do not have permission to edit this person." }, { status: 403 });
-    }
-    // head_pm cannot change roles
-    if (userRole === "head_pm" && body.role !== undefined) {
-      return NextResponse.json({ error: "Head PMs cannot change user roles" }, { status: 403 });
-    }
-  }
+  const denied = await checkTarget(userRole, net_id);
+  if (denied) return denied;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Please provide at least one field to change." }, { status: 400 });
-  }
-
-  if (sandboxed) {
-    const { data: realRow } = await supabaseServer.from(table("users")).select("*").eq("net_id", net_id).maybeSingle();
-    const current = await getEffectiveRow(callerNetId, "users", net_id, realRow);
-    if (!current) return NextResponse.json({ error: "We could not find that item." }, { status: 404 });
-    const merged = { ...current, ...updates };
-    // A sandboxed edit must never trigger a real side effect on the target's
-    // own (real) sandbox - resetSandbox below only ever runs on the real
-    // write path, never here, even though the update shape looks the same.
-    await sandboxWrite(callerNetId, "users", "update", net_id, merged);
-    return NextResponse.json(merged);
-  }
-
-  // Joining the web team starts the person in the default sandbox mode.
-  if (updates.role !== undefined && WEB_TEAM_ROLES.includes(updates.role)) {
-    const { data: before } = await supabaseServer.from(table("users")).select("role").eq("net_id", net_id).maybeSingle();
-    if (before && !WEB_TEAM_ROLES.includes(before.role)) updates.sandbox_mode = DEFAULT_WEB_SANDBOX_MODE;
   }
 
   const { data, error } = await supabaseServer
@@ -87,16 +64,9 @@ export async function PATCH(request, { params }) {
     .update(updates)
     .eq("net_id", net_id)
     .select()
-    .single();
-
+    .maybeSingle();
   if (error) return serverError();
-
-  // "until their access is revoked" - a role change away from the web team
-  // clears any sandbox (ephemeral or persistent) regardless of the user's
-  // own preference, since they can no longer reach the routes that read it.
-  if (updates.role !== undefined && !WEB_TEAM_ROLES.includes(updates.role)) {
-    await resetSandbox(net_id);
-  }
+  if (!data) return NextResponse.json({ error: "We could not find that person." }, { status: 404 });
 
   // Keep the shared attendance sheet's access list in sync with the roster -
   // grants course_lead/head_pm/lead_web_dev, revokes everyone else. Fire and
@@ -109,43 +79,15 @@ export async function PATCH(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  const { role: userRole, netID: callerNetId } = await getSessionUser();
-
-  const canDelete = FULL_USER_ACCESS.includes(userRole) || userRole === "lead_web_dev" || userRole === "head_pm";
-  if (!canDelete) {
-    return forbidden();
-  }
+  const { role: userRole } = await getSessionUser();
+  if (!canManagePeople(userRole)) return forbidden();
 
   const { net_id } = await params;
-  const sandboxed = isSandboxRole(userRole) && (await getSandboxMode(callerNetId)) !== "off";
+  const denied = await checkTarget(userRole, net_id);
+  if (denied) return denied;
 
-  if (userRole === "lead_web_dev" || userRole === "head_pm") {
-    const allowed = userRole === "lead_web_dev" ? WEB_TEAM_ROLES : HEAD_PM_ROLES;
-    const { data: realTarget } = await supabaseServer.from(table("users")).select("*").eq("net_id", net_id).maybeSingle();
-    const target = sandboxed ? await getEffectiveRow(callerNetId, "users", net_id, realTarget) : realTarget;
-    if (!target || !allowed.includes(target.role)) {
-      return NextResponse.json({ error: "You do not have permission to remove this person." }, { status: 403 });
-    }
-  }
-
-  if (sandboxed) {
-    // Same reasoning as PATCH above: a sandboxed delete must never trigger
-    // the real resetSandbox side effect below, even if net_id happens to
-    // belong to a real web_dev/lead_web_dev.
-    await sandboxWrite(callerNetId, "users", "delete", net_id, null);
-    return NextResponse.json({ success: true });
-  }
-
-  const { error } = await supabaseServer
-    .from(table("users"))
-    .delete()
-    .eq("net_id", net_id);
-
+  const { error } = await supabaseServer.from(table("users")).delete().eq("net_id", net_id);
   if (error) return serverError();
-
-  // Hygiene: a removed user can never reach a sandboxed route again, so
-  // this is just avoiding an orphaned overlay, not a security requirement.
-  await resetSandbox(net_id);
 
   // A deleted user is gone from the roster entirely - revoke sheet access
   // the same as any other role change away from a privileged role.

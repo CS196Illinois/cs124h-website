@@ -3,37 +3,27 @@ import { getUserGroup, groupSprintChecks, fetchGroupChecks, applyGroupQuestions 
 import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
-import { isSandboxRole, getSandboxMode, mergeSandboxRows } from "../../../../../lib/sandbox";
 import { resolveMaxScore } from "../../../../../lib/sprintChecks";
-import { actsAsPm } from "../../../../../lib/roles";
 import { isSprintVisibleToRole } from "../../../../../lib/sprintVisibility";
 import { signInRequired } from "../../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../../lib/session";
 
-async function fetchWindows(sprintId, netID, userRole, groupNumber) {
+async function fetchWindows(sprintId, groupNumber) {
   if (groupNumber === null) return [];
   let query = supabaseServer.from(table("sprintCheckWindows")).select("*").eq("sprint_id", sprintId);
   if (groupNumber !== undefined) query = query.eq("group_number", groupNumber);
   const { data, error } = await query;
   if (error) throw error;
-  let rows = data ?? [];
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    rows = await mergeSandboxRows(netID, "sprintCheckWindows", rows, (row) => row.sprint_id === sprintId && (groupNumber === undefined || row.group_number === groupNumber));
-  }
-  return rows;
+  return data ?? [];
 }
 
-async function fetchSubmissions(sprintId, netID, userRole, studentNetIDs) {
+async function fetchSubmissions(sprintId, studentNetIDs) {
   if (studentNetIDs?.length === 0) return [];
   let query = supabaseServer.from(table("actionItems")).select("*").eq("sprint_id", sprintId);
   if (studentNetIDs) query = query.in("net_id", studentNetIDs);
   const { data, error } = await query;
   if (error) throw error;
-  let rows = data ?? [];
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    rows = await mergeSandboxRows(netID, "actionItems", rows, (row) => row.sprint_id === sprintId && (!studentNetIDs || studentNetIDs.includes(row.net_id)));
-  }
-  return rows;
+  return data ?? [];
 }
 
 // `item` is the full action_items row when submitted, shaped exactly as
@@ -56,17 +46,17 @@ export async function GET(request, { params }) {
   if (!baseSprint) return NextResponse.json({ error: "We could not find that sprint. It may have been removed or is not available yet." }, { status: 404 });
   if (!isSprintVisibleToRole(baseSprint, userRole)) return NextResponse.json({ error: "This sprint is not available yet." }, { status: 404 });
 
-  const pmView = actsAsPm(userRole, new URL(request.url).searchParams.get("view"));
+  const pmView = userRole === "pm";
   const groupScoped = userRole === "student" || pmView;
   const groupNumber = groupScoped ? await getUserGroup(netID) : undefined;
   const [sprint] = groupScoped
-    ? await groupSprintChecks([baseSprint], groupNumber, netID, userRole)
+    ? await groupSprintChecks([baseSprint], groupNumber)
     : [baseSprint];
   const hasCheck = Array.isArray(sprint.check_questions) && sprint.check_questions.length > 0;
   const maxScore = resolveMaxScore(sprint);
 
   if (userRole === "student") {
-    const [windows, submissions] = await Promise.all([fetchWindows(id, netID, userRole, groupNumber), fetchSubmissions(id, netID, userRole, [netID])]);
+    const [windows, submissions] = await Promise.all([fetchWindows(id, groupNumber), fetchSubmissions(id, [netID])]);
     const myWindow = windows.find((w) => w.group_number === groupNumber);
     const mine = submissions.find((s) => s.net_id === netID);
     if (!hasCheck && !mine) return NextResponse.json({ hasCheck: false });
@@ -88,8 +78,8 @@ export async function GET(request, { params }) {
       .from(table("users")).select("net_id, name").eq("role", "STUDENT").eq("group_number", groupNumber);
     if (error) throw error;
     const [windows, submissions] = await Promise.all([
-      fetchWindows(id, netID, userRole, groupNumber),
-      fetchSubmissions(id, netID, userRole, (students ?? []).map((s) => s.net_id)),
+      fetchWindows(id, groupNumber),
+      fetchSubmissions(id, (students ?? []).map((s) => s.net_id)),
     ]);
     return NextResponse.json({
       hasCheck, groupNumber, isOpen: !!windows[0]?.is_open,
@@ -101,10 +91,10 @@ export async function GET(request, { params }) {
 
   if (CHECK_MANAGE_ROLES.includes(userRole)) {
     const [windows, submissions, { data: students, error }, groupChecks] = await Promise.all([
-      fetchWindows(id, netID, userRole),
-      fetchSubmissions(id, netID, userRole),
+      fetchWindows(id, undefined),      // every group's window
+      fetchSubmissions(id, undefined),  // every student's submission
       supabaseServer.from(table("users")).select("net_id, name, group_number").eq("role", "STUDENT"),
-      fetchGroupChecks([id], undefined, netID, userRole),
+      fetchGroupChecks([id], undefined),
     ]);
     if (error) throw error;
     const studentsByGroup = new Map();

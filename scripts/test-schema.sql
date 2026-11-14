@@ -30,13 +30,11 @@ CREATE TABLE IF NOT EXISTS test_users (
   name              text,
   discord_user_id   text
 );
--- ADD COLUMN IF NOT EXISTS rather than inline above: this table already
--- exists in most environments by the time this line is added, and
--- CREATE TABLE IF NOT EXISTS is a no-op against an existing table - an
--- inline column definition would never actually apply. Self-heals instead.
-ALTER TABLE test_users ADD COLUMN IF NOT EXISTS sandbox_mode text NOT NULL DEFAULT 'off';
+-- Added separately rather than inline above: this table already exists in
+-- most environments, and CREATE TABLE IF NOT EXISTS is a no-op against an
+-- existing table, so an inline constraint would never actually apply.
 DO $$ BEGIN
-  ALTER TABLE test_users ADD CONSTRAINT test_users_sandbox_mode_check CHECK (sandbox_mode IN ('off', 'ephemeral', 'persistent'));
+  ALTER TABLE test_users ADD CONSTRAINT test_users_role_check CHECK (role IN ('LEAD', 'LEAD_WEB', 'HEAD', 'PM', 'STUDENT'));
 EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
@@ -63,18 +61,6 @@ CREATE TABLE IF NOT EXISTS test_action_items (
 );
 CREATE INDEX IF NOT EXISTS test_action_items_batch_id_idx ON test_action_items (batch_id);
 CREATE UNIQUE INDEX IF NOT EXISTS test_action_items_sprint_id_net_id_key ON test_action_items (sprint_id, net_id) WHERE sprint_id IS NOT NULL;
-
--- ── Web-dev role-view requests ────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS test_role_view_requests (
-  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  requester_net_id    text NOT NULL,
-  requested_role      text NOT NULL,
-  status              text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'denied')),
-  reviewed_by         text,
-  reviewed_at         timestamptz,
-  expires_at          timestamptz,
-  created_at          timestamptz NOT NULL DEFAULT now()
-);
 
 -- ── Events + check-ins ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS test_events (
@@ -167,21 +153,6 @@ CREATE TABLE IF NOT EXISTS test_sprint_check_windows (
   UNIQUE (sprint_id, group_number)
 );
 
--- ── Dashboard sandbox overlay (web_dev / lead_web_dev) ────────────────────────
--- See production-schema.sql for the full explanation of this table's shape.
-CREATE TABLE IF NOT EXISTS test_sandbox_overlay (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  owner_net_id    text NOT NULL,
-  table_key       text NOT NULL,
-  row_pk          text NOT NULL,
-  op              text NOT NULL CHECK (op IN ('insert', 'update', 'delete')),
-  row_data        jsonb,
-  created_at      timestamptz NOT NULL DEFAULT now(),
-  updated_at      timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (owner_net_id, table_key, row_pk)
-);
-CREATE INDEX IF NOT EXISTS test_sandbox_overlay_owner_table_idx ON test_sandbox_overlay (owner_net_id, table_key);
-
 -- ── Public content (site pages, not auth-scoped) ──────────────────────────────
 CREATE TABLE IF NOT EXISTS test_staff (
   id                bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -249,14 +220,12 @@ CREATE TABLE IF NOT EXISTS test_event_attendance_sp26 (
 -- tests. Disable it explicitly rather than relying on assumed defaults.
 ALTER TABLE test_users      DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_action_items        DISABLE ROW LEVEL SECURITY;
-ALTER TABLE test_role_view_requests  DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_events              DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_event_checkins      DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_sprints             DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_sprint_completions  DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_sprint_check_windows DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_sprint_question_bank DISABLE ROW LEVEL SECURITY;
-ALTER TABLE test_sandbox_overlay     DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_staff               DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_resources           DISABLE ROW LEVEL SECURITY;
 ALTER TABLE test_projects            DISABLE ROW LEVEL SECURITY;

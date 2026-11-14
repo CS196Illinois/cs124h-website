@@ -78,7 +78,7 @@ beforeEach(() => {
 });
 
 describe("group understanding-check isolation", () => {
-  it.each(["pm", "web_dev"])("scopes %s edits to their actual group, ignoring a supplied group", async (role) => {
+  it.each(["pm"])("scopes %s edits to their actual group, ignoring a supplied group", async (role) => {
     asRole(role, "pm1");
     const saved = await customize(["Required", "Group one"], { group_number: 2 });
     expect(saved.status).toBe(200);
@@ -146,16 +146,6 @@ describe("group understanding-check isolation", () => {
     expect((await customize(["New required"])).status).toBe(200);
     expect((await view("student", "student1")).questions).toEqual(["New required", "Group one"]);
     expect((await view("student", "student2")).questions).toEqual(["New required"]);
-  });
-
-  it("keeps sandboxed web-dev additions out of the group's live check", async () => {
-    db.rows.test_users[0].sandbox_mode = "persistent";
-    asRole("web_dev", "pm1");
-    expect((await customize(["Required", "Sandbox question"])).status).toBe(200);
-    expect((await view("web_dev", "pm1")).questions).toEqual(["Required", "Sandbox question"]);
-    expect((await view("pm", "copm")).questions).toEqual(["Required"]);
-    expect((await view("student", "student1")).questions).toEqual(["Required"]);
-    expect(db.rows.test_sprint_group_checks).toHaveLength(0);
   });
 
   it("batches manager group reads instead of issuing one query per group", async () => {

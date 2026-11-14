@@ -1,17 +1,15 @@
 import { getUserGroup, applyGroupQuestions, saveGroupSprintCheck } from "../../../../lib/groupSprintChecks";
-import { actsAsPm } from "../../../../lib/roles";
 import { parseSprintNumber } from "../../../../lib/fieldRules";
 import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
-import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
 import { normalizeQuestions, resolveMaxScore } from "../../../../lib/sprintChecks";
 import { isSprintVisibleToRole, validateSprintDates } from "../../../../lib/sprintVisibility";
 import { forbidden, invalidInput, serverError } from "../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../lib/session";
 import { sprintNumberTaken, sprintNumberTakenMessage } from "../../../../lib/sprintNumbers";
 
-const MANAGE_ROLES = ["course_lead", "head_pm", "lead_web_dev", "web_dev", "pm"];
+const MANAGE_ROLES = ["course_lead", "head_pm", "lead_web_dev", "pm"];
 
 export async function PATCH(request, { params }) {
   const { role: userRole, netID } = await getSessionUser();
@@ -25,7 +23,7 @@ export async function PATCH(request, { params }) {
   const body = await request.json().catch(() => null);
   if (!body) return invalidInput();
   // PMs (and a lead web dev previewing the PM page) edit their group's additions.
-  const pmView = actsAsPm(userRole, new URL(request.url).searchParams.get("view"));
+  const pmView = userRole === "pm";
 
   // PMs customize their group’s additions; course-wide questions and scoring are protected.
   const allowed = userRole === "pm"
@@ -49,7 +47,7 @@ export async function PATCH(request, { params }) {
     if (sprintNumber.error) return NextResponse.json({ error: sprintNumber.error }, { status: 400 });
     updates.number = sprintNumber.value;
     try {
-      if (await sprintNumberTaken(updates.number, { netID, role: userRole, exceptId: id })) {
+      if (await sprintNumberTaken(updates.number, { exceptId: id })) {
         return NextResponse.json({ error: sprintNumberTakenMessage(updates.number) }, { status: 409 });
       }
     } catch { return serverError(); }
@@ -83,19 +81,11 @@ export async function PATCH(request, { params }) {
     if (groupNumber == null) return NextResponse.json({ error: "You are not assigned to a group yet." }, { status: 400 });
     const required = existingSprint.check_questions ?? [];
     groupQuestions = (updates.check_questions ?? []).slice(required.length);
-    await saveGroupSprintCheck(id, groupNumber, groupQuestions, netID, userRole);
+    await saveGroupSprintCheck(id, groupNumber, groupQuestions);
     delete updates.check_questions;
     if (!Object.keys(updates).length) {
       return NextResponse.json(applyGroupQuestions(existingSprint, groupQuestions));
     }
-  }
-
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    const current = await getEffectiveRow(netID, "sprints", id, existingSprint);
-    if (!current) return NextResponse.json({ error: "We could not find that sprint. It may have been removed or is not available yet." }, { status: 404 });
-    const merged = { ...current, ...updates };
-    await sandboxWrite(netID, "sprints", "update", id, merged);
-    return NextResponse.json(groupQuestions ? applyGroupQuestions(merged, groupQuestions) : merged);
   }
 
   const query = supabaseServer.from(table("sprints")).update(updates).eq("id", id);
@@ -115,11 +105,6 @@ export async function DELETE(request, { params }) {
   const { data: existingSprint } = await supabaseServer.from(table("sprints")).select("start_date").eq("id", id).maybeSingle();
   if (!existingSprint) return NextResponse.json({ error: "We could not find that sprint. It may have been removed or is not available yet." }, { status: 404 });
   if (!isSprintVisibleToRole(existingSprint, userRole)) return NextResponse.json({ error: "This sprint is not available yet." }, { status: 404 });
-
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    await sandboxWrite(netID, "sprints", "delete", id, null);
-    return new NextResponse(null, { status: 204 });
-  }
 
   const { error } = await supabaseServer.from(table("sprints")).delete().eq("id", id);
   if (error) return serverError();

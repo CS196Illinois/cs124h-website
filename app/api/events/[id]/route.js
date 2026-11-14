@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
-import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
 import { isEventCategory } from "../../../../lib/eventCategories";
 import { checkInWindowClosed, CHECK_IN_GRACE_MS, validateEventAudience, validateEventHosts, getManagedEvent, getCheckInEvent, canRunCheckIn, canManageEvent, EVENT_FULL_ACCESS_ROLES } from "../../../../lib/events";
 import { EVENT_TEXT_MAX } from "../../../../lib/fieldRules";
 import { serverError, signInRequired } from "../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../lib/session";
 
-const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
+const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 
 export async function PATCH(request, { params }) {
   const { role: userRole, netID } = await getSessionUser();
@@ -68,17 +67,6 @@ export async function PATCH(request, { params }) {
   if (body.description !== undefined) updates.description = body.description?.trim() || null;
   if (body.location   !== undefined) updates.location   = body.location?.trim() || null;
 
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    const { data: realRow } = await supabaseServer.from(table("events")).select("*").eq("id", id).maybeSingle();
-    const current = await getEffectiveRow(netID, "events", id, realRow);
-    if (!current || !(checkInOnly ? canRunCheckIn(current, netID, userRole) : canManageEvent(current, netID, userRole))) {
-      return NextResponse.json({ error: "That event could not be found, or you do not have permission to edit it." }, { status: 403 });
-    }
-    const merged = { ...current, ...updates };
-    await sandboxWrite(netID, "events", "update", id, merged);
-    return NextResponse.json(merged);
-  }
-
   // Scope non-check-in edits to the creator unless the caller has full
   // access; check-in access was checked above.
   let query = supabaseServer.from(table("events")).update(updates).eq("id", id);
@@ -99,16 +87,6 @@ export async function DELETE(request, { params }) {
   }
 
   const { id } = await params;
-
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    const { data: realRow } = await supabaseServer.from(table("events")).select("*").eq("id", id).maybeSingle();
-    const current = await getEffectiveRow(netID, "events", id, realRow);
-    if (!current || !canManageEvent(current, netID, userRole)) {
-      return NextResponse.json({ error: "That event could not be found, or you do not have permission to delete it." }, { status: 403 });
-    }
-    await sandboxWrite(netID, "events", "delete", id, null);
-    return NextResponse.json({ success: true });
-  }
 
   // ?series=all removes every event in this event's weekly series.
   const wholeSeries = new URL(request.url).searchParams.get("series") === "all";

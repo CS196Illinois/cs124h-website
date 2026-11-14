@@ -7,7 +7,7 @@ import { getScheduleData } from "../../lib/schedule";
 export const metadata = { title: "Schedule" };
 
 // Staff roles that can add events from the schedule (same as the events API).
-const CAN_CREATE = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
+const CAN_CREATE = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 
 function Week({ week }) {
   return (

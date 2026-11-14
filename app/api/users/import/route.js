@@ -2,7 +2,7 @@ import { NextResponse, after } from "next/server";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { syncSheetAccessForRole, SHEET_ACCESS_ROLES } from "../../../../lib/sheetAccess";
-import { ALL_ROLES, WEB_TEAM_ROLE_IDS, DEFAULT_WEB_SANDBOX_MODE } from "../../../../lib/roles";
+import { ALL_ROLES } from "../../../../lib/roles";
 import { parseGroupNumber } from "../../../../lib/fieldRules";
 import { serverError, signInRequired } from "../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../lib/session";
@@ -10,7 +10,7 @@ import { getSessionUser } from "../../../../lib/session";
 // GET: proxy-fetch a Google Sheets CSV to avoid CORS
 export async function GET(request) {
   const caller = await getSessionUser();
-  if (!["course_lead", "lead_web_dev", "web_dev"].includes(caller.role)) {
+  if (caller.role !== "course_lead") {
     return signInRequired(403);
   }
 
@@ -50,7 +50,7 @@ function toSheetsCsvUrl(url) {
 // POST: perform the bulk import
 export async function POST(request) {
   const caller = await getSessionUser();
-  if (!["course_lead", "lead_web_dev", "web_dev"].includes(caller.role)) {
+  if (caller.role !== "course_lead") {
     return signInRequired(403);
   }
 
@@ -97,7 +97,6 @@ export async function POST(request) {
   const importSet = new Set(validRows.map((r) => r.net_id));
 
   let inserted = 0, updated = 0, deleted = 0, skipped = 0;
-  const written = []; // rows actually inserted or updated, for the web-team default below
   // { net_id, newRole } for every user whose role change could cross the
   // sheet-access boundary (either side was course_lead/head_pm/lead_web_dev).
   // Collected across both modes below and synced once, after the response.
@@ -118,7 +117,6 @@ export async function POST(request) {
       .from(table("users"))
       .upsert(toUpsert, { onConflict: "net_id" });
     if (upsertErr) return serverError();
-    written.push(...validRows);
 
     for (const r of validRows) {
       if (existingMap.has(r.net_id)) updated++;
@@ -166,7 +164,6 @@ export async function POST(request) {
       const { error: insErr } = await supabaseServer.from(table("users")).insert(toInsert);
       if (insErr) return serverError();
       inserted = toInsert.length;
-      written.push(...toInsert);
       for (const row of toInsert) {
         if (SHEET_ACCESS_ROLES.has(row.role)) roleSyncTargets.push({ net_id: row.net_id, newRole: row.role });
       }
@@ -180,21 +177,11 @@ export async function POST(request) {
       // note: row.name is already the preserved DB name (set above when building toUpdate)
       if (upErr) return serverError();
       updated++;
-      written.push(row);
       const oldRole = existingMap.get(row.net_id)?.role;
       if (SHEET_ACCESS_ROLES.has(oldRole) || SHEET_ACCESS_ROLES.has(row.role)) {
         roleSyncTargets.push({ net_id: row.net_id, newRole: row.role });
       }
     }
-  }
-
-  // People joining the web team start in the default sandbox mode.
-  const newWebTeam = written
-    .filter((row) => WEB_TEAM_ROLE_IDS.includes(row.role) && !WEB_TEAM_ROLE_IDS.includes(existingMap.get(row.net_id)?.role))
-    .map((row) => row.net_id);
-  if (newWebTeam.length > 0) {
-    const { error: modeErr } = await supabaseServer.from(table("users")).update({ sandbox_mode: DEFAULT_WEB_SANDBOX_MODE }).in("net_id", newWebTeam);
-    if (modeErr) return NextResponse.json({ error: "The roster was imported, but new web devs' sandbox mode could not be set. Set it from their dashboard." }, { status: 500 });
   }
 
   // Fire and forget: a CSV import can touch hundreds of rows, and Sheets/Drive

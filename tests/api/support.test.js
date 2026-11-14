@@ -104,7 +104,7 @@ it("does not send a notification already claimed or sent", async () => {
   expect(await notifySupportTicket(randomUUID())).toBe("unchanged");
   expect(mocks.sendMail).not.toHaveBeenCalled();
 });
-it.each([null, "student", "pm", "course_lead", "web_dev"])("protects private tickets, screenshots, and mutations from %s", async (role) => {
+it.each([null, "student", "pm", "course_lead"])("protects private tickets, screenshots, and mutations from %s", async (role) => {
   if (role) asRole(role, "test");
   expect((await GET(new Request("https://course.example/api/support"))).status).toBe(403);
   expect((await GET_TICKET(new Request("https://course.example/api/support/id"), { params: { id: "id" } })).status).toBe(403);

@@ -16,8 +16,8 @@ describe("event audience matching", () => {
   });
   it("treats an all-staff audience as every role except students", () => {
     expect(isStaffAudience(STAFF_AUDIENCE)).toBe(true);
-    expect(isStaffAudience({ audience_type: "roles", audience_values: ["WEB", "LEAD_WEB"] })).toBe(false);
-    for (const role of ["course_lead", "head_pm", "lead_web_dev", "pm", "web_dev"]) {
+    expect(isStaffAudience({ audience_type: "roles", audience_values: ["PM", "LEAD_WEB"] })).toBe(false);
+    for (const role of ["course_lead", "head_pm", "lead_web_dev", "pm"]) {
       expect(audienceMatches(STAFF_AUDIENCE, { netID: "x", role })).toBe(true);
     }
     expect(audienceMatches(STAFF_AUDIENCE, { netID: "x", role: "student" })).toBe(false);

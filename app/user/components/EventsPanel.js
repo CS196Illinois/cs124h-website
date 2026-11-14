@@ -10,7 +10,7 @@ import styles from "../dashboard.module.css";
 import panelStyles from "./EventsPanel.module.css";
 import EventAudiencePicker from "./EventAudiencePicker";
 import EventHostsPicker from "./EventHostsPicker";
-import { isPmViewRole, roleLabel } from "../../../lib/roles";
+import { roleLabel } from "../../../lib/roles";
 import { isStaffAudience, STAFF_AUDIENCE } from "../../../lib/eventAudience";
 import { CHECKIN_NETID_MAX, EVENT_TEXT_MAX } from "../../../lib/fieldRules";
 
@@ -106,8 +106,7 @@ export default function EventsPanel() {
 
   // Only roles with standing Editor access to the sheet get a link to it -
   // ask the server (which knows the real signed-in role, not just which
-  // dashboard directory this happens to be rendered under - a lead_web_dev
-  // or web_dev with an approved view can land here from another role's path).
+  // dashboard directory this happens to be rendered under).
   useEffect(() => {
     if (!SHEET_ACCESS_ROLES.has(session?.user?.role)) { setSheetUrl(null); return; }
     fetch("/api/sheet-link").then(async (res) => {
@@ -372,9 +371,7 @@ export default function EventsPanel() {
     let audience = { audience_type: "all", audience_values: [] };
     if (["course_lead", "head_pm", "lead_web_dev"].includes(role)) {
       audience = { ...STAFF_AUDIENCE, audience_values: [...STAFF_AUDIENCE.audience_values] };
-    } else if (role === "web_dev" && myGroup == null) {
-      audience = { audience_type: "roles", audience_values: ["WEB", "LEAD_WEB"] };
-    } else if (isPmViewRole(role)) {
+    } else if (role === "pm") {
       audience = { audience_type: "groups", audience_values: myGroup != null ? [String(myGroup)] : [] };
     }
     // Real values, not just what the browser shows: some browsers (Safari)
@@ -412,7 +409,7 @@ export default function EventsPanel() {
         </div>
       </div>
 
-      <p style={{ color: "#c0cbe0", fontSize: ".85rem", marginBottom: "1rem" }}>{["lead_web_dev", "course_lead"].includes(session?.user?.role) ? "All course events. Only the creator can edit an event; its hosts and course leads can also run check-in." : "Events you created, host, or joined. Visit Attendance to join an event that is open to you."}</p>
+      <p style={{ color: "#c0cbe0", fontSize: ".85rem", marginBottom: "1rem" }}>{["lead_web_dev", "course_lead"].includes(session?.user?.role) ? "All course events. The creator and course leads can edit an event; its hosts can also run check-in." : "Events you created, host, or joined. Visit Attendance to join an event that is open to you."}</p>
       {/* Event list */}
       {loading ? (
         <div className={styles.loading}>Loading events…</div>

@@ -36,10 +36,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS role            text NOT NULL DEFAULT
 ALTER TABLE users ADD COLUMN IF NOT EXISTS sub             text UNIQUE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS name            text;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS discord_user_id text;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS sandbox_mode    text NOT NULL DEFAULT 'off';
 ALTER TABLE users ALTER COLUMN role DROP DEFAULT;
 DO $$ BEGIN
-  ALTER TABLE users ADD CONSTRAINT users_sandbox_mode_check CHECK (sandbox_mode IN ('off', 'ephemeral', 'persistent'));
+  ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('LEAD', 'LEAD_WEB', 'HEAD', 'PM', 'STUDENT'));
 EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
@@ -69,20 +68,6 @@ ALTER TABLE action_items ALTER COLUMN title DROP DEFAULT;
 CREATE INDEX IF NOT EXISTS action_items_batch_id_idx ON action_items (batch_id);
 -- One understanding-check submission per student per sprint.
 CREATE UNIQUE INDEX IF NOT EXISTS action_items_sprint_id_net_id_key ON action_items (sprint_id, net_id) WHERE sprint_id IS NOT NULL;
-
--- ── Web-dev role-view requests ────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS role_view_requests (
-  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid()
-);
-ALTER TABLE role_view_requests ADD COLUMN IF NOT EXISTS requester_net_id    text NOT NULL DEFAULT '';
-ALTER TABLE role_view_requests ADD COLUMN IF NOT EXISTS requested_role      text NOT NULL DEFAULT '';
-ALTER TABLE role_view_requests ADD COLUMN IF NOT EXISTS status              text NOT NULL DEFAULT 'pending';
-ALTER TABLE role_view_requests ADD COLUMN IF NOT EXISTS reviewed_by         text;
-ALTER TABLE role_view_requests ADD COLUMN IF NOT EXISTS reviewed_at         timestamptz;
-ALTER TABLE role_view_requests ADD COLUMN IF NOT EXISTS expires_at          timestamptz;
-ALTER TABLE role_view_requests ADD COLUMN IF NOT EXISTS created_at          timestamptz NOT NULL DEFAULT now();
-ALTER TABLE role_view_requests ALTER COLUMN requester_net_id DROP DEFAULT;
-ALTER TABLE role_view_requests ALTER COLUMN requested_role DROP DEFAULT;
 
 -- ── Events + check-ins ────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS events (
@@ -227,36 +212,6 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
--- ── Dashboard sandbox overlay (web_dev / lead_web_dev) ────────────────────────
--- One row per real-or-virtual row a sandboxed user has touched in a given
--- in-scope table. Reads merge this diff onto the real table; writes from a
--- sandboxed session land here instead of the real table. Deliberately scoped
--- to content tables only (action_items, events, event_checkins, sprints,
--- sprint_completions) - users and role_view_requests are never sandboxed.
-CREATE TABLE IF NOT EXISTS sandbox_overlay (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid()
-);
-ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS owner_net_id  text NOT NULL DEFAULT '';
-ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS table_key     text NOT NULL DEFAULT '';
-ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS row_pk        text NOT NULL DEFAULT '';
-ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS op            text NOT NULL DEFAULT 'insert';
-ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS row_data      jsonb;
-ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS created_at    timestamptz NOT NULL DEFAULT now();
-ALTER TABLE sandbox_overlay ADD COLUMN IF NOT EXISTS updated_at    timestamptz NOT NULL DEFAULT now();
-ALTER TABLE sandbox_overlay ALTER COLUMN owner_net_id DROP DEFAULT;
-ALTER TABLE sandbox_overlay ALTER COLUMN table_key DROP DEFAULT;
-ALTER TABLE sandbox_overlay ALTER COLUMN row_pk DROP DEFAULT;
-ALTER TABLE sandbox_overlay ALTER COLUMN op DROP DEFAULT;
-DO $$ BEGIN
-  ALTER TABLE sandbox_overlay ADD CONSTRAINT sandbox_overlay_op_check CHECK (op IN ('insert', 'update', 'delete'));
-EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-END $$;
-DO $$ BEGIN
-  ALTER TABLE sandbox_overlay ADD CONSTRAINT sandbox_overlay_owner_table_row_key UNIQUE (owner_net_id, table_key, row_pk);
-EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-END $$;
-CREATE INDEX IF NOT EXISTS sandbox_overlay_owner_table_idx ON sandbox_overlay (owner_net_id, table_key);
-
 -- ── Public content (site pages, not auth-scoped) ──────────────────────────────
 -- staff, resources, and projects already exist with the correct shape in
 -- production (verified against the app's actual usage) - included here only
@@ -309,14 +264,12 @@ CREATE TABLE IF NOT EXISTS projects (
 -- server API routes, so they do not need public table policies.
 ALTER TABLE users                    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE action_items             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE role_view_requests       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE events                   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_checkins           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sprints                  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sprint_completions       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sprint_check_windows     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sprint_question_bank     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sandbox_overlay          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff                    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE resources                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects                 ENABLE ROW LEVEL SECURITY;

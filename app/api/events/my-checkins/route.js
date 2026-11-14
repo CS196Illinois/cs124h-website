@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
-import { isSandboxRole, getSandboxMode, mergeSandboxRows } from "../../../../lib/sandbox";
 import { serverError, signInRequired } from "../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../lib/session";
 
@@ -21,10 +20,5 @@ export async function GET() {
 
   if (error) return serverError();
 
-  let rows = data;
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    rows = await mergeSandboxRows(netID, "eventCheckins", rows, (row) => row.net_id === netID);
-    rows.sort((a, b) => new Date(b.checked_in_at) - new Date(a.checked_in_at));
-  }
-  return NextResponse.json(rows);
+  return NextResponse.json(data);
 }

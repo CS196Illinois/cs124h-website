@@ -59,9 +59,7 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // The PM page asks for the PM view, so a lead web dev previewing it sees
-      // their own group exactly as a PM does.
-      const res = await fetch(`/api/sprints/${sprint.id}/check${scope === "my-group" ? "?view=pm" : ""}`);
+      const res = await fetch(`/api/sprints/${sprint.id}/check`);
       if (!res.ok) throw new Error("The understanding check could not be loaded. Please try again.");
       setData(await res.json());
       setError(null);
@@ -125,9 +123,8 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
     );
   }
 
-  // A web dev assigned to a group always gets the single-group (PM) response,
-  // even on a manager page reached through a role-view. Fold it into the shape
-  // the all-groups view iterates so that path can never hit an undefined list.
+  // A PM gets the single-group response. Fold it into the shape the
+  // all-groups view iterates so that path can never hit an undefined list.
   const groups = data.groups
     ?? (data.groupNumber != null
       ? [{ groupNumber: data.groupNumber, isOpen: data.isOpen, roster: data.roster ?? [] }]

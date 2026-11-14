@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
-import { isSandboxRole, getSandboxMode, getEffectiveRow, mergeSandboxRows, sandboxWrite } from "../../../lib/sandbox";
 import { canAdminEvents, validateEventAudience, validateEventHosts, audienceMatches, checkInWindowClosed, eventHosts } from "../../../lib/events";
 import { EVENT_TEXT_MAX } from "../../../lib/fieldRules";
 import { invalidInput, serverError, signInRequired } from "../../../lib/apiResponses";
@@ -28,7 +27,7 @@ function addWeeksLocal(ms, weeks) {
   return shifted + (courseOffsetMinutes(ms) - courseOffsetMinutes(shifted)) * 60_000;
 }
 
-const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
+const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 
 export async function GET(request) {
   const { role: userRole, netID } = await getSessionUser();
@@ -53,27 +52,17 @@ export async function GET(request) {
 
   if (error) return serverError();
 
-  let rows = data;
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    rows = await mergeSandboxRows(netID, "events", rows, () => true);
-    rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  }
-  // Reading a sandbox preview must not mutate the real event table.
-  rows = rows.map((event) => event.check_in_open && checkInWindowClosed(event) ? { ...event, check_in_open: false } : event);
+  // A GET never writes: an expired window just reads as closed here.
+  let rows = data.map((event) => event.check_in_open && checkInWindowClosed(event) ? { ...event, check_in_open: false } : event);
 
   const { data: viewer, error: viewerError } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
   if (viewerError) return NextResponse.json({ error: "Your event access could not be checked. Please try again." }, { status: 503 });
-  const effectiveViewer = isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off" ? await getEffectiveRow(netID, "users", netID, viewer) : viewer;
-  const viewerGroup = effectiveViewer?.group_number ?? null;
+  const viewerGroup = viewer?.group_number ?? null;
   if (scope === "checkin" || !canAdminEvents(userRole)) {
     const { data: mine, error: checkinError } = await supabaseServer
       .from(table("eventCheckins")).select("id, event_id, net_id").eq("net_id", netID);
     if (checkinError) return NextResponse.json({ error: "Your joined events could not be loaded. Please try again." }, { status: 503 });
-    let attendedIds = new Set((mine ?? []).map((r) => r.event_id));
-    if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-      const merged = await mergeSandboxRows(netID, "eventCheckins", mine ?? [], (r) => r.net_id === netID);
-      attendedIds = new Set(merged.map((r) => r.event_id));
-    }
+    const attendedIds = new Set((mine ?? []).map((r) => r.event_id));
     rows = rows.filter((e) => attendedIds.has(e.id) || (scope === "checkin"
       ? e.check_in_open && audienceMatches(e, { netID, role: userRole, groupNumber: viewerGroup })
       : e.created_by === netID || eventHosts(e).includes(netID)));
@@ -93,13 +82,12 @@ export async function POST(request) {
   if (!body || typeof body !== "object" || Array.isArray(body)) return invalidInput();
   const { title, description, location, presenter, start_time, end_time } = body;
   let { audience_type, audience_values = [] } = body;
-  if (audience_type === undefined && ["pm", "web_dev"].includes(userRole)) {
+  if (audience_type === undefined && userRole === "pm") {
     const { data: me, error } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
     if (error) return NextResponse.json({ error: "Your group could not be loaded. Please try again." }, { status: 503 });
-    const effectiveMe = isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off" ? await getEffectiveRow(netID, "users", netID, me) : me;
-    if (effectiveMe?.group_number == null) return NextResponse.json({ error: "You have no group assigned. Choose an event audience explicitly." }, { status: 400 });
+    if (me?.group_number == null) return NextResponse.json({ error: "You have no group assigned. Choose an event audience explicitly." }, { status: 400 });
     audience_type = "groups";
-    audience_values = [String(effectiveMe.group_number)];
+    audience_values = [String(me.group_number)];
   }
   audience_type ??= "all";
 
@@ -176,30 +164,6 @@ export async function POST(request) {
     end_time: new Date(addWeeksLocal(endMs, week)).toISOString(),
     ...(seriesId ? { series_id: seriesId } : {}),
   }));
-
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    const created = [];
-    for (const row of rows) {
-      const fullRow = {
-        id: randomUUID(),
-        created_at: new Date().toISOString(),
-        point_value: 0,
-        check_in_open: false,
-        check_in_opened_at: null,
-        is_active: true,
-        checked_in_students: [],
-        qr_code_secret: null,
-        join_link: null,
-        hosts: [],
-        ...row,
-        audience_type,
-        audience_values: audience_type === "all" ? [] : cleanAudience,
-      };
-      await sandboxWrite(netID, "events", "insert", fullRow.id, fullRow);
-      created.push(fullRow);
-    }
-    return NextResponse.json({ ...created[0], series_count: created.length }, { status: 201 });
-  }
 
   const missingColumn = (e) => e && (e.code === "PGRST204" || e.code === "42703");
   const insertRows = (list) => supabaseServer.from(table("events")).insert(list).select();

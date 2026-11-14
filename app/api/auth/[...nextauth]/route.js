@@ -255,8 +255,9 @@ function getNetIDFromIdentity(user) {
 }
 
 /**
- * Map the DB role string (LEAD, HEAD, PM, WEB, STUDENT) to the URL-path role
- * used throughout the app.
+ * Map the DB role string (LEAD, LEAD_WEB, HEAD, PM, STUDENT) to the URL-path
+ * role used throughout the app. Anything else (including the retired WEB
+ * role) maps to "error", which the app treats as not enrolled.
  */
 function mapRole(dbRole) {
   const map = {
@@ -264,7 +265,6 @@ function mapRole(dbRole) {
     LEAD_WEB: "lead_web_dev",
     HEAD: "head_pm",
     PM: "pm",
-    WEB: "web_dev",
     STUDENT: "student",
   };
   return map[dbRole] ?? "error";

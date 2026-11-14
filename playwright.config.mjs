@@ -55,6 +55,9 @@ export default defineConfig({
       PORT: String(PORT),
       NEXTAUTH_URL: BASE_URL,
       AUTH_URL: BASE_URL,
+      // Build into a separate folder so a running `npm run dev` (which owns
+      // .next) can't corrupt the test build, and vice versa.
+      NEXT_DIST_DIR: ".next-e2e",
     },
   },
 

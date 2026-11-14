@@ -60,18 +60,6 @@ export async function insertActionItem(overrides = {}) {
   return data;
 }
 
-export async function insertRoleViewRequest(overrides = {}) {
-  const row = {
-    requester_net_id: overrides.requester_net_id,
-    requested_role: overrides.requested_role ?? "student",
-    status: "pending",
-    ...overrides,
-  };
-  const { data, error } = await client().from(table("roleViewRequests")).insert(row).select().single();
-  if (error) throw new Error(`insertRoleViewRequest: ${error.message}`);
-  return data;
-}
-
 export async function insertSprint(overrides = {}) {
   const row = {
     number: 0,
@@ -161,23 +149,6 @@ export async function insertProject(overrides = {}) {
   return data;
 }
 
-export async function insertSandboxOverlay(overrides = {}) {
-  const row = {
-    owner_net_id: overrides.owner_net_id,
-    table_key: overrides.table_key,
-    row_pk: overrides.row_pk,
-    op: overrides.op ?? "insert",
-    row_data: overrides.row_data ?? null,
-    ...overrides,
-  };
-  if (!row.owner_net_id || !row.table_key || !row.row_pk) {
-    throw new Error("insertSandboxOverlay requires owner_net_id, table_key, and row_pk");
-  }
-  const { data, error } = await client().from(table("sandboxOverlay")).insert(row).select().single();
-  if (error) throw new Error(`insertSandboxOverlay: ${error.message}`);
-  return data;
-}
-
 // ── Cleanup ───────────────────────────────────────────────────────────────
 
 // Primary key column per table key - used to build a delete-everything filter
@@ -188,21 +159,19 @@ const TABLE_PK = {
   sprintCheckWindows: "id",
   eventCheckins: "id",
   actionItems: "id",
-  roleViewRequests: "id",
   sprints: "id",
   events: "id",
   staff: "id",
   resources: "id",
   projects: "id",
-  sandboxOverlay: "id",
   users: "net_id",
 };
 
 // Children before parents, though FKs are ON DELETE CASCADE anyway.
 const CLEAR_ORDER = [
-  "sprintGroupChecks", "sprintCompletions", "sprintCheckWindows", "eventCheckins", "actionItems", "roleViewRequests",
+  "sprintGroupChecks", "sprintCompletions", "sprintCheckWindows", "eventCheckins", "actionItems",
   "sprints", "events", "staff", "resources", "projects",
-  "sandboxOverlay", "users",
+  "users",
 ];
 
 export async function clearAllTestTables() {

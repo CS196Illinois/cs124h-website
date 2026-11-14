@@ -12,9 +12,8 @@ async function seed() {
 }
 
 for (const [role, dbRole, path, grouped] of [
-  ["pm", "PM", "pm", false], ["web_dev", "WEB", "web_dev", false],
+  ["pm", "PM", "pm", false],
   ["course_lead", "LEAD", "course_lead", true], ["head_pm", "HEAD", "head_pm", true],
-  ["lead_web_dev", "LEAD_WEB", "course_lead", true],
 ]) {
   test(`${role}: gradebook works with keyboard, feedback, zero scores, and CSV contents`, async ({ page, loginAs }, testInfo) => {
     await seed();
@@ -64,11 +63,10 @@ for (const [role, dbRole, path, grouped] of [
   });
 }
 
-for (const role of ["pm", "course_lead", "head_pm", "web_dev"]) {
+for (const role of ["pm", "course_lead", "head_pm"]) {
   test(`${role}: failed requests show a recoverable error instead of an empty gradebook`, async ({ page, loginAs }) => {
-    await insertUser({ net_id: "ux-manager", role: role === "pm" ? "PM" : role === "web_dev" ? "WEB" : role === "head_pm" ? "HEAD" : "LEAD", group_number: 1 });
+    await insertUser({ net_id: "ux-manager", role: role === "pm" ? "PM" : role === "head_pm" ? "HEAD" : "LEAD", group_number: 1 });
     await loginAs({ netID: "ux-manager", role });
-    // PM-view gradebooks add &group_scope=true, so match on the scope param.
     const allItems = (url) => url.pathname === "/api/action_items" && url.searchParams.get("scope") === "all";
     await page.route(allItems, (route) => route.fulfill({ status: 500, json: { error: "Database unavailable" } }));
     await page.goto(`/user/${role}/gradebook`);
@@ -85,7 +83,7 @@ for (const role of ["pm", "course_lead", "head_pm", "web_dev"]) {
 test("students cannot open staff gradebooks or obtain other students' scores", async ({ page, loginAs }) => {
   await seed();
   await loginAs({ netID: "ux-student", role: "student" });
-  for (const role of ["pm", "web_dev", "course_lead", "head_pm", "lead_web_dev"]) {
+  for (const role of ["pm", "course_lead", "head_pm", "lead_web_dev"]) {
     await page.goto(`/user/${role}/gradebook`);
     await expect(page).toHaveURL(/\/unauthorized/);
   }

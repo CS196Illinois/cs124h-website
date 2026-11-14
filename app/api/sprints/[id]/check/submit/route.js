@@ -6,8 +6,7 @@ import { resolveMaxScore, formatCheckAnswers } from "../../../../../../lib/sprin
 import { isSprintVisibleToRole } from "../../../../../../lib/sprintVisibility";
 import { getSessionUser } from "../../../../../../lib/session";
 
-// Student only - web_dev/lead_web_dev sandbox previews never reach here,
-// since neither role can itself be "student".
+// Students only.
 export async function POST(request, { params }) {
   const { role: userRole, netID } = await getSessionUser();
   if (userRole !== "student") {
@@ -20,7 +19,7 @@ export async function POST(request, { params }) {
   const { data: baseSprint } = await supabaseServer.from(table("sprints")).select("*").eq("id", id).maybeSingle();
   if (!baseSprint || !isSprintVisibleToRole(baseSprint, userRole)) return NextResponse.json({ error: "This sprint is not available yet." }, { status: 404 });
   const groupNumber = await getUserGroup(netID);
-  const [sprint] = await groupSprintChecks([baseSprint], groupNumber, netID, userRole);
+  const [sprint] = await groupSprintChecks([baseSprint], groupNumber);
   const questions = Array.isArray(sprint?.check_questions) ? sprint.check_questions : [];
   if (!questions.length) {
     return NextResponse.json({ error: "This sprint does not have an understanding check yet." }, { status: 400 });

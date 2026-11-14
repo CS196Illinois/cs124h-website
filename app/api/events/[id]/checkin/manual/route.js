@@ -1,15 +1,13 @@
 import { NextResponse, after } from "next/server";
-import { randomUUID } from "crypto";
 import { supabaseServer } from "../../../../../../lib/supabaseServer";
 import { table } from "../../../../../../lib/tables";
-import { isSandboxRole, getSandboxMode, mergeSandboxRows, sandboxWrite } from "../../../../../../lib/sandbox";
 import { getCheckInEvent } from "../../../../../../lib/events";
 import { syncEventAttendance } from "../../../../../../lib/eventAttendanceSync";
 import { CHECKIN_NETID_MAX } from "../../../../../../lib/fieldRules";
 import { serverError, signInRequired } from "../../../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../../../lib/session";
 
-const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
+const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 
 // Staff: manually check someone in - e.g. they forgot their phone, or a
 // guest isn't doing the self-service code flow. Same insert and same
@@ -33,23 +31,6 @@ export async function POST(request, { params }) {
   // event_checkins.net_id is varchar(50) in the database.
   if (cleanNetId.length > CHECKIN_NETID_MAX) {
     return NextResponse.json({ error: "That NetID is too long." }, { status: 400 });
-  }
-
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    const { data: realRows } = await supabaseServer
-      .from(table("eventCheckins")).select("*").eq("event_id", id).eq("net_id", cleanNetId);
-    const merged = await mergeSandboxRows(
-      netID, "eventCheckins", realRows ?? [],
-      (row) => row.event_id === id && row.net_id === cleanNetId,
-    );
-    if (merged[0]) {
-      return NextResponse.json({ error: `${cleanNetId} is already checked in.` }, { status: 409 });
-    }
-    const checkinId = randomUUID();
-    await sandboxWrite(netID, "eventCheckins", "insert", checkinId, {
-      id: checkinId, event_id: id, net_id: cleanNetId, checked_in_at: new Date().toISOString(),
-    });
-    return NextResponse.json({ success: true }, { status: 201 });
   }
 
   const { error } = await supabaseServer
@@ -85,19 +66,6 @@ export async function DELETE(request, { params }) {
   const netId = searchParams.get("net_id");
   if (!netId) {
     return NextResponse.json({ error: "Please choose a person." }, { status: 400 });
-  }
-
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    const { data: realRows } = await supabaseServer
-      .from(table("eventCheckins")).select("*").eq("event_id", id).eq("net_id", netId);
-    const merged = await mergeSandboxRows(
-      netID, "eventCheckins", realRows ?? [],
-      (row) => row.event_id === id && row.net_id === netId,
-    );
-    if (merged[0]) {
-      await sandboxWrite(netID, "eventCheckins", "delete", String(merged[0].id), null);
-    }
-    return NextResponse.json({ success: true });
   }
 
   const { error } = await supabaseServer

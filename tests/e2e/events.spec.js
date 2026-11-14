@@ -15,7 +15,7 @@ function recentLocalDateTime() {
 test.describe("events: create, check-in toggle, and creator-scoped permissions", () => {
   test.beforeEach(clearAllTestTables);
 
-  for (const [role, dbRole] of [["pm", "PM"], ["web_dev", "WEB"]]) {
+  for (const [role, dbRole] of [["pm", "PM"]]) {
     test(`${role} defaults to their group and can change the audience`, async ({ page, loginAs }) => {
       await insertUser({ net_id: "audience-owner", role: dbRole, group_number: 3 });
       await insertUser({ net_id: "audience-student", role: "STUDENT", group_number: 3 });
@@ -55,7 +55,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
       await expect(page.getByText("Open to all staff", { exact: true })).toBeVisible();
       const { data } = await testClient().from(table("events")).select("audience_type, audience_values").eq("title", "Staff meeting").single();
       expect(data.audience_type).toBe("roles");
-      expect([...data.audience_values].sort()).toEqual(["HEAD", "LEAD", "LEAD_WEB", "PM", "WEB"]);
+      expect([...data.audience_values].sort()).toEqual(["HEAD", "LEAD", "LEAD_WEB", "PM"]);
     });
   }
 

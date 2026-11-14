@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
-import { isPmViewRole } from "../../../lib/roles";
-import { groupStudentIds } from "../../../lib/groupScope";
 import { manageableCheckStudents } from "../../../lib/sprintCheckAccess";
-import { isSandboxRole, getSandboxMode, mergeSandboxRows } from "../../../lib/sandbox";
 import { serverError, signInRequired } from "../../../lib/apiResponses";
 import { getSessionUser } from "../../../lib/session";
 
@@ -20,11 +17,6 @@ export async function GET(request) {
   const scope = searchParams.get("scope") || "mine";
 
   let visibleRecipients = null;
-  // The developer's PM screens use the same group scope as PMs; explicit
-  // developer previews retain their existing access and sandbox tools.
-  if (userRole === "web_dev" && searchParams.get("group_scope") === "true") {
-    visibleRecipients = [netID, ...await groupStudentIds(netID, userRole)];
-  }
   if (userRole === "pm" || userRole === "head_pm") {
     let roster = supabaseServer.from(table("users")).select("net_id");
     if (userRole === "pm") {
@@ -61,17 +53,10 @@ export async function GET(request) {
   if (error) return serverError();
 
   let rows = data;
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    const matchesFilter = scope === "mine"
-      ? (row) => row.net_id === netID || row.assigned_by === netID
-      : () => true;
-    rows = await mergeSandboxRows(netID, "actionItems", rows, matchesFilter);
-    rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  }
   if (visibleRecipients) rows = rows.filter((row) => visibleRecipients.includes(row.net_id));
-  // PMs (and web devs acting as PMs) only ever see their own group's
-  // understanding-check submissions, whatever scope they asked for.
-  if (isPmViewRole(userRole)) {
+  // PMs only ever see their own group's understanding-check submissions,
+  // whatever scope they asked for.
+  if (userRole === "pm") {
     const checkStudents = rows.filter((row) => row.sprint_id && row.net_id !== netID).map((row) => row.net_id);
     const allowed = await manageableCheckStudents(userRole, netID, checkStudents);
     rows = rows.filter((row) => !row.sprint_id || row.net_id === netID || allowed.has(row.net_id));

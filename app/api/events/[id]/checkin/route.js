@@ -1,16 +1,14 @@
 import { NextResponse, after } from "next/server";
-import { randomUUID } from "crypto";
 import { supabaseServer } from "../../../../../lib/supabaseServer";
 import { table } from "../../../../../lib/tables";
 import { deriveCode } from "../code/route";
-import { isSandboxRole, getSandboxMode, getEffectiveRow, mergeSandboxRows, sandboxWrite } from "../../../../../lib/sandbox";
 import { getCheckInEvent } from "../../../../../lib/events";
 import { syncEventAttendance } from "../../../../../lib/eventAttendanceSync";
 import { audienceMatches, checkInWindowClosed } from "../../../../../lib/events";
 import { serverError, signInRequired } from "../../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../../lib/session";
 
-const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
+const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 
 // The event's creator, hosts, or a course lead: view its attendee list
 export async function GET(request, { params }) {
@@ -31,12 +29,7 @@ export async function GET(request, { params }) {
 
   if (error) return serverError();
 
-  let rows = data;
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    rows = await mergeSandboxRows(netID, "eventCheckins", rows, (row) => row.event_id === id);
-    rows.sort((a, b) => new Date(a.checked_in_at) - new Date(b.checked_in_at));
-  }
-  return NextResponse.json(rows);
+  return NextResponse.json(data);
 }
 
 // Any authenticated user: submit a check-in code
@@ -54,25 +47,22 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: "Please enter the check-in code." }, { status: 400 });
   }
 
-  const sandboxed = isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off";
-
   // Verify event exists and check-in is currently open
-  let { data: realEvent, error: eventError } = await supabaseServer
+  let { data: event, error: eventError } = await supabaseServer
     .from(table("events"))
     .select("id, title, end_time, check_in_open, audience_type, audience_values")
     .eq("id", id)
     .maybeSingle();
   if (eventError && (eventError.code === "PGRST204" || eventError.code === "42703")) {
-    ({ data: realEvent } = await supabaseServer.from(table("events")).select("id, title, end_time, check_in_open").eq("id", id).maybeSingle());
-    if (realEvent) realEvent = { ...realEvent, audience_type: "all", audience_values: [] };
+    ({ data: event } = await supabaseServer.from(table("events")).select("id, title, end_time, check_in_open").eq("id", id).maybeSingle());
+    if (event) event = { ...event, audience_type: "all", audience_values: [] };
   }
-  const event = sandboxed ? await getEffectiveRow(netID, "events", id, realEvent) : realEvent;
 
   if (!event) {
     return NextResponse.json({ error: "We could not find that event. It may have been removed." }, { status: 404 });
   }
   if (checkInWindowClosed(event)) {
-    if (!sandboxed) await supabaseServer.from(table("events")).update({ check_in_open: false }).eq("id", id).eq("check_in_open", true);
+    await supabaseServer.from(table("events")).update({ check_in_open: false }).eq("id", id).eq("check_in_open", true);
     return NextResponse.json({ error: "This event has ended and its check-in window has closed." }, { status: 400 });
   }
   if (!event.check_in_open) {
@@ -94,23 +84,6 @@ export async function POST(request, { params }) {
       { error: "Incorrect code. Make sure you're reading the latest code from the screen." },
       { status: 400 }
     );
-  }
-
-  if (sandboxed) {
-    try {
-      const checkinId = randomUUID();
-      await sandboxWrite(
-        netID, "eventCheckins", "insert", checkinId,
-        { id: checkinId, event_id: id, net_id: netID, checked_in_at: new Date().toISOString() },
-        { columns: ["event_id", "net_id"] }
-      );
-    } catch (e) {
-      if (e.code === "23505") {
-        return NextResponse.json({ error: "You've already checked in to this event." }, { status: 409 });
-      }
-      return serverError();
-    }
-    return NextResponse.json({ success: true, event_title: event.title }, { status: 201 });
   }
 
   // Insert - the unique constraint on (event_id, net_id) prevents double check-in

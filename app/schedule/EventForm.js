@@ -31,7 +31,7 @@ function audienceOptions(groupNumber) {
     ...(groupNumber != null ? [{ id: "group", label: `My group (Group ${groupNumber})`, audience_type: "groups", audience_values: [String(groupNumber)] }] : []),
     { id: "students", label: "All students", audience_type: "roles", audience_values: ["STUDENT"] },
     { id: "everyone", label: "Everyone in the course", audience_type: "all", audience_values: [] },
-    { id: "staff", label: "Staff only", audience_type: "roles", audience_values: ["LEAD", "LEAD_WEB", "HEAD", "PM", "WEB"] },
+    { id: "staff", label: "Staff only", audience_type: "roles", audience_values: ["LEAD", "LEAD_WEB", "HEAD", "PM"] },
   ];
 }
 
@@ -41,7 +41,7 @@ const AUDIENCE_FOR_CATEGORY = { workshop: "students", info_session: "students", 
 export default function EventForm({ day, viewer, onClose, onCreated }) {
   const options = audienceOptions(viewer.groupNumber);
   const pick = (id) => options.find((o) => o.id === id) || options[0];
-  const isPm = ["pm", "web_dev"].includes(viewer.role);
+  const isPm = viewer.role === "pm";
   const initialCategory = isPm && viewer.groupNumber != null ? "group_meeting" : "workshop";
 
   const [form, setForm] = useState({

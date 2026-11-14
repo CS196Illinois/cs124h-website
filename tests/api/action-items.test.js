@@ -133,21 +133,3 @@ describe("PATCH /api/action_items/[id] (grading)", () => {
   });
 });
 
-describe("grading in sandbox mode", () => {
-  beforeEach(async () => {
-    await seed();
-    await insertUser({ net_id: "webdev1", role: "WEB", group_number: 1, sandbox_mode: "persistent" });
-  });
-
-  it("a sandboxed grade writes to the overlay, not the real row", async () => {
-    const item = await insertCheck({ net_id: "stu1" });
-    asRole("web_dev", "webdev1");
-
-    const res = await patch(item, { grade: 77 });
-    expect(res.status).toBe(200);
-    expect((await res.json()).grade).toBe(77);
-
-    const { data: stillReal } = await testClient().from(table("actionItems")).select("grade").eq("id", item.id).single();
-    expect(stillReal.grade).toBeNull();
-  });
-});

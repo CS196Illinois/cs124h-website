@@ -1,9 +1,8 @@
 import { NextResponse, after } from "next/server";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
-import { MANAGEABLE_BY as MANAGEABLE_ROLES, WEB_TEAM_ROLE_IDS, DEFAULT_WEB_SANDBOX_MODE } from "../../../lib/roles";
+import { MANAGEABLE_BY as MANAGEABLE_ROLES, ROLES_BY_ID } from "../../../lib/roles";
 import { parseGroupNumber } from "../../../lib/fieldRules";
-import { isSandboxRole, getSandboxMode, mergeSandboxRows, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../lib/sandbox";
 import { syncSheetAccessForRole, SHEET_ACCESS_ROLES } from "../../../lib/sheetAccess";
 import { forbidden, serverError, signInRequired } from "../../../lib/apiResponses";
 import { getSessionUser } from "../../../lib/session";
@@ -27,17 +26,7 @@ export async function GET(request) {
   const { data, error } = await query;
   if (error) return serverError();
 
-  let rows = data;
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    const matchesFilter = (row) => {
-      if (roleFilter && row.role !== roleFilter) return false;
-      if (groupFilter && row.group_number !== Number(groupFilter)) return false;
-      return true;
-    };
-    rows = await mergeSandboxRows(netID, "users", rows, matchesFilter);
-    rows.sort((a, b) => (a.net_id < b.net_id ? -1 : a.net_id > b.net_id ? 1 : 0));
-  }
-  return NextResponse.json(rows);
+  return NextResponse.json(data);
 }
 
 export async function POST(request) {
@@ -52,7 +41,8 @@ export async function POST(request) {
     return forbidden();
   }
 
-  const body = await request.json();
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Please enter both a NetID and a role." }, { status: 400 });
   const { net_id, role, name, group_number } = body;
 
   if (typeof net_id !== "string" || !net_id.trim() || !role) {
@@ -70,25 +60,10 @@ export async function POST(request) {
 
   const cleanNetId = net_id.trim().toLowerCase();
 
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    const { data: realRow } = await supabaseServer.from(table("users")).select("*").eq("net_id", cleanNetId).maybeSingle();
-    const existing = await getEffectiveRow(netID, "users", cleanNetId, realRow);
-    if (existing) {
-      return NextResponse.json({ error: `A user with NetID "${cleanNetId}" already exists.` }, { status: 409 });
-    }
-    const fullRow = {
-      net_id: cleanNetId, role, name: name?.trim() || null, group_number: group.value,
-      sub: null, discord_user_id: null, sandbox_mode: "off",
-    };
-    await sandboxWrite(netID, "users", "insert", cleanNetId, fullRow);
-    return NextResponse.json(fullRow, { status: 201 });
-  }
-
   const { data, error } = await supabaseServer
     .from(table("users"))
     .insert({
       net_id: cleanNetId, role, name: name?.trim() || null, group_number: group.value,
-      ...(WEB_TEAM_ROLE_IDS.includes(role) && { sandbox_mode: DEFAULT_WEB_SANDBOX_MODE }),
     })
     .select()
     .single();
@@ -107,7 +82,7 @@ export async function POST(request) {
   return NextResponse.json(data, { status: 201 });
 }
 
-const BULK_DELETE_ROLES = ["course_lead", "lead_web_dev", "web_dev"];
+const BULK_DELETE_ROLES = ["course_lead"];
 
 export async function DELETE(request) {
   const { role: userRole, netID } = await getSessionUser();
@@ -118,16 +93,8 @@ export async function DELETE(request) {
   const { searchParams } = new URL(request.url);
   const role = searchParams.get("role");
 
-  const VALID_ROLES = ["LEAD", "LEAD_WEB", "HEAD", "PM", "WEB", "STUDENT"];
-  if (!role || !VALID_ROLES.includes(role)) {
+  if (!role || !ROLES_BY_ID[role]) {
     return NextResponse.json({ error: "Please choose a valid role." }, { status: 400 });
-  }
-
-  if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    const { data: realRows } = await supabaseServer.from(table("users")).select("net_id").eq("role", role);
-    const merged = await mergeSandboxRows(netID, "users", realRows ?? [], (row) => row.role === role);
-    await Promise.all(merged.map((u) => sandboxWrite(netID, "users", "delete", u.net_id, null)));
-    return NextResponse.json({ deleted: merged.length });
   }
 
   const { data, error } = await supabaseServer
@@ -137,13 +104,6 @@ export async function DELETE(request) {
     .select("net_id");
 
   if (error) return serverError();
-
-  // Hygiene, not a security requirement (a deleted user can never reach a
-  // sandboxed route again either way) - avoid leaving orphaned overlay rows
-  // behind for a whole bulk-deleted role.
-  if (role === "WEB" || role === "LEAD_WEB") {
-    await Promise.all(data.map((u) => resetSandbox(u.net_id)));
-  }
 
   if (SHEET_ACCESS_ROLES.has(role)) {
     after(() => Promise.all(

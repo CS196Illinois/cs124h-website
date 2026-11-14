@@ -6,7 +6,7 @@ import crypto from "crypto";
 import { signInRequired } from "../../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../../lib/session";
 
-const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
+const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 export const WINDOW_MS = 30_000; // 30-second rotation
 
 /**

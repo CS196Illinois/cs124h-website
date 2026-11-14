@@ -114,7 +114,6 @@ function RoleBadge({ role }) {
     LEAD_WEB: { bg: "rgba(99,102,241,0.2)",  color: "#a5b4fc" },
     HEAD:     { bg: "rgba(5,150,105,0.2)",   color: "#6ee7b7" },
     PM:       { bg: "rgba(79,141,222,0.2)",  color: "#93c5fd" },
-    WEB:      { bg: "rgba(219,39,119,0.2)",  color: "#f9a8d4" },
     STUDENT:  { bg: "rgba(236,181,87,0.2)",  color: "#fcd34d" },
   };
   const c = colors[role] ?? { bg: "rgba(255,255,255,0.08)", color: "rgba(249,249,249,0.45)" };
