@@ -1,27 +1,20 @@
 import styles from "./Resources.module.css";
 
-function SectionSkeleton({ title, count }) {
-  return (
-    <div className={styles.resourceSection}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>{title}</h1>
-      </div>
-      <div className={styles.projectGrid}>
-        {Array.from({ length: count }).map((_, i) => (
-          <div key={i} className="skeleton" style={{ height: "220px", borderRadius: "12px" }} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function ResourcesLoading() {
   return (
-    <div className="pageContainer">
-      <main className={styles.mainContent}>
-        <SectionSkeleton title="Lecture Videos" count={4} />
-        <SectionSkeleton title="Blog Posts" count={4} />
-      </main>
-    </div>
+    <main className="page">
+      <header className="pageHeading">
+        <h1>Resources</h1>
+        <p>Lecture videos, blog posts, and links collected by PMs and students.</p>
+      </header>
+      <section className={styles.section}>
+        <h2>Lecture videos</h2>
+        <div className={styles.videoGrid}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skeleton" style={{ aspectRatio: "16/10", borderRadius: "8px" }} />
+          ))}
+        </div>
+      </section>
+    </main>
   );
 }

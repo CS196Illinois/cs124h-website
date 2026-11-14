@@ -44,10 +44,49 @@ describe("GET/POST /api/events", () => {
   });
 });
 
+describe("event categories and weekly series", () => {
+  beforeEach(clearAllTestTables);
+
+  const create = (body) => POST(makeRequest("http://localhost/api/events", { method: "POST", body }));
+
+  it("a PM creates a weekly series for their group, keeping the local time across the DST change", async () => {
+    await insertUser({ net_id: "pm1", role: "PM", group_number: 4 });
+    asRole("pm", "pm1");
+    // 5:30-6:30 PM Chicago on Tue Oct 27 (CDT); DST ends Nov 1.
+    const res = await create({
+      title: "Group 4 meeting", category: "group_meeting",
+      start_time: "2026-10-27T22:30:00Z", end_time: "2026-10-27T23:30:00Z",
+      audience_type: "groups", audience_values: ["4"], repeat_weekly_until: "2026-11-17",
+    });
+    expect(res.status).toBe(201);
+    expect((await res.json()).series_count).toBe(4);
+
+    const { data } = await testClient().from(table("events")).select("start_time, end_time, audience_values, created_by").eq("title", "Group 4 meeting").order("start_time");
+    expect(data.map((e) => new Date(e.start_time).toISOString())).toEqual([
+      "2026-10-27T22:30:00.000Z", // 5:30 PM CDT
+      "2026-11-03T23:30:00.000Z", // 5:30 PM CST
+      "2026-11-10T23:30:00.000Z",
+      "2026-11-17T23:30:00.000Z",
+    ]);
+    expect(data.every((e) => e.created_by === "pm1" && e.audience_values.includes("4"))).toBe(true);
+  });
+
+  it("rejects a bad category, a last repeat before the start, and an overlong series", async () => {
+    await insertUser({ net_id: "pm1", role: "PM", group_number: 4 });
+    asRole("pm", "pm1");
+    const base = { title: "x", start_time: "2026-11-17T23:30:00Z", audience_type: "groups", audience_values: ["4"] };
+    expect((await create({ ...base, category: "party" })).status).toBe(400);
+    expect((await create({ ...base, repeat_weekly_until: "2026-11-10" })).status).toBe(400);
+    expect((await create({ ...base, repeat_weekly_until: "2027-06-01" })).status).toBe(400);
+    const { data } = await testClient().from(table("events")).select("id");
+    expect(data).toEqual([]);
+  });
+});
+
 describe("PATCH/DELETE /api/events/[id]", () => {
   beforeEach(clearAllTestTables);
 
-  it("only the event creator can edit or delete it, regardless of staff role", async () => {
+  it("only the event creator or a course lead can edit or delete it", async () => {
     const mine = await insertEvent({ title: "mine", created_by: "pm1" });
     const others = await insertEvent({ title: "theirs", created_by: "pm2" });
     asRole("pm", "pm1");
@@ -71,15 +110,19 @@ describe("PATCH/DELETE /api/events/[id]", () => {
     );
     expect(headBlocked.status).toBe(403);
 
-    // Course leads can run check-in for any event, but not edit or delete it.
+    // Course leads have full control of every event: edit, re-audience,
+    // re-host, and delete, whoever created it.
     asRole("course_lead", "lead1");
     const leadEdit = await PATCH(
-      makeRequest(`http://localhost/api/events/${others.id}`, { method: "PATCH", body: { title: "cleaned up" } }),
+      makeRequest(`http://localhost/api/events/${others.id}`, { method: "PATCH", body: { title: "cleaned up", audience_type: "all", audience_values: [] } }),
       { params: { id: others.id } }
     );
-    expect(leadEdit.status).toBe(403);
+    expect(leadEdit.status).toBe(200);
+    const edited = await leadEdit.json();
+    expect(edited.title).toBe("cleaned up");
+    expect(edited.created_by).toBe("pm2");
     const leadDel = await DELETE(makeRequest(`http://localhost/api/events/${others.id}`, { method: "DELETE" }), { params: { id: others.id } });
-    expect(leadDel.status).toBe(403);
+    expect(leadDel.status).toBe(200);
   });
 
   it("the creator can open check-in and delete their own event", async () => {
@@ -181,7 +224,7 @@ describe("event hosts and course-lead check-in override", () => {
     expect(data).toEqual({ title: "Workshop", check_in_open: true });
   });
 
-  it("a course lead can run check-in for any event; other staff cannot", async () => {
+  it("a course lead can run check-in for, and edit, any event; other staff cannot", async () => {
     const event = await insertEvent({ title: "Workshop", created_by: "pm1" });
     asRole("head_pm", "head1");
     expect((await patch(event.id, { check_in_open: true })).status).toBe(403);
@@ -189,7 +232,8 @@ describe("event hosts and course-lead check-in override", () => {
     asRole("course_lead", "lead1");
     expect((await patch(event.id, { check_in_open: true })).status).toBe(200);
     expect((await code(event.id)).status).toBe(200);
-    expect((await patch(event.id, { title: "renamed" })).status).toBe(403);
+    expect((await patch(event.id, { check_in_open: false })).status).toBe(200);
+    expect((await patch(event.id, { title: "renamed" })).status).toBe(200);
   });
 
   it("hosts are set by the creator, must be staff, and see the event in their list", async () => {

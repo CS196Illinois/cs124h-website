@@ -12,7 +12,7 @@ export default function SiteFooter() {
   return (
     <footer className={styles.footer}>
       <div className={styles.inner}>
-        <p>{SITE.courseName} · {SITE.semester} · University of Illinois Urbana-Champaign</p>
+        <p>{SITE.courseName}, {SITE.semester}. University of Illinois Urbana-Champaign.</p>
         <nav aria-label="Footer">
           <a href={SITE.links.syllabus} target="_blank" rel="noopener noreferrer">Syllabus</a>
           <a href={SITE.links.discord} target="_blank" rel="noopener noreferrer">Discord</a>

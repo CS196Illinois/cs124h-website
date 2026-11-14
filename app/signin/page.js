@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import styles from "../support/Support.module.css";
+import styles from "./SignIn.module.css";
 
 function SignInInner() {
   const searchParams = useSearchParams();
@@ -39,22 +39,31 @@ function SignInInner() {
       inFlight.current = false;
     }
   }
-  return <main className={styles.page}><div className={styles.card}>
-    <p className={styles.eyebrow}>CS 124H · Illinois</p>
-    <h1>Sign in to your course</h1>
-    <p>Use your University of Illinois account to open your dashboard.</p>
-    {error && <p className={styles.notice} role="alert">{error === "SessionExpired"
-      ? "Your session expired or could not be read. Sign in below to start a fresh session."
-      : "We couldn't complete your sign-in. Please try again. If it keeps happening, submit a support ticket so we can help."}</p>}
-    {failure && <p role="alert" className={styles.notice}>{failure}</p>}
-    <button className={styles.primary} disabled={busy} onClick={begin}>{busy ? "Opening Illinois sign-in…" : "Sign in with Illinois"}</button>
-    <p><Link href="/support">Having trouble? Submit a support ticket</Link></p>
-  </div></main>;
+  return (
+    <main className={`page ${styles.page}`}>
+      <div className={styles.panel}>
+        <h1>Sign in</h1>
+        <p className={styles.lede}>Use your University of Illinois account to open your CS 124 Honors dashboard.</p>
+        {error && (
+          <p className={styles.notice} role="alert">
+            {error === "SessionExpired"
+              ? "Your session expired or could not be read. Sign in below to start a fresh session."
+              : "We couldn't complete your sign-in. Please try again. If it keeps happening, submit a support ticket so we can help."}
+          </p>
+        )}
+        {failure && <p role="alert" className={styles.notice}>{failure}</p>}
+        <button type="button" className={`btn btnPrimary ${styles.signIn}`} disabled={busy} onClick={begin}>
+          {busy ? "Opening Illinois sign-in…" : "Sign in with Illinois"}
+        </button>
+        <p className={styles.help}>Having trouble? <Link href="/support">Submit a support ticket</Link>.</p>
+      </div>
+    </main>
+  );
 }
 
 export default function SignIn() {
   return (
-    <Suspense fallback={<p>Signing you in</p>}>
+    <Suspense fallback={<main className="page"><p>Loading sign-in…</p></main>}>
       <SignInInner />
     </Suspense>
   );

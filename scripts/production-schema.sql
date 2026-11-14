@@ -104,6 +104,10 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at            timestamptz NO
 ALTER TABLE events ADD COLUMN IF NOT EXISTS check_in_open         boolean NOT NULL DEFAULT false;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS check_in_opened_at    timestamptz;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS created_by            text;
+-- See lib/eventCategories.js; null = inferred from the audience.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS category              text;
+-- Shared by the events of one weekly recurring series; null for one-offs.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS series_id             uuid;
 -- Tracks which tab (by Sheets gid) in the shared attendance spreadsheet
 -- belongs to this event, so renaming an event updates its existing tab
 -- instead of creating a duplicate, and re-syncing is idempotent.
@@ -169,6 +173,16 @@ ALTER TABLE sprints ADD COLUMN IF NOT EXISTS created_at    timestamptz NOT NULL 
 -- the per-group open/close gate a PM controls during their own meeting.
 ALTER TABLE sprints ADD COLUMN IF NOT EXISTS check_questions  jsonb;
 ALTER TABLE sprints ADD COLUMN IF NOT EXISTS check_max_score  numeric;
+
+-- MPs: shown as current between release_at and due_at (see migrate-mps.sql).
+CREATE TABLE IF NOT EXISTS mps (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid()
+);
+ALTER TABLE mps ADD COLUMN IF NOT EXISTS name             text NOT NULL DEFAULT '';
+ALTER TABLE mps ADD COLUMN IF NOT EXISTS release_at       timestamptz;
+ALTER TABLE mps ADD COLUMN IF NOT EXISTS due_at           timestamptz;
+ALTER TABLE mps ADD COLUMN IF NOT EXISTS prairielearn_url text;
+ALTER TABLE mps ADD COLUMN IF NOT EXISTS created_at       timestamptz NOT NULL DEFAULT now();
 
 CREATE TABLE IF NOT EXISTS sprint_question_bank (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(), question text NOT NULL UNIQUE,

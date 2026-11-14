@@ -7,6 +7,26 @@ import { canAdminEvents, validateEventAudience, validateEventHosts, audienceMatc
 import { EVENT_TEXT_MAX } from "../../../lib/fieldRules";
 import { invalidInput, serverError, signInRequired } from "../../../lib/apiResponses";
 import { getSessionUser } from "../../../lib/session";
+import { isEventCategory } from "../../../lib/eventCategories";
+import { SITE } from "../../../lib/siteConfig";
+
+// A weekly series is capped so a typo in the end date can't create hundreds of events.
+const MAX_OCCURRENCES = 20;
+const WEEK_MS = 7 * 86_400_000;
+
+/** Minutes the course time zone is ahead of UTC at `ms` (e.g. -360 for CST). */
+function courseOffsetMinutes(ms) {
+  const name = new Intl.DateTimeFormat("en-US", { timeZone: SITE.timeZone, timeZoneName: "longOffset" })
+    .formatToParts(new Date(ms)).find((p) => p.type === "timeZoneName")?.value || "GMT";
+  const m = name.match(/GMT([+-])(\d{2}):(\d{2})/);
+  return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) : 0;
+}
+
+/** `ms` moved by `weeks` weeks, keeping the same local clock time across DST changes. */
+function addWeeksLocal(ms, weeks) {
+  const shifted = ms + weeks * WEEK_MS;
+  return shifted + (courseOffsetMinutes(ms) - courseOffsetMinutes(shifted)) * 60_000;
+}
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
 
@@ -112,52 +132,85 @@ export async function POST(request) {
   // end_time is required by the DB - default to 1 hour after start_time
   const resolvedEndTime = end_time || new Date(Date.parse(start_time) + 60 * 60 * 1000).toISOString();
 
-  const row = {
+  if (body.category != null && !isEventCategory(body.category)) {
+    return NextResponse.json({ error: "Please choose a valid category." }, { status: 400 });
+  }
+
+  // Optional weekly repeat: one event per week, same weekday and time, up to
+  // and including this course day.
+  let occurrences = 1;
+  if (body.repeat_weekly_until != null && body.repeat_weekly_until !== "") {
+    const until = typeof body.repeat_weekly_until === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.repeat_weekly_until)
+      ? Date.parse(`${body.repeat_weekly_until}T23:59:59Z`) : NaN;
+    if (!Number.isFinite(until)) return NextResponse.json({ error: "Choose a valid date for the last repeat." }, { status: 400 });
+    // Compare course days, not instants: the last week counts if it falls on or before that day.
+    const startDay = new Intl.DateTimeFormat("en-CA", { timeZone: SITE.timeZone }).format(new Date(start_time));
+    const weeks = Math.floor((until - Date.parse(`${startDay}T00:00:00Z`)) / WEEK_MS);
+    if (weeks < 0) return NextResponse.json({ error: "The last repeat must be on or after the first event." }, { status: 400 });
+    occurrences = weeks + 1;
+    if (occurrences > MAX_OCCURRENCES) {
+      return NextResponse.json({ error: `A weekly series can have at most ${MAX_OCCURRENCES} events. Choose an earlier last date.` }, { status: 400 });
+    }
+  }
+
+  const baseRow = {
     title: title.trim(),
     description: description?.trim() || null,
     location: location?.trim() || null,
     presenter: presenter?.trim() || null,
     start_time,
     end_time: resolvedEndTime,
+    ...(body.category ? { category: body.category } : {}),
     created_by: netID,
     audience_type,
     audience_values: audience_type === "all" ? [] : cleanAudience,
     // Only sent when set, so events without hosts still save before the hosts migration.
     ...(hosts.values.length ? { hosts: hosts.values } : {}),
   };
+  const seriesId = occurrences > 1 ? randomUUID() : null;
+  const startMs = Date.parse(start_time);
+  const endMs = Date.parse(resolvedEndTime);
+  const rows = Array.from({ length: occurrences }, (_, week) => ({
+    ...baseRow,
+    start_time: new Date(addWeeksLocal(startMs, week)).toISOString(),
+    end_time: new Date(addWeeksLocal(endMs, week)).toISOString(),
+    ...(seriesId ? { series_id: seriesId } : {}),
+  }));
 
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
-    const fullRow = {
-      id: randomUUID(),
-      created_at: new Date().toISOString(),
-      point_value: 0,
-      check_in_open: false,
-      check_in_opened_at: null,
-      is_active: true,
-      checked_in_students: [],
-      qr_code_secret: null,
-      join_link: null,
-      hosts: [],
-      ...row,
-      audience_type,
-      audience_values: audience_type === "all" ? [] : cleanAudience,
-    };
-    await sandboxWrite(netID, "events", "insert", fullRow.id, fullRow);
-    return NextResponse.json(fullRow, { status: 201 });
+    const created = [];
+    for (const row of rows) {
+      const fullRow = {
+        id: randomUUID(),
+        created_at: new Date().toISOString(),
+        point_value: 0,
+        check_in_open: false,
+        check_in_opened_at: null,
+        is_active: true,
+        checked_in_students: [],
+        qr_code_secret: null,
+        join_link: null,
+        hosts: [],
+        ...row,
+        audience_type,
+        audience_values: audience_type === "all" ? [] : cleanAudience,
+      };
+      await sandboxWrite(netID, "events", "insert", fullRow.id, fullRow);
+      created.push(fullRow);
+    }
+    return NextResponse.json({ ...created[0], series_count: created.length }, { status: 201 });
   }
 
-  let { data, error } = await supabaseServer
-    .from(table("events"))
-    .insert(row)
-    .select()
-    .single();
+  const missingColumn = (e) => e && (e.code === "PGRST204" || e.code === "42703");
+  const insertRows = (list) => supabaseServer.from(table("events")).insert(list).select();
+  let { data, error } = await insertRows(rows);
 
-  if (error && audience_type === "all" && (error.code === "PGRST204" || error.code === "42703")) {
-    ({ data, error } = await supabaseServer
-      .from(table("events"))
-      .insert({ ...row, audience_type: undefined, audience_values: undefined })
-      .select()
-      .single());
+  // Before the categories migration runs, save without category/series_id.
+  if (missingColumn(error) && rows.some((r) => "category" in r || "series_id" in r)) {
+    ({ data, error } = await insertRows(rows.map(({ category, series_id, ...rest }) => rest)));
+  }
+  if (missingColumn(error) && audience_type === "all") {
+    ({ data, error } = await insertRows(rows.map(({ category, series_id, ...rest }) => ({ ...rest, audience_type: undefined, audience_values: undefined }))));
   }
 
   if (error) {
@@ -171,5 +224,6 @@ export async function POST(request) {
           : "The event could not be saved. Please try again. If this continues, contact the website administrator.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
-  return NextResponse.json(data, { status: 201 });
+  const first = [...(data || [])].sort((x, y) => Date.parse(x.start_time) - Date.parse(y.start_time))[0];
+  return NextResponse.json({ ...first, series_count: data?.length ?? 1 }, { status: 201 });
 }

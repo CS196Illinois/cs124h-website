@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;600&family=Kufam:ital,wght@0,400..900;1,400..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;600&family=Kufam:ital,wght@0,400..900;1,400..900&display=swap");
 
 /* ─── Design tokens ───────────────────────────────────────────────
    Every redesigned page and component reads colors from these. Light is the
@@ -9,6 +9,8 @@
 
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* Headings only; body text stays Inter. */
+  --font-display: "Bricolage Grotesque", var(--font-sans);
 
   /* Illinois brand */
   --illini-blue: #13294b;
@@ -17,8 +19,10 @@
   --bg: #ffffff;
   --surface: #ffffff;
   --surface-2: #f3f4f6;
-  --text: #111827;
-  --text-muted: #5b6472;
+  --band: #eef2f8;            /* pale Illinois-blue panel */
+  --heading: #13294b;
+  --text: #1b2333;
+  --text-muted: #5a6478;
   --line: #e3e6eb;
   --line-strong: #cfd4db;
   --accent: #c84113;          /* orange that passes contrast on white */
@@ -52,6 +56,8 @@
     --bg: #10141c;
     --surface: #10141c;
     --surface-2: #1a202b;
+    --band: #161e2c;
+    --heading: #f1f4f9;
     --text: #e6e9ef;
     --text-muted: #9aa4b5;
     --line: #2a3140;
@@ -78,6 +84,8 @@
   --bg: #10141c;
   --surface: #10141c;
   --surface-2: #1a202b;
+  --band: #161e2c;
+  --heading: #f1f4f9;
   --text: #e6e9ef;
   --text-muted: #9aa4b5;
   --line: #2a3140;
@@ -179,8 +187,11 @@ input[type="number"] {
 }
 
 .pageHeading h1 {
-  font-size: 2rem;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+  color: var(--heading);
 }
 
 .pageHeading p {
@@ -197,8 +208,8 @@ input[type="number"] {
 
 .btn {
   display: inline-block;
-  padding: 0.4rem 0.85rem;
-  border-radius: var(--radius);
+  padding: 0.55rem 1rem;
+  border-radius: 6px;
   border: 1px solid var(--line-strong);
   background: var(--surface);
   color: var(--text);
@@ -220,6 +231,21 @@ input[type="number"] {
 
 .btnPrimary:hover {
   background: #1d3a66;
+}
+
+/* Navy disappears on dark backgrounds; flip to a light button. */
+:root[data-theme="dark"] .btnPrimary {
+  background: #e8ecf3;
+  border-color: #e8ecf3;
+  color: var(--illini-blue);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .btnPrimary {
+    background: #e8ecf3;
+    border-color: #e8ecf3;
+    color: var(--illini-blue);
+  }
 }
 
 .skeleton {

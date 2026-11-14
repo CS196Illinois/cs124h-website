@@ -95,6 +95,8 @@ CREATE TABLE IF NOT EXISTS test_events (
   check_in_open         boolean NOT NULL DEFAULT false,
   check_in_opened_at    timestamptz,
   created_by            text,
+  category              text,
+  series_id             uuid,
   sheet_tab_gid         integer,
   sheet_synced_at       timestamptz,
   sheet_sync_error      text,
@@ -113,6 +115,15 @@ CREATE TABLE IF NOT EXISTS test_event_checkins (
 );
 
 -- ── Sprints + per-student completions ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS test_mps (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name              text NOT NULL,       -- shown as "MP <name>", e.g. "MP NeuralNet"
+  release_at        timestamptz,
+  due_at            timestamptz NOT NULL,
+  prairielearn_url  text,
+  created_at        timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS test_sprints (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   number            integer NOT NULL,

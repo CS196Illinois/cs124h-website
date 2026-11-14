@@ -1,70 +1,62 @@
-.resourceSection {
-  margin-top: 2rem;
-  margin-bottom: 3rem;
+.section + .section {
+  margin-top: 3rem;
 }
 
-@media (min-width: 768px) {
-  .mainContent {
-    padding: 2.5rem;
-  }
+.section h2 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--heading);
+  margin-bottom: 1rem;
 }
 
-@media (min-width: 1024px) {
-  .mainContent {
-    padding: 4rem;
-  }
-}
-
-/* Header */
-/* I listed the tailwind equivalents of the styles incase we switch to tailwind CSS */
-.header {
-  text-align: center;
-  margin-bottom: 2.5rem; /* mb-10 */
-}
-
-@media (min-width: 768px) {
-  .header {
-    margin-bottom: 4rem; /* md:mb-16 */
-  }
-}
-
-.title {
-  font-size: 2.25rem; /* text-4xl */
-  line-height: 2.5rem;
-  font-weight: 700; /* bold */
-  margin-bottom: 1rem; /* mb-4 */
-  color: #f9fafb; /* text-gray-50 */
-}
-
-@media (min-width: 768px) {
-  .title {
-    font-size: 3rem; /* md:text-5xl */
-    line-height: 1;
-  }
-}
-
-/* Project Grid */
-.projectGrid {
+.videoGrid {
   display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr)); /* grid-cols-1 */
-  gap: 1.5rem; /* gap-6 */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: 2rem 1.5rem;
 }
 
-@media (min-width: 640px) { /* sm */
-  .projectGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)); /* sm:grid-cols-2 */
-  }
+/* Blog posts: a reading list, not cards. */
+.posts {
+  list-style: none;
+  max-width: 46rem;
+  border-top: 1px solid var(--line);
 }
 
-@media (min-width: 1024px) { /* lg */
-  .projectGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)); /* lg:grid-cols-3 */
-  }
+.posts li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
 }
 
-@media (min-width: 1280px) { /* xl */
-  .projectGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)); /* xl:grid-cols-4 */
-    gap: 2rem; /* md:gap-8 */
-  }
+.postTitle {
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.postBy {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.posts p {
+  margin-top: 0.2rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.vault {
+  max-width: 46rem;
+}
+
+.empty {
+  color: var(--text-muted);
 }

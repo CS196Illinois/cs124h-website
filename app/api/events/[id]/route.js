@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite } from "../../../../lib/sandbox";
-import { checkInWindowClosed, CHECK_IN_GRACE_MS, validateEventAudience, validateEventHosts, getManagedEvent, getCheckInEvent, canRunCheckIn } from "../../../../lib/events";
+import { isEventCategory } from "../../../../lib/eventCategories";
+import { checkInWindowClosed, CHECK_IN_GRACE_MS, validateEventAudience, validateEventHosts, getManagedEvent, getCheckInEvent, canRunCheckIn, canManageEvent, EVENT_FULL_ACCESS_ROLES } from "../../../../lib/events";
 import { EVENT_TEXT_MAX } from "../../../../lib/fieldRules";
 import { serverError, signInRequired } from "../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../lib/session";
@@ -19,12 +20,12 @@ export async function PATCH(request, { params }) {
   const { id } = await params;
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Invalid event update." }, { status: 400 });
-  // Opening/closing check-in is also open to hosts and course leads; every
-  // other change stays creator-only.
+  // Opening/closing check-in is also open to hosts; every other change is for
+  // the creator or a course lead (who can do everything).
   const checkInOnly = Object.keys(body).length > 0 && Object.keys(body).every((key) => key === "check_in_open");
   const managed = checkInOnly ? await getCheckInEvent(id, netID, userRole, "*") : await getManagedEvent(id, netID, userRole, "*");
   if (!managed) {
-    return NextResponse.json({ error: checkInOnly ? "Only the event's creator, hosts, or a course lead can run its check-in." : "Only the creator can change this event." }, { status: 403 });
+    return NextResponse.json({ error: checkInOnly ? "Only the event's creator, hosts, or a course lead can run its check-in." : "Only the event's creator or a course lead can change this event." }, { status: 403 });
   }
   const updates = {};
   if (body.hosts !== undefined) {
@@ -60,13 +61,17 @@ export async function PATCH(request, { params }) {
   if ([updates.title, body.location].some((value) => typeof value === "string" && value.trim().length > EVENT_TEXT_MAX)) {
     return NextResponse.json({ error: `Title and location must be ${EVENT_TEXT_MAX} characters or fewer.` }, { status: 400 });
   }
+  if (body.category !== undefined) {
+    if (body.category !== null && !isEventCategory(body.category)) return NextResponse.json({ error: "Please choose a valid category." }, { status: 400 });
+    updates.category = body.category;
+  }
   if (body.description !== undefined) updates.description = body.description?.trim() || null;
   if (body.location   !== undefined) updates.location   = body.location?.trim() || null;
 
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
     const { data: realRow } = await supabaseServer.from(table("events")).select("*").eq("id", id).maybeSingle();
     const current = await getEffectiveRow(netID, "events", id, realRow);
-    if (!current || !(checkInOnly ? canRunCheckIn(current, netID, userRole) : current.created_by === netID)) {
+    if (!current || !(checkInOnly ? canRunCheckIn(current, netID, userRole) : canManageEvent(current, netID, userRole))) {
       return NextResponse.json({ error: "That event could not be found, or you do not have permission to edit it." }, { status: 403 });
     }
     const merged = { ...current, ...updates };
@@ -74,9 +79,10 @@ export async function PATCH(request, { params }) {
     return NextResponse.json(merged);
   }
 
-  // Only the event's creator can edit it; check-in access was checked above.
+  // Scope non-check-in edits to the creator unless the caller has full
+  // access; check-in access was checked above.
   let query = supabaseServer.from(table("events")).update(updates).eq("id", id);
-  if (!checkInOnly) query = query.eq("created_by", netID);
+  if (!checkInOnly && !EVENT_FULL_ACCESS_ROLES.includes(userRole)) query = query.eq("created_by", netID);
   const { data, error } = await query.select().maybeSingle();
   if (error) return serverError();
   if (!data) {
@@ -97,15 +103,23 @@ export async function DELETE(request, { params }) {
   if (isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off") {
     const { data: realRow } = await supabaseServer.from(table("events")).select("*").eq("id", id).maybeSingle();
     const current = await getEffectiveRow(netID, "events", id, realRow);
-    if (!current || current.created_by !== netID) {
+    if (!current || !canManageEvent(current, netID, userRole)) {
       return NextResponse.json({ error: "That event could not be found, or you do not have permission to delete it." }, { status: 403 });
     }
     await sandboxWrite(netID, "events", "delete", id, null);
     return NextResponse.json({ success: true });
   }
 
-  let query = supabaseServer.from(table("events")).delete().eq("id", id);
-  query = query.eq("created_by", netID);
+  // ?series=all removes every event in this event's weekly series.
+  const wholeSeries = new URL(request.url).searchParams.get("series") === "all";
+  let seriesId = null;
+  if (wholeSeries) {
+    const { data: target } = await supabaseServer.from(table("events")).select("series_id").eq("id", id).maybeSingle();
+    seriesId = target?.series_id ?? null;
+  }
+  let query = supabaseServer.from(table("events")).delete();
+  query = seriesId ? query.eq("series_id", seriesId) : query.eq("id", id);
+  if (!EVENT_FULL_ACCESS_ROLES.includes(userRole)) query = query.eq("created_by", netID);
   const { data, error } = await query.select("id");
   if (error) return serverError();
   // A scoped delete matching 0 rows means either the event doesn't exist, or

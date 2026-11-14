@@ -1,73 +1,17 @@
-@media (min-width: 768px) {
-  .mainContent {
-    padding: 2.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .mainContent {
-    padding: 4rem;
-  }
-}
-
-/* Header */
-/* I listed the tailwind equivalents of the styles incase we switch to tailwind CSS */
-.header {
-  text-align: center;
-  margin-bottom: 2.5rem; /* mb-10 */
-}
-
-@media (min-width: 768px) {
-  .header {
-    margin-bottom: 4rem; /* md:mb-16 */
-  }
-}
-
-.title {
-  font-size: 2.25rem; /* text-4xl */
-  line-height: 2.5rem;
-  font-weight: 700; /* bold */
-  margin-bottom: 1rem; /* mb-4 */
-  color: #f9fafb; /* text-gray-50 */
-}
-
-@media (min-width: 768px) {
-  .title {
-    font-size: 3rem; /* md:text-5xl */
-    line-height: 1;
-  }
-}
-
-/* Project Grid */
 .projectGrid {
   display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr)); /* grid-cols-1 */
-  gap: 1.5rem; /* gap-6 */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  gap: 2.25rem 1.75rem;
 }
 
-@media (min-width: 640px) { /* sm */
-  .projectGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)); /* sm:grid-cols-2 */
-  }
+.tabSkeleton {
+  display: flex;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--line);
 }
 
-@media (min-width: 1024px) { /* lg */
-  .projectGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)); /* lg:grid-cols-3 */
-  }
+.empty {
+  color: var(--text-muted);
 }
-
-@media (min-width: 1280px) { /* xl */
-  .projectGrid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)); /* xl:grid-cols-4 */
-    gap: 2rem; /* md:gap-8 */
-  }
-}
-
-/* No Projects Message */
-.noProjects {
-  text-align: center;
-  color: #dbeafe; /* text-blue-200 */
-  margin-top: 2rem; /* mt-8 */
-}
-

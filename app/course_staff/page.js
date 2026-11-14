@@ -1,10 +1,73 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import PublicImage from "../../components/PublicImage";
 import StaffCard from "../../components/StaffCard";
 import SemesterTabs from "../../components/SemesterTabs";
 import styles from "./CourseStaff.module.css";
+
+// Leads come first, in this order; everyone else is a Project Manager.
+const LEAD_ROLES = ["Course Lead", "Head Project Manager", "Lead Web Developer", "Web Developer"];
+const leadRank = (role) => {
+  const i = LEAD_ROLES.indexOf(role);
+  return i === -1 ? LEAD_ROLES.length : i;
+};
+
+function toMember(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role,
+    image: row.image_url,
+    year: row.year,
+    major: row.major,
+    semesters: row.semesters_count,
+    bio: row.bio,
+    email: row.email,
+  };
+}
+
+function StaffDialog({ member, onClose }) {
+  const closeRef = useRef(null);
+  useEffect(() => { closeRef.current?.focus(); }, []);
+
+  const details = [
+    ["Year", member.year],
+    ["Major", member.major],
+    ["Semesters on staff", member.semesters],
+    ["Email", member.email && <a href={`mailto:${member.email}`}>{member.email}</a>],
+  ].filter(([, value]) => value);
+
+  return (
+    <div className={styles.backdrop} onClick={onClose}>
+      <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="member-name" onClick={(e) => e.stopPropagation()}>
+        <button ref={closeRef} type="button" className={styles.close} onClick={onClose} aria-label="Close">
+          &times;
+        </button>
+        {member.image && (
+          <div className={styles.dialogPhoto}>
+            <PublicImage src={member.image} alt={member.name} width={480} height={600} sizes="(max-width: 700px) 60vw, 260px" />
+          </div>
+        )}
+        <div className={styles.dialogText}>
+          <h2 id="member-name">{member.name}</h2>
+          <p className={styles.dialogRole}>{member.role}</p>
+          {details.length > 0 && (
+            <dl className={styles.details}>
+              {details.map(([label, value]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {member.bio && <p className={styles.bio}>{member.bio}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function CourseStaffPage() {
   const [semestersData, setSemestersData] = useState([]);
@@ -14,188 +77,88 @@ export default function CourseStaffPage() {
 
   useEffect(() => {
     let mounted = true;
-
-    async function load() {
-      const res = await fetch("/api/public/staff");
-      const data = res.ok ? await res.json() : null;
-
+    (async () => {
+      const res = await fetch("/api/public/staff").catch(() => null);
+      const data = res?.ok ? await res.json() : null;
       if (!mounted) return;
-
       if (data) {
-        const semesterMap = new Map();
-        data.forEach((row) => {
-          if (!semesterMap.has(row.semester)) semesterMap.set(row.semester, []);
-          semesterMap.get(row.semester).push({
-            id: row.id,
-            name: row.name,
-            role: row.role,
-            image: row.image_url,
-            year: row.year,
-            major: row.major,
-            semesters: row.semesters_count,
-            bio: row.bio,
-            email: row.email,
-          });
-        });
-
-        const semesters = [...semesterMap.entries()].map(([semester, staff]) => ({
-          semester,
-          staff,
-        }));
-        setSemestersData(semesters);
+        const bySemester = new Map();
+        for (const row of data) {
+          if (!bySemester.has(row.semester)) bySemester.set(row.semester, []);
+          bySemester.get(row.semester).push(toMember(row));
+        }
+        setSemestersData([...bySemester.entries()].map(([semester, staff]) => ({ semester, staff })));
       }
       setLoading(false);
-    }
-
-    load();
+    })();
     return () => { mounted = false; };
   }, []);
 
-  // Lock scroll & enable ESC to close when modal is open
+  // Escape closes the dialog; the page behind it doesn't scroll.
   useEffect(() => {
     if (!selectedMember) return;
-
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") closeModal();
-    };
+    const onKeyDown = (e) => e.key === "Escape" && setSelectedMember(null);
     document.addEventListener("keydown", onKeyDown);
-
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = prevOverflow;
     };
   }, [selectedMember]);
 
-  const openModal = (member) => setSelectedMember(member);
-  const closeModal = () => setSelectedMember(null);
-
-  if (loading) {
-    return (
-      <div className={`${styles.pageContainer} pageContainer`}>
-        <main className={styles.mainContent}>
-          <div className={styles.header}>
-            <h1 className={`${styles.title}`}>Our Staff</h1>
-          </div>
-          {/* Semester tab skeletons */}
-          <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem", marginBottom: "3rem", flexWrap: "wrap" }}>
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="skeleton" style={{ width: "130px", height: "42px", borderRadius: "8px" }} />
-            ))}
-          </div>
-          {/* Staff card skeletons */}
-          <div className={styles.staffCardContainer}>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="skeleton" style={{ aspectRatio: "4/5", borderRadius: "1.5rem" }} />
-            ))}
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (!semestersData?.length) return null;
-
-  const getPeople = (semesterObj) => {
-    if (!semesterObj) return [];
-    if (Array.isArray(semesterObj.data)) return semesterObj.data;
-    if (Array.isArray(semesterObj.staff)) return semesterObj.staff;
-    return [];
-  };
-
-  const semesterTitles = semestersData.map((s) => s.semester);
-
-  // Guarded index
-  const safeSemesterIndex =
-    selectedSemesterIndex >= 0 && selectedSemesterIndex < semestersData.length
-      ? selectedSemesterIndex
-      : 0;
-
-  const currentSemester = semestersData[safeSemesterIndex];
-  const people = getPeople(currentSemester);
+  const index = selectedSemesterIndex < semestersData.length ? selectedSemesterIndex : 0;
+  const people = semestersData[index]?.staff ?? [];
+  const leads = people.filter((m) => leadRank(m.role) < LEAD_ROLES.length).sort((a, b) => leadRank(a.role) - leadRank(b.role));
+  const pms = people.filter((m) => leadRank(m.role) === LEAD_ROLES.length);
 
   return (
-    <div className={`${styles.pageContainer} pageContainer`}>
-      <main className={styles.mainContent}>
-        <div className={styles.header}>
-          <h1 className={`${styles.title} ${selectedMember ? styles.opacity20 : styles.opacity100}`}>
-            Our Staff
-          </h1>
-        </div>
+    <main className="page">
+      <header className="pageHeading">
+        <h1>Course Staff</h1>
+        <p>The students who run CS 124 Honors. Select anyone to learn more about them.</p>
+      </header>
 
-        <SemesterTabs
-          semesters={semesterTitles}
-          selectedSemester={safeSemesterIndex}
-          onSelectSemester={(index) => {
-            setSelectedSemesterIndex(index);
-            if (selectedMember) closeModal();
-          }}
-        />
-
-        <div
-          className={`${styles.staffCardContainer} ${selectedMember ? styles.opacity20 : styles.opacity100}`}
-        >
-          {people.map((member) => (
-            <StaffCard key={member.id ?? member.name} member={member} onClick={openModal} />
+      {loading ? (
+        <div className={styles.grid}>
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i}>
+              <div className="skeleton" style={{ aspectRatio: "4/5", borderRadius: "8px", marginBottom: "0.5rem" }} />
+              <div className="skeleton" style={{ height: "0.9rem", width: "70%" }} />
+            </div>
           ))}
         </div>
+      ) : semestersData.length === 0 ? (
+        <p className={styles.empty}>The staff list hasn&apos;t been posted yet.</p>
+      ) : (
+        <>
+          <SemesterTabs
+            semesters={semestersData.map((s) => s.semester)}
+            selectedSemester={index}
+            onSelectSemester={(i) => { setSelectedSemesterIndex(i); setSelectedMember(null); }}
+          />
 
-        {selectedMember && (
-          <div
-            className={styles.popup}
-            onClick={closeModal}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="member-name"
-          >
-            <div className={styles.popupContent} onClick={(e) => e.stopPropagation()} role="document">
-              <button className={styles.close} onClick={closeModal} aria-label="Close">
-                &times;
-              </button>
-
-              <div className={styles.imagePopup}>
-                <PublicImage src={selectedMember.image} alt={selectedMember.name} width={640} height={800}
-                  sizes="(max-width: 768px) 80vw, 400px" />
+          {leads.length > 0 && (
+            <section aria-labelledby="leads-heading" className={styles.group}>
+              <h2 id="leads-heading">Leads</h2>
+              <div className={styles.grid}>
+                {leads.map((m) => <StaffCard key={m.id ?? m.name} member={m} onClick={setSelectedMember} showRole />)}
               </div>
+            </section>
+          )}
 
-              <div className={styles.textContent}>
-                <h2 id="member-name">{selectedMember.name}</h2>
-                <p className={styles.role}>{selectedMember.role}</p>
-
-                <div className={styles.staffDetails}>
-                  <div className={styles.detailItem}>
-                    <div className={styles.label}>Year:</div>
-                    <div className={styles.value}>{selectedMember.year || "N/A"}</div>
-                  </div>
-
-                  <div className={styles.detailItem}>
-                    <div className={styles.label}>Major:</div>
-                    <div className={styles.value}>{selectedMember.major || "N/A"}</div>
-                  </div>
-
-                  <div className={styles.detailItem}>
-                    <div className={styles.label}>Semesters as PM:</div>
-                    <div className={styles.value}>{selectedMember.semesters || "N/A"}</div>
-                  </div>
-
-                  {selectedMember.email && (
-                    <div className={styles.detailItem}>
-                      <div className={styles.label}>UIUC Email:</div>
-                      <div className={styles.value}>{selectedMember.email}</div>
-                    </div>
-                  )}
-                </div>
-
-                <div className={styles.bioSection}>
-                  <div className={styles.bio}>{selectedMember.bio}</div>
-                </div>
+          {pms.length > 0 && (
+            <section aria-labelledby="pms-heading" className={styles.group}>
+              <h2 id="pms-heading">Project managers <span>{pms.length}</span></h2>
+              <div className={styles.grid}>
+                {pms.map((m) => <StaffCard key={m.id ?? m.name} member={m} onClick={setSelectedMember} />)}
               </div>
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {selectedMember && <StaffDialog member={selectedMember} onClose={() => setSelectedMember(null)} />}
+    </main>
   );
 }

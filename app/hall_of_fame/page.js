@@ -7,16 +7,12 @@ import ProjectCard from "../../components/ProjectCard.js";
 
 function ProjectCardSkeleton() {
   return (
-    <div style={{ borderRadius: "12px", overflow: "hidden", background: "rgba(255,255,255,0.05)" }}>
-      <div className="skeleton" style={{ width: "100%", aspectRatio: "3/2" }} />
-      <div style={{ padding: "1rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-        <div className="skeleton" style={{ height: "1rem", width: "70%" }} />
-        <div className="skeleton" style={{ height: "0.7rem", width: "45%" }} />
-        <div className="skeleton" style={{ height: "0.7rem", width: "100%", marginTop: "0.25rem" }} />
-        <div className="skeleton" style={{ height: "0.7rem", width: "85%" }} />
-        <div className="skeleton" style={{ height: "0.7rem", width: "60%" }} />
-        <div className="skeleton" style={{ height: "2rem", width: "100%", marginTop: "0.5rem", borderRadius: "8px" }} />
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
+      <div className="skeleton" style={{ width: "100%", aspectRatio: "16/10", borderRadius: "8px" }} />
+      <div className="skeleton" style={{ height: "1rem", width: "70%" }} />
+      <div className="skeleton" style={{ height: "0.75rem", width: "45%" }} />
+      <div className="skeleton" style={{ height: "0.75rem", width: "100%" }} />
+      <div className="skeleton" style={{ height: "0.75rem", width: "85%" }} />
     </div>
   );
 }
@@ -62,48 +58,35 @@ export default function HallOfFamePage() {
   const projects = semestersData[selectedSemester]?.data ?? [];
 
   return (
-    <div className={`${styles.pageContainer} pageContainer`}>
-      <main className={styles.mainContent}>
-        <div className={styles.header}>
-          <h1 className={styles.title}>Welcome to the Hall of Fame!</h1>
-        </div>
+    <main className="page">
+      <header className="pageHeading">
+        <h1>Hall of Fame</h1>
+        <p>Projects built by CS 124 Honors groups, by semester.</p>
+      </header>
 
-        {loading ? (
-          <>
-            {/* Semester tab skeletons */}
-            <div style={{ display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "3rem", flexWrap: "wrap" }}>
-              {[1, 2].map((i) => (
-                <div key={i} className="skeleton" style={{ width: "130px", height: "42px", borderRadius: "8px" }} />
-              ))}
-            </div>
-
-            {/* Project card skeletons */}
+      {loading ? (
+        <>
+          <div className={styles.tabSkeleton}>
+            {[1, 2].map((i) => <div key={i} className="skeleton" style={{ width: "6.5rem", height: "1.25rem" }} />)}
+          </div>
+          <div className={styles.projectGrid}>
+            {Array.from({ length: 6 }).map((_, i) => <ProjectCardSkeleton key={i} />)}
+          </div>
+        </>
+      ) : semesters.length === 0 ? (
+        <p className={styles.empty}>No projects have been added yet.</p>
+      ) : (
+        <>
+          <SemesterTabs semesters={semesters} selectedSemester={selectedSemester} onSelectSemester={setSelectedSemester} />
+          {projects.length > 0 ? (
             <div className={styles.projectGrid}>
-              {Array.from({ length: 4 }).map((_, i) => (
-                <ProjectCardSkeleton key={i} />
-              ))}
+              {projects.map((project) => <ProjectCard key={project.id} project={project} />)}
             </div>
-          </>
-        ) : (
-          <>
-            <SemesterTabs
-              semesters={semesters}
-              selectedSemester={selectedSemester}
-              onSelectSemester={setSelectedSemester}
-            />
-
-            {projects.length > 0 ? (
-              <div className={styles.projectGrid}>
-                {projects.map((project) => (
-                  <ProjectCard key={project.id} project={project} />
-                ))}
-              </div>
-            ) : (
-              <p className={styles.noProjects}>No projects found for this semester.</p>
-            )}
-          </>
-        )}
-      </main>
-    </div>
+          ) : (
+            <p className={styles.empty}>No projects for this semester yet.</p>
+          )}
+        </>
+      )}
+    </main>
   );
 }

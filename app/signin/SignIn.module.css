@@ -1,0 +1,62 @@
+.page {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: clamp(2.5rem, 10vh, 6rem);
+}
+
+.panel {
+  width: 100%;
+  max-width: 26rem;
+  padding: 2rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.panel h1 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+  color: var(--heading);
+}
+
+.lede {
+  margin-top: 0.4rem;
+  color: var(--text-muted);
+}
+
+.notice {
+  margin-top: 1.25rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.signIn {
+  width: 100%;
+  margin-top: 1.5rem;
+  padding: 0.7rem 1rem;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.signIn:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.help {
+  margin-top: 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 480px) {
+  .panel {
+    padding: 1.5rem 1.25rem;
+  }
+}

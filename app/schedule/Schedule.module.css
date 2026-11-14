@@ -1,0 +1,430 @@
+/* ─── Timeline ────────────────────────────────────────────────── */
+.timelineWrap {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.toolbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.status {
+  color: var(--success);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.toolbar :global(.btn) {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.88rem;
+}
+
+.toolbar :global(.btn:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.legend li span {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 3px;
+}
+
+.keySprint { background: var(--cat-sprint); }
+.keyMp { background: var(--cat-mp); }
+.keyEvent { background: var(--cat-event); }
+
+.scroller {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.grid {
+  --day: 2.4rem;
+  --label: 5.5rem;
+  display: grid;
+  grid-template-columns: var(--label) repeat(var(--days), var(--day));
+  width: max-content;
+  padding-bottom: 0.5rem;
+}
+
+.corner,
+.rowLabel {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  grid-column: 1;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+.rowLabel {
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem;
+  min-height: 2.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.month {
+  padding: 0.55rem 0 0.2rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--heading);
+  border-left: 1px solid var(--line);
+}
+
+.month span {
+  position: sticky;
+  left: calc(var(--label) + 0.5rem);
+  padding-left: 0.5rem;
+}
+
+.dayHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.15rem 0 0.4rem;
+  border-bottom: 1px solid var(--line);
+  line-height: 1.15;
+}
+
+.dayHead span {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.dayHead strong {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.dayHead.today strong {
+  background: var(--illini-orange);
+  color: #fff;
+  font-weight: 700;
+}
+
+.dayCol {
+  z-index: 0;
+}
+
+.addable {
+  cursor: copy;
+}
+
+.addable:hover {
+  background: color-mix(in srgb, var(--cat-event) 8%, transparent);
+}
+
+.weekend {
+  background: var(--surface-2);
+}
+
+.monday {
+  border-left: 1px solid var(--line);
+}
+
+.dayCol.today {
+  background: color-mix(in srgb, var(--illini-orange) 9%, transparent);
+}
+
+/* Bars and markers sit above the day columns. */
+.bar,
+.due,
+.event {
+  position: relative;
+  z-index: 1;
+  align-self: center;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  height: 1.75rem;
+  margin: 0.4rem 2px;
+  padding: 0 0.6rem;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  /* clip, not hidden: keeps the label's sticky positioning working. */
+  overflow: clip;
+  text-decoration: none;
+}
+
+/* The label stays in view when the bar starts off to the left. */
+.bar span {
+  position: sticky;
+  left: calc(var(--label) + 0.5rem);
+}
+
+.bar:hover {
+  filter: brightness(1.1);
+}
+
+.sprintBar {
+  background: var(--cat-sprint);
+}
+
+.mpBar {
+  background: var(--cat-mp);
+}
+
+.due {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin: 0.4rem 0;
+  padding-right: calc(var(--day) / 2 - 0.45rem);
+  color: var(--cat-mp);
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.due:hover span {
+  text-decoration: underline;
+}
+
+.due i {
+  width: 0.9rem;
+  height: 0.9rem;
+  background: var(--cat-mp);
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+
+.event {
+  justify-self: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0.3rem 0;
+  border: 2px solid var(--cat-event);
+  border-radius: 5px;
+  background: var(--cat-event);
+  cursor: pointer;
+}
+
+.event:hover {
+  transform: scale(1.12);
+}
+
+.selected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--line);
+  background: var(--band);
+  font-size: 0.92rem;
+  min-height: 3rem;
+}
+
+.selected > span:not(.categoryTag) {
+  color: var(--text-muted);
+}
+
+.manage {
+  display: inline-flex;
+  gap: 0.75rem;
+}
+
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--danger);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+.categoryTag {
+  color: var(--cat-event);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* ─── Week by week ────────────────────────────────────────────── */
+.list {
+  margin-top: 2.75rem;
+  max-width: 52rem;
+}
+
+.listHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.listHead h2 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--heading);
+}
+
+.listHead a {
+  font-size: 0.92rem;
+}
+
+.week + .week {
+  margin-top: 1.75rem;
+}
+
+.week h3 {
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--heading);
+  margin-bottom: 0.5rem;
+}
+
+.week h3 span {
+  margin-left: 0.4rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.week ul {
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.week li {
+  --kind: var(--cat-event);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.1rem;
+}
+
+.week li + li {
+  border-top: 1px solid var(--line);
+}
+
+.week li[data-kind="deadline"] { --kind: var(--cat-deadline); }
+
+.past {
+  opacity: 0.55;
+}
+
+.date {
+  flex-shrink: 0;
+  width: 2.75rem;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.date span {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.date strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--heading);
+}
+
+.itemText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.itemTitle {
+  font-weight: 600;
+}
+
+.itemDetail {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.kind {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--kind);
+}
+
+.earlier {
+  margin-top: 2rem;
+}
+
+.earlier summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--link);
+  margin-bottom: 1rem;
+}
+
+.empty {
+  color: var(--text-muted);
+}
+
+@media (max-width: 520px) {
+  .week li {
+    align-items: flex-start;
+    padding: 0.75rem 0.9rem;
+  }
+
+  .kind {
+    display: none;
+  }
+}

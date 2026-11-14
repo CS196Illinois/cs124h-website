@@ -145,6 +145,12 @@ export default function EventsPanel() {
     }, expiresInMs);
   }, []);
 
+  // Mirrors lib/events.js canManageEvent: the creator or a course lead.
+  const canManage = useCallback((event) => {
+    const me = session?.user?.netID;
+    return !!me && (event.created_by === me || session?.user?.role === "course_lead");
+  }, [session?.user?.netID, session?.user?.role]);
+
   // Mirrors lib/events.js canRunCheckIn: creator, a listed host, or a course lead.
   const canRunCheckIn = useCallback((event) => {
     const me = session?.user?.netID;
@@ -465,9 +471,9 @@ export default function EventsPanel() {
                         >
                           Attendees
                         </button>}
-                        {event.created_by === session?.user?.netID && <button className={styles.btnSmall} disabled={rosterLoading} onClick={() => { setAudienceEvent(event); setForm({ ...event, audience_type: event.audience_type || "all", audience_values: (event.audience_values || []).map(String) }); setFormError(""); }}>Edit audience</button>}
-                        {event.created_by === session?.user?.netID && <button className={styles.btnSmall} disabled={rosterLoading} onClick={() => { setHostsEvent(event); setForm({ ...event, hosts: [...(event.hosts || [])] }); setFormError(""); }}>Hosts</button>}
-                        {event.created_by === session?.user?.netID && <button className={styles.btnDanger} onClick={() => deleteEvent(event.id)}>
+                        {canManage(event) && <button className={styles.btnSmall} disabled={rosterLoading} onClick={() => { setAudienceEvent(event); setForm({ ...event, audience_type: event.audience_type || "all", audience_values: (event.audience_values || []).map(String) }); setFormError(""); }}>Edit audience</button>}
+                        {canManage(event) && <button className={styles.btnSmall} disabled={rosterLoading} onClick={() => { setHostsEvent(event); setForm({ ...event, hosts: [...(event.hosts || [])] }); setFormError(""); }}>Hosts</button>}
+                        {canManage(event) && <button className={styles.btnDanger} onClick={() => deleteEvent(event.id)}>
                           Delete
                         </button>}
                       </div>

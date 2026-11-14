@@ -1,0 +1,119 @@
+/* MPs and sprints side by side; stacked on narrow screens. */
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2.5rem;
+  }
+}
+
+.section {
+  min-width: 0;
+}
+
+.section h2 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--heading);
+  margin-bottom: 0.9rem;
+}
+
+.list {
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  padding: 1rem 1.25rem;
+  scroll-margin-top: calc(var(--navbar-height) + 1rem);
+}
+
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+
+/* Highlight the sprint or MP a link (e.g. from the schedule) pointed at. */
+.list li:target {
+  background: var(--band);
+}
+
+.main {
+  min-width: 0;
+}
+
+.main h3 {
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+  font-weight: 650;
+  color: var(--heading);
+}
+
+.main h3 span {
+  margin-left: 0.6rem;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.meta {
+  margin-top: 0.15rem;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.goal {
+  margin-top: 0.25rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.status {
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.status[data-tone="open"] { color: var(--cat-mp); }
+.status[data-tone="done"] { color: var(--success); }
+.status[data-tone="missing"] { color: var(--danger); }
+
+.hint,
+.empty {
+  color: var(--text-muted);
+  margin-bottom: 0.9rem;
+}
+
+@media (max-width: 560px) {
+  .list li {
+    flex-direction: column;
+    padding: 0.9rem 1rem;
+  }
+
+  .side {
+    align-items: flex-start;
+  }
+}
