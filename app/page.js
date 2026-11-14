@@ -62,22 +62,28 @@ export default async function Home() {
   const { sprint, lastSprint, mp, announcements } = await getHomeData(viewer);
 
   return (
-    <main className={`page ${styles.home}`}>
-      <header className={styles.head}>
-        <h1>{SITE.courseName}</h1>
-        <p>{SITE.semester}</p>
-      </header>
+    <main className={styles.main}>
+      <section className={styles.hero} aria-labelledby="home-title">
+        <Image
+          src="/images/home-background.jpg"
+          alt=""
+          fill
+          sizes="100vw"
+          className={styles.heroPhoto}
+          priority
+        />
+        <div className={styles.heroInner}>
+          <Image src="/images/cs124h-logo.png" alt="" width={84} height={84} className={styles.heroLogo} priority />
+          <h1 id="home-title">CS124Honors@Illinois</h1>
+          <p>{SITE.tagline}</p>
+          <div className={styles.heroActions}>
+            <a href={SITE.links.syllabus} {...external} className={styles.heroButton}>Syllabus</a>
+            <Link href="/course_info#register" className={`${styles.heroButton} ${styles.heroButtonPrimary}`}>Register</Link>
+          </div>
+        </div>
+      </section>
 
-      <Image
-        src="/images/home-background.jpg"
-        alt="CS 124 Honors students in a lecture hall, throwing paper airplanes"
-        width={4928}
-        height={2772}
-        sizes="(max-width: 920px) 100vw, 880px"
-        className={styles.photo}
-        priority
-      />
-
+      <div className={`page ${styles.home}`}>
       <section aria-labelledby="now-heading">
         <h2 id="now-heading" className={styles.sectionTitle}>Right now</h2>
         <div className={styles.now}>
@@ -115,6 +121,7 @@ export default async function Home() {
           </p>
         </div>
       </section>
+      </div>
     </main>
   );
 }

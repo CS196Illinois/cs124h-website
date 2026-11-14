@@ -2,42 +2,95 @@
   max-width: 880px;
 }
 
-.head {
+/* ─── Photo banner: short enough that "Right now" stays in view ── */
+.main {
+  flex: 1;
+}
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  min-height: clamp(15rem, 34vh, 19rem);
+  padding: 1.75rem var(--gutter);
+  overflow: hidden;
+  background: var(--illini-blue);
+  text-align: center;
+  color: #fff;
+}
+
+.heroPhoto {
+  z-index: -2;
+  object-fit: cover;
+  object-position: center 55%;
+}
+
+/* Darken the photo so the text reads. */
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(14, 20, 32, 0.62);
+}
+
+.heroInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 40rem;
+}
+
+.heroLogo {
+  width: clamp(3.75rem, 8vw, 5.25rem);
+  height: auto;
+}
+
+.heroInner h1 {
+  margin-top: 0.6rem;
+  font-family: "Kufam", var(--font-display);
+  font-size: clamp(1.9rem, 4.5vw, 2.9rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.heroInner p {
+  margin-top: 0.5rem;
+  font-size: 1.02rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.heroActions {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 0.9rem;
-  margin-bottom: 1.25rem;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 1.1rem;
 }
 
-.head h1 {
-  font-family: var(--font-display);
-  font-size: 2.25rem;
-  font-weight: 750;
-  letter-spacing: -0.015em;
-  color: var(--heading);
+.heroButton {
+  padding: 0.55rem 1.3rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
 }
 
-.head p {
-  color: var(--text-muted);
-  font-size: 1.05rem;
+.heroButton:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
-.photo {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 16 / 6;
-  object-fit: cover;
-  object-position: center 62%;
-  border-radius: 12px;
-  margin-bottom: 2.25rem;
+.heroButtonPrimary {
+  background: var(--illini-orange);
+  border-color: var(--illini-orange);
 }
 
-@media (max-width: 640px) {
-  .photo {
-    aspect-ratio: 16 / 9;
-  }
+.heroButtonPrimary:hover {
+  background: #e55400;
 }
 
 .sectionTitle {
