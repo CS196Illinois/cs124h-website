@@ -190,6 +190,12 @@
     animation: menuOpen 0.18s ease-out;
   }
 
+  .linksClosing {
+    display: grid;
+    pointer-events: none;
+    animation: menuClose 0.16s ease-in forwards;
+  }
+
   .links > li {
     display: block;
   }
@@ -269,13 +275,28 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes menuClose {
+  to { opacity: 0; transform: translateY(-6px); }
+}
+
 @keyframes backdropIn {
   from { opacity: 0; }
 }
 
+.backdropClosing {
+  pointer-events: none;
+  animation: backdropOut 0.16s ease-in forwards;
+}
+
+@keyframes backdropOut {
+  to { opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .linksOpen,
-  .backdrop {
+  .linksClosing,
+  .backdrop,
+  .backdropClosing {
     animation: none;
   }
 }

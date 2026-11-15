@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -44,15 +44,37 @@ export default function Navbar() {
   const pathname = usePathname() || "/";
   const { data: session, status } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
+  // While true the menu plays its closing animation before it's removed.
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef(null);
+  const openRef = useRef(false); // current open state, readable from callbacks
+  useEffect(() => { openRef.current = menuOpen; }, [menuOpen]);
+  const closeMenu = useCallback(() => {
+    if (!openRef.current) return;
+    openRef.current = false;
+    setMenuOpen(false);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    setClosing(true);
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setClosing(false), 160);
+  }, []);
+  const toggleMenu = () => {
+    if (openRef.current) return closeMenu();
+    clearTimeout(closeTimer.current);
+    setClosing(false);
+    openRef.current = true;
+    setMenuOpen(true);
+  };
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
 
   // Close the mobile menu on navigation and on Escape.
-  useEffect(() => setMenuOpen(false), [pathname]);
+  useEffect(() => closeMenu(), [pathname, closeMenu]);
   useEffect(() => {
     if (!menuOpen) return;
-    const onKey = (e) => e.key === "Escape" && setMenuOpen(false);
+    const onKey = (e) => e.key === "Escape" && closeMenu();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menuOpen]);
+  }, [menuOpen, closeMenu]);
 
   const role = session?.user?.role;
   const signedIn = status === "authenticated" && Boolean(ROLE_NAMES[role]);
@@ -82,7 +104,7 @@ export default function Navbar() {
           <span>{SITE.shortName}</span>
         </Link>
 
-        <ul id="main-nav" className={`${styles.links} ${menuOpen ? styles.linksOpen : ""}`}>
+        <ul id="main-nav" className={`${styles.links} ${menuOpen ? styles.linksOpen : closing ? styles.linksClosing : ""}`}>
           {NAV_ITEMS.map((item) => <li key={item.href}>{navLink(item)}</li>)}
           {tools.length > 0 && (
             // The signed-in role's own tabs, after the public pages.
@@ -101,7 +123,7 @@ export default function Navbar() {
           <button
             type="button"
             className={`${styles.iconButton} ${styles.menuButton}`}
-            onClick={() => setMenuOpen((open) => !open)}
+            onClick={toggleMenu}
             aria-label="Toggle menu"
             aria-expanded={menuOpen}
             aria-controls="main-nav"
@@ -110,7 +132,9 @@ export default function Navbar() {
           </button>
         </div>
       </nav>
-      {menuOpen && <div className={styles.backdrop} onClick={() => setMenuOpen(false)} aria-hidden="true" />}
+      {(menuOpen || closing) && (
+        <div className={`${styles.backdrop} ${closing ? styles.backdropClosing : ""}`} onClick={closeMenu} aria-hidden="true" />
+      )}
     </header>
   );
 }
