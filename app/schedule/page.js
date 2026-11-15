@@ -1,8 +1,12 @@
 import styles from "./Schedule.module.css";
 import Timeline from "./Timeline";
+import EventsPanel from "../../components/staff/EventsPanel";
 import { SITE } from "../../lib/siteConfig";
 import { getViewer } from "../../lib/courseData";
 import { getScheduleData } from "../../lib/schedule";
+
+// Per-viewer (signed-in users also see their own events), so never prerendered.
+export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Schedule" };
 
@@ -50,6 +54,14 @@ export default async function SchedulePage() {
         data={timeline}
         viewer={viewer && CAN_CREATE.includes(viewer.role) ? { role: viewer.role, groupNumber: viewer.groupNumber, canCreate: true } : null}
       />
+
+      {viewer && CAN_CREATE.includes(viewer.role) && (
+        <section id="manage-events" aria-labelledby="manage-events-heading" className={styles.manageEvents}>
+          <h2 id="manage-events-heading" data-tour="manage-events">Manage events</h2>
+          <p>Open and close check-in, show the code, see who attended, and change an event&apos;s audience or hosts.</p>
+          <EventsPanel />
+        </section>
+      )}
 
       <section aria-labelledby="list-heading" className={styles.list}>
         <div className={styles.listHead}>

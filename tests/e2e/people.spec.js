@@ -8,7 +8,7 @@ test.describe("course lead: people management", () => {
     await insertUser({ net_id: "existstu", role: "STUDENT", name: "Existing Student", group_number: 3 });
     await loginAs({ netID: "e2e-lead", role: "course_lead" });
 
-    await page.goto("/user/course_lead/people");
+    await page.goto("/people");
     await expect(page.getByText("existstu")).toBeVisible();
     await expect(page.getByText("Existing Student")).toBeVisible();
 
@@ -40,9 +40,9 @@ test.describe("pm: my students + gradebook CSV export", () => {
     await insertUser({ net_id: "otherstu", role: "STUDENT", name: "Other Group Student", group_number: 9 });
 
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/students");
+    await page.goto("/my-group");
 
-    // "Group 7 · N students" is rendered twice (page header + toolbar) - .first() avoids the strict-mode ambiguity.
+    // "Group 7, N students" is rendered twice (page header + toolbar) - .first() avoids the strict-mode ambiguity.
     await expect(page.getByText("Group 7").first()).toBeVisible();
     await expect(page.getByText("gstu1")).toBeVisible();
     await expect(page.getByText("gstu2")).toBeVisible();

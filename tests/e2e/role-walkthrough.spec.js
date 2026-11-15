@@ -26,7 +26,7 @@ test("course lead: people search, filters, role/group edits, remove + undo, dupl
   await insertUser({ net_id: "f-s2", role: "STUDENT", name: "Flow Two", group_number: 2 });
   await insertUser({ net_id: "f-pm", role: "PM", name: "Flow PM", group_number: 1 });
   await loginAs({ netID: "f-lead", role: "course_lead" });
-  await page.goto("/user/course_lead/people");
+  await page.goto("/people");
   await expect(page.getByText("Flow Two")).toBeVisible(SLOW);
 
   await page.getByPlaceholder("Search name or NetID…").fill("two");
@@ -80,7 +80,7 @@ test("course lead: CSV import adds people with roles and groups", async ({ page,
   const errors = watchErrors(page);
   await insertUser({ net_id: "f-lead", role: "LEAD" });
   await loginAs({ netID: "f-lead", role: "course_lead" });
-  await page.goto("/user/course_lead/people");
+  await page.goto("/people");
   await page.getByRole("button", { name: "Import CSV / Sheets" }).click();
   await page.locator('input[type="file"][accept=".csv,text/csv"]').setInputFiles({
     name: "roster.csv", mimeType: "text/csv",
@@ -102,7 +102,7 @@ test("head PM: can only add PMs/students, edits name and group, removes with und
   await insertUser({ net_id: "f-head", role: "HEAD" });
   await insertUser({ net_id: "f-s1", role: "STUDENT", name: "Flow One", group_number: 1 });
   await loginAs({ netID: "f-head", role: "head_pm" });
-  await page.goto("/user/head_pm/people");
+  await page.goto("/people");
   await expect(page.getByText("Flow One")).toBeVisible(SLOW);
 
   await page.getByRole("button", { name: "+ Add Person" }).click();
@@ -131,7 +131,7 @@ test("course lead: sprint form validation and editing", async ({ page, loginAs }
   const errors = watchErrors(page);
   await insertSprint({ number: 1, goal: "Existing", start_date: "2026-10-05", end_date: "2026-10-11" });
   await loginAs({ netID: "f-lead", role: "course_lead" });
-  await page.goto("/user/course_lead/sprints");
+  await page.goto("/assignments");
   await expect(page.getByRole("button", { name: "Sprint 1" })).toBeVisible(SLOW);
 
   // Duplicate number.
@@ -165,12 +165,12 @@ test("pm grading: invalid grades are rejected, a grade saves, edits, and clears;
   await insertSprint({ number: 1, goal: "Grade flow", check_questions: ["What did you build?"], check_max_score: 10 });
 
   await loginAs({ netID: "f-pm", role: "pm" });
-  await page.goto("/user/pm/sprints");
+  await page.goto("/assignments");
   await page.getByRole("button", { name: "Open Understanding Check" }).click();
   await expect(page.getByText("● Open")).toBeVisible(SLOW);
 
   await loginAs({ netID: "f-stu", role: "student" });
-  await page.goto("/user/student/sprints");
+  await page.goto("/assignments");
   await page.getByRole("button", { name: "Submit" }).click();
   await expect.soft(page.getByText("Answer every question before submitting.")).toBeVisible(SLOW);
   await page.locator("textarea").first().fill("A login page");
@@ -178,7 +178,7 @@ test("pm grading: invalid grades are rejected, a grade saves, edits, and clears;
   await expect(page.getByText("Submitted - awaiting grade")).toBeVisible(SLOW);
 
   await loginAs({ netID: "f-pm", role: "pm" });
-  await page.goto("/user/pm/sprints");
+  await page.goto("/assignments");
   await page.getByRole("button", { name: "Grade", exact: true }).click();
   const gradeBox = page.getByPlaceholder("e.g. 92");
   for (const [bad, msg] of [["11", "Grade cannot exceed 10."], ["-1", "Enter a valid, non-negative grade."], ["", "Enter a valid, non-negative grade."]]) {
@@ -192,12 +192,12 @@ test("pm grading: invalid grades are rejected, a grade saves, edits, and clears;
   await expect.soft(page.getByText("Graded 8/10")).toBeVisible(SLOW);
 
   await loginAs({ netID: "f-stu", role: "student" });
-  await page.goto("/user/student/sprints");
+  await page.goto("/assignments");
   await expect.soft(page.getByText("Grade: 8/10")).toBeVisible(SLOW);
   await expect.soft(page.getByText("Solid start")).toBeVisible();
 
   await loginAs({ netID: "f-pm", role: "pm" });
-  await page.goto("/user/pm/sprints");
+  await page.goto("/assignments");
   await page.getByRole("button", { name: "Edit Grade" }).click();
   await page.getByRole("button", { name: "Clear Grade" }).click();
   await expect.soft(page.getByText("Ready to grade")).toBeVisible(SLOW);
@@ -214,18 +214,18 @@ test("student: dashboard alert leads to check-in, which clears the alert; future
   await insertEvent({ title: "Other Group Event", check_in_open: true, audience_type: "groups", audience_values: ["2"], start_time: new Date().toISOString() });
 
   await loginAs({ netID: "f-stu", role: "student" });
-  await page.goto("/user/student");
-  await expect.soft(page.getByText("Check-in is open for 1 event")).toBeVisible(SLOW);
-  await expect.soft(page.getByText("Visible sprint")).toBeVisible();
-  await page.getByRole("link", { name: "Check in now →" }).click();
+  await page.goto("/");
+  await expect.soft(page.getByText("Check-in is open for Flow Event")).toBeVisible(SLOW);
+  await expect.soft(page.getByRole("heading", { name: "Sprint 1" })).toBeVisible();
+  await page.getByRole("status").getByRole("link", { name: "Check in" }).click();
   await expect.soft(page.getByText("Other Group Event")).toHaveCount(0);
   await page.getByPlaceholder("6-digit code").fill(recentCodes(ev.id)[0]);
   await page.getByRole("button", { name: "Check In" }).click();
   await expect.soft(page.getByText(/Checked in to "Flow Event"/)).toBeVisible(SLOW);
 
-  await page.goto("/user/student");
+  await page.goto("/");
   await expect.soft(page.getByText(/Check-in is open/)).toHaveCount(0);
-  await page.goto("/user/student/sprints");
+  await page.goto("/assignments");
   await expect.soft(page.getByText("Visible sprint")).toBeVisible(SLOW);
   await expect.soft(page.getByText("Hidden future sprint")).toHaveCount(0);
   expect.soft(errors).toEqual([]);
@@ -237,7 +237,7 @@ test("events: edit audience, close check-in, and sign out", async ({ page, login
   await insertUser({ net_id: "f-s1", role: "STUDENT", group_number: 1 });
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginAs({ netID: "f-lead", role: "course_lead" });
-  await page.goto("/user/course_lead/events");
+  await page.goto("/schedule");
   await page.getByRole("button", { name: "+ New Event" }).click();
   await page.getByPlaceholder("e.g. Week 5 Guest Lecture").fill("Audience edit");
   await page.getByRole("button", { name: "Create Event" }).click();
@@ -255,7 +255,7 @@ test("events: edit audience, close check-in, and sign out", async ({ page, login
 
   await page.getByRole("button", { name: "Sign out" }).first().click();
   await page.waitForURL((u) => new URL(u).pathname === "/", SLOW);
-  await page.goto("/user/course_lead");
+  await page.goto("/people");
   await expect.soft(page).toHaveURL(/signin/);
   expect.soft(errors).toEqual([]);
 });

@@ -2,7 +2,7 @@ import { test, expect } from "./fixtures";
 import { insertUser, insertSprint, clearAllTestTables } from "../helpers/db";
 
 // This spec is the first to touch six brand-new routes back-to-back
-// (/user/pm/sprints, /user/student/sprints, and four /api/sprints/[id]/check
+// (/assignments, /assignments, and four /api/sprints/[id]/check
 // endpoints), each needing its own on-demand dev-server compile on first hit
 // (see playwright.config.mjs's comment on cold-compile time). The project's
 // default 10s expect timeout covers a single cold route; this file's tests
@@ -20,7 +20,7 @@ test.describe("sprint understanding checks", () => {
 
     // Course lead: create a sprint with three understanding-check questions.
     await loginAs({ netID: "e2e-lead", role: "course_lead" });
-    await page.goto("/user/course_lead/sprints");
+    await page.goto("/assignments");
     await page.getByRole("button", { name: "+ New Sprint" }).click();
     await page.locator("textarea").nth(0).fill("Ship the login flow"); // Goal - only textarea before questions are added
     // The editor loads the bank on demand; wait before checking for existing questions.
@@ -41,7 +41,7 @@ test.describe("sprint understanding checks", () => {
 
     // PM: opens the check for their group.
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/sprints");
+    await page.goto("/assignments");
     await expect(page.getByText("Ship the login flow")).toBeVisible(SLOW);
     await expect(page.getByText("● Closed")).toBeVisible(SLOW);
     await page.getByRole("button", { name: "Open Understanding Check" }).click();
@@ -50,7 +50,7 @@ test.describe("sprint understanding checks", () => {
 
     // Student: the check wasn't visible before, is now, and they submit.
     await loginAs({ netID: "e2e-stu1", role: "student" });
-    await page.goto("/user/student/sprints");
+    await page.goto("/assignments");
     await expect(page.getByText("What design decisions did you make?")).toBeVisible(SLOW);
     const answerBoxes = page.locator("textarea");
     await answerBoxes.nth(0).fill("We used a JWT session because it needed no server-side store.");
@@ -61,7 +61,7 @@ test.describe("sprint understanding checks", () => {
 
     // PM: grades the submission, reading the answer text in the grade modal.
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/sprints");
+    await page.goto("/assignments");
     await expect(page.getByText("Ready to grade")).toBeVisible(SLOW);
     await page.getByRole("button", { name: "Grade" }).click();
     await expect(page.getByText("We used a JWT session")).toBeVisible(SLOW);
@@ -74,7 +74,7 @@ test.describe("sprint understanding checks", () => {
     await expect(page.getByText("● Closed")).toBeVisible(SLOW);
 
     await loginAs({ netID: "e2e-stu1", role: "student" });
-    await page.goto("/user/student/sprints");
+    await page.goto("/assignments");
     await expect(page.getByText("Grade: 18/20")).toBeVisible(SLOW);
     await expect(page.getByText("We used a JWT session")).toBeVisible(SLOW);
   });
@@ -85,14 +85,14 @@ test.describe("sprint understanding checks", () => {
     await insertUser({ net_id: "e2e-stu2", role: "STUDENT", name: "Student Two", group_number: 2 });
 
     await loginAs({ netID: "e2e-lead", role: "course_lead" });
-    await page.goto("/user/course_lead/sprints");
+    await page.goto("/assignments");
     await page.getByRole("button", { name: "+ New Sprint" }).click();
     await page.locator("textarea").nth(0).fill("Sprint with a check");
     await page.getByRole("checkbox").first().check();
     await page.getByRole("button", { name: "Create Sprint" }).click();
 
     await loginAs({ netID: "e2e-stu2", role: "student" });
-    await page.goto("/user/student/sprints");
+    await page.goto("/assignments");
     await expect(page.getByText("Not available right now")).toBeVisible(SLOW);
   });
 });

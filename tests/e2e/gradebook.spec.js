@@ -21,7 +21,7 @@ test.describe("gradebooks", () => {
     });
 
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/gradebook");
+    await page.goto("/assignments");
 
     // Overview tab: flat list (a PM only ever has one group, so there's no
     // group row to expand) with the group average up top.
@@ -71,7 +71,7 @@ test.describe("gradebooks", () => {
     });
 
     await loginAs({ netID: "e2e-lead", role: "course_lead" });
-    await page.goto("/user/course_lead/gradebook");
+    await page.goto("/assignments");
 
     // By Group tab: both groups listed, collapsed by default.
     await expect(page.getByText("Course Average", { exact: true })).toBeVisible();

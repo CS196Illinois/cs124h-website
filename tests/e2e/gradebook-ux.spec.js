@@ -21,7 +21,7 @@ for (const [role, dbRole, path, grouped] of [
     await loginAs({ netID: "ux-manager", role });
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.goto(`/user/${path}/gradebook`);
+    await page.goto("/assignments");
     if (grouped) {
       const expand = page.getByRole("button", { name: "Expand Group 1", exact: true });
       await expand.focus();
@@ -55,8 +55,10 @@ for (const [role, dbRole, path, grouped] of [
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       const select = await page.getByLabel("Assignment", { exact: true }).boundingBox();
       expect(select.x + select.width).toBeLessThanOrEqual(width);
-      const table = await page.getByRole("table").first().boundingBox();
-      expect(table.y).toBeLessThan(744); // Actual results start within the phone viewport.
+      // Results start right under the Gradebook heading, not a screen further down.
+      const heading = await page.getByRole("heading", { name: "Gradebook", exact: true }).boundingBox();
+      const results = await page.locator('[data-tour="gradebook-view"]').getByRole("table").first().boundingBox();
+      expect(results.y - heading.y).toBeLessThan(700);
     }
     await page.screenshot({ path: testInfo.outputPath(`${role}-mobile.png`), fullPage: true });
     expect(errors).toEqual([]);
@@ -69,7 +71,7 @@ for (const role of ["pm", "course_lead", "head_pm"]) {
     await loginAs({ netID: "ux-manager", role });
     const allItems = (url) => url.pathname === "/api/action_items" && url.searchParams.get("scope") === "all";
     await page.route(allItems, (route) => route.fulfill({ status: 500, json: { error: "Database unavailable" } }));
-    await page.goto(`/user/${role}/gradebook`);
+    await page.goto("/assignments");
     const errorAlert = page.getByRole("alert").filter({ hasText: "Unable to load" });
     await expect(errorAlert).toBeVisible();
     await expect(page.getByText("No students in scope yet")).not.toBeVisible();
@@ -80,13 +82,12 @@ for (const role of ["pm", "course_lead", "head_pm"]) {
   });
 }
 
-test("students cannot open staff gradebooks or obtain other students' scores", async ({ page, loginAs }) => {
+test("students don't get the staff gradebook or other students' scores", async ({ page, loginAs }) => {
   await seed();
   await loginAs({ netID: "ux-student", role: "student" });
-  for (const role of ["pm", "course_lead", "head_pm", "lead_web_dev"]) {
-    await page.goto(`/user/${role}/gradebook`);
-    await expect(page).toHaveURL(/\/unauthorized/);
-  }
+  await page.goto("/assignments");
+  await expect(page.getByRole("heading", { name: "Your understanding checks" })).toBeVisible();
+  await expect(page.locator('[data-tour="gradebook-view"]')).toHaveCount(0);
   const response = await page.request.get("/api/action_items?scope=all");
   expect(response.ok()).toBe(true);
   expect((await response.json()).map((item) => item.net_id)).toEqual(["ux-student"]);

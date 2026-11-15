@@ -3,6 +3,7 @@ import VideoCard from "../../components/VideoCard.js";
 import { getSupabaseServer } from "../../lib/supabaseServer";
 import { table } from "../../lib/tables";
 import { SITE } from "../../lib/siteConfig";
+import StaffGuide from "./StaffGuide";
 
 export const metadata = { title: "Resources" };
 
@@ -76,6 +77,8 @@ export default async function ResourcesPage() {
           topic. <a href={SITE.links.resourceVault} {...external}>Open the resource vault</a>.
         </p>
       </section>
+
+      <StaffGuide />
     </main>
   );
 }

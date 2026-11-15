@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import styles from "../app/user/dashboard.module.css";
-import GradeCheckModal from "../app/user/components/GradeCheckModal";
+import styles from "./staff/dashboard.module.css";
+import GradeCheckModal from "./staff/GradeCheckModal";
 
 function RosterTable({ roster, onGrade }) {
   return (
@@ -16,18 +16,18 @@ function RosterTable({ roster, onGrade }) {
               <td className={styles.cellMono}>{r.net_id}</td>
               <td>
                 {!r.submitted ? (
-                  <span style={{ color: "rgba(249,249,249,0.4)" }}>Not submitted</span>
+                  <span style={{ color: "var(--text-muted)" }}>Not submitted</span>
                 ) : r.item.grade != null ? (
-                  <span style={{ color: "#4f8dde" }}>Graded {r.item.grade}/{r.item.max_score}</span>
+                  <span style={{ color: "var(--link)" }}>Graded {r.item.grade}/{r.item.max_score}</span>
                 ) : (
-                  <span style={{ color: "#ecb557" }}>Ready to grade</span>
+                  <span style={{ color: "var(--link)" }}>Ready to grade</span>
                 )}
               </td>
               <td>
                 {r.submitted && (
                   <button
                     className={styles.btnSmall}
-                    style={{ background: "rgba(236,181,87,0.15)", color: "#ecb557", border: "1px solid rgba(236,181,87,0.25)" }}
+                    style={{ background: "color-mix(in srgb, var(--primary-bg) 15%, transparent)", color: "var(--link)", border: "1px solid color-mix(in srgb, var(--primary-bg) 35%, transparent)" }}
                     onClick={() => onGrade(r.item)}
                   >
                     {r.item.grade != null ? "Edit Grade" : "Grade"}
@@ -139,10 +139,10 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
   return (
     <div className={styles.panel}>
       <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "0.75rem", marginBottom: "0.75rem" }}>
-        <span style={{ color: "#f9f9f9", fontFamily: "Inter", fontWeight: 600 }}>Understanding Check</span>
+        <span style={{ color: "var(--text)", fontFamily: "Inter", fontWeight: 600 }}>Understanding Check</span>
         {submittedTotal.total > 0 && (
-          <span style={{ color: "rgba(249,249,249,0.55)", fontFamily: "Inter", fontSize: "0.85rem" }}>
-            <span style={{ color: "#4ade80", fontWeight: 700 }}>{submittedTotal.submitted}</span> / {submittedTotal.total} {scope === "my-group" ? "students in your group submitted" : "students submitted"}
+          <span style={{ color: "var(--text-muted)", fontFamily: "Inter", fontSize: "0.85rem" }}>
+            <span style={{ color: "var(--success)", fontWeight: 700 }}>{submittedTotal.submitted}</span> / {submittedTotal.total} {scope === "my-group" ? "students in your group submitted" : "students submitted"}
           </span>
         )}
       </div>
@@ -150,7 +150,7 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
       {scope === "my-group" && data.groupNumber != null && (
         <div className={styles.checkControls}>
           <div>
-            <span style={{ color: data.isOpen ? "#4ade80" : "#f9f9f9", fontWeight: 600 }}>
+            <span style={{ color: data.isOpen ? "var(--success)" : "var(--text)", fontWeight: 600 }}>
               {data.isOpen ? "● Open" : "● Closed"}
             </span>
             <p>{data.isOpen ? "Your students can submit their answers now." : "Open the check when your group’s meeting begins so students can submit."}</p>
@@ -163,7 +163,7 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
           </button>
         </div>
       )}
-      <ol style={{ color: "rgba(249,249,249,0.7)", fontFamily: "Inter", fontSize: "0.88rem", paddingLeft: "1.2rem", marginBottom: "1.1rem" }}>
+      <ol style={{ color: "var(--text)", fontFamily: "Inter", fontSize: "0.88rem", paddingLeft: "1.2rem", marginBottom: "1.1rem" }}>
         {(data.questions ?? []).map((q, i) => <li key={i} style={{ marginBottom: "0.3rem" }}>{q}</li>)}
       </ol>
 
@@ -180,12 +180,12 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
           const isOpenRow = expanded.has(g.groupNumber);
           const submittedCount = g.roster.filter((r) => r.submitted).length;
           return (
-            <div key={g.groupNumber} style={{ marginBottom: "0.75rem", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px" }}>
+            <div key={g.groupNumber} style={{ marginBottom: "0.75rem", border: "1px solid var(--line)", borderRadius: "8px" }}>
               <div onClick={() => toggleExpand(g.groupNumber)} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.9rem", cursor: "pointer" }}>
                 <span style={{ fontSize: "0.75rem", opacity: 0.5 }}>{isOpenRow ? "▼" : "▶"}</span>
-                <span style={{ color: "#f9f9f9", fontFamily: "Inter", fontWeight: 600 }}>Group {g.groupNumber}</span>
-                <span style={{ color: "rgba(249,249,249,0.45)", fontSize: "0.82rem" }}>{submittedCount}/{g.roster.length} submitted</span>
-                <span style={{ marginLeft: "auto", color: g.isOpen ? "#4ade80" : "rgba(249,249,249,0.4)", fontSize: "0.82rem", fontWeight: 600 }}>
+                <span style={{ color: "var(--text)", fontFamily: "Inter", fontWeight: 600 }}>Group {g.groupNumber}</span>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>{submittedCount}/{g.roster.length} submitted</span>
+                <span style={{ marginLeft: "auto", color: g.isOpen ? "var(--success)" : "var(--text-muted)", fontSize: "0.82rem", fontWeight: 600 }}>
                   {g.isOpen ? "● Open" : "● Closed"}
                 </span>
                 <button
@@ -199,10 +199,10 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
               {isOpenRow && <div style={{ padding: "0 0.9rem 0.9rem" }}>
                 {g.additionalQuestions?.length > 0 && (
                   <div style={{ marginBottom: "0.75rem" }}>
-                    <div style={{ color: "rgba(249,249,249,0.55)", fontFamily: "Inter", fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "0.35rem" }}>
+                    <div style={{ color: "var(--text-muted)", fontFamily: "Inter", fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "0.35rem" }}>
                       Added by this group’s PM
                     </div>
-                    <ol start={(data.questions ?? []).length + 1} style={{ color: "rgba(249,249,249,0.7)", fontFamily: "Inter", fontSize: "0.88rem", paddingLeft: "1.2rem", margin: 0 }}>
+                    <ol start={(data.questions ?? []).length + 1} style={{ color: "var(--text)", fontFamily: "Inter", fontSize: "0.88rem", paddingLeft: "1.2rem", margin: 0 }}>
                       {g.additionalQuestions.map((q, i) => <li key={i} style={{ marginBottom: "0.3rem" }}>{q}</li>)}
                     </ol>
                   </div>

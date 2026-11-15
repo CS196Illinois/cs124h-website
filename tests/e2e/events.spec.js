@@ -20,9 +20,9 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
       await insertUser({ net_id: "audience-owner", role: dbRole, group_number: 3 });
       await insertUser({ net_id: "audience-student", role: "STUDENT", group_number: 3 });
       await loginAs({ netID: "audience-owner", role });
-      await page.goto(`/user/${role}/events`);
+      await page.goto("/schedule");
       await page.getByRole("button", { name: "+ New Event" }).click();
-      await expect(page.getByRole("radio", { name: /My group · Group 3/ })).toBeChecked();
+      await expect(page.getByRole("radio", { name: /My group, Group 3/ })).toBeChecked();
       await expect(page.getByRole("status").filter({ hasText: "2 people can join" })).toBeVisible();
       if (role === "pm") {
         await page.getByRole("group", { name: "Who is this event for?" }).scrollIntoViewIfNeeded();
@@ -47,7 +47,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     test(`${role} defaults new events to all staff`, async ({ page, loginAs }) => {
       await insertUser({ net_id: "staff-owner", role: dbRole });
       await loginAs({ netID: "staff-owner", role });
-      await page.goto(`/user/${role}/events`);
+      await page.goto("/schedule");
       await page.getByRole("button", { name: "+ New Event" }).click();
       await expect(page.getByRole("radio", { name: /All staff/ })).toBeChecked();
       await page.getByPlaceholder("e.g. Week 5 Guest Lecture").fill("Staff meeting");
@@ -62,7 +62,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
   test("a new event saves its prefilled start and end times without touching them", async ({ page, loginAs }) => {
     await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/events");
+    await page.goto("/schedule");
 
     const before = Date.now();
     await page.getByRole("button", { name: "+ New Event" }).click();
@@ -85,7 +85,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
   test("pm creates an event and opens check-in, exposing a live rotating code", async ({ page, loginAs }) => {
     await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/events");
+    await page.goto("/schedule");
 
     await page.getByRole("button", { name: "+ New Event" }).click();
     await page.getByPlaceholder("e.g. Week 5 Guest Lecture").fill("Guest Lecture");
@@ -112,7 +112,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     const event = await insertEvent({ title: "Live Workshop", created_by: "e2e-pm", check_in_open: true });
 
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/events");
+    await page.goto("/schedule");
 
     const shownCode = page.locator("text=/^\\d{6}$/");
     await expect(shownCode).toBeVisible();
@@ -131,7 +131,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
 
     // Regression coverage: the enlarged view also has a QR code + URL for
     // the shared, role-agnostic check-in route, deep-linked to this event.
-    const checkInUrl = `${new URL(page.url()).origin}/user/checkin?event=${event.id}`;
+    const checkInUrl = `${new URL(page.url()).origin}/checkin?event=${event.id}`;
     await expect(enlarged.getByRole("link", { name: checkInUrl })).toBeVisible();
     await expect(enlarged.getByAltText("QR code to the check-in link for this event")).toBeVisible();
 
@@ -156,7 +156,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await insertEvent({ title: "Workshop", created_by: "e2e-pm" });
 
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/events");
+    await page.goto("/schedule");
     await page.getByRole("button", { name: "Attendees" }).click();
     await expect(page.getByText("No check-ins yet.")).toBeVisible();
   });
@@ -174,7 +174,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await insertEventCheckin({ event_id: event.id, net_id: "e2e-stu2" });
 
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/events");
+    await page.goto("/schedule");
     await page.getByRole("button", { name: "Attendees" }).click();
 
     await expect(page.getByText("2 attendees")).toBeVisible();
@@ -189,12 +189,12 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     const event = await insertEvent({ title: "Workshop", created_by: "e2e-pm" });
 
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/events");
+    await page.goto("/schedule");
     await page.getByRole("button", { name: "Attendees" }).click();
     await expect(page.getByText("No check-ins yet.")).toBeVisible();
 
     await page.getByPlaceholder("NetID to add…").fill("e2e-stu1");
-    await page.getByRole("button", { name: "Add" }).click();
+    await page.getByRole("button", { name: "Add", exact: true }).click();
 
     await expect(page.getByText("1 attendee", { exact: true })).toBeVisible();
     await expect(page.getByText("e2e-stu1", { exact: true })).toBeVisible();
@@ -214,7 +214,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await insertEventCheckin({ event_id: event.id, net_id: "e2e-stu1" });
 
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/events");
+    await page.goto("/schedule");
     await page.getByRole("button", { name: "Attendees" }).click();
     await expect(page.getByText("1 attendee", { exact: true })).toBeVisible();
 
@@ -250,7 +250,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     });
 
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/events");
+    await page.goto("/schedule");
 
     await expect(page.getByText("Events (1)")).toBeVisible();
     await expect(page.getByText("Guest Lecture", { exact: true })).toBeVisible();
@@ -291,18 +291,18 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
 
     // A different pm doesn't see it at all.
     await loginAs({ netID: "e2e-pm-other", role: "pm" });
-    await page.goto("/user/pm/events");
+    await page.goto("/schedule");
     await expect(page.getByText("No events yet.", { exact: false })).toBeVisible();
     await expect(page.getByText("Owner's Event", { exact: true })).not.toBeVisible();
 
     // The lead web developer has the full event overview.
     await loginAs({ netID: "e2e-lead", role: "lead_web_dev" });
-    await page.goto("/user/lead_web_dev/events");
+    await page.goto("/schedule");
     await expect(page.getByText("Owner's Event", { exact: true })).toBeVisible();
 
     // And so does the creator.
     await loginAs({ netID: "e2e-pm-owner", role: "pm" });
-    await page.goto("/user/pm/events");
+    await page.goto("/schedule");
     await expect(page.getByText("Owner's Event", { exact: true })).toBeVisible();
   });
 
@@ -320,7 +320,7 @@ test.describe("events: create, check-in toggle, and creator-scoped permissions",
     await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
     await page.setViewportSize({ width: 360, height: 720 });
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/events");
+    await page.goto("/schedule");
 
     await page.getByRole("button", { name: "+ New Event" }).click();
     await expect(page.getByText("Start Time")).toBeVisible();

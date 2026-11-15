@@ -1,0 +1,110 @@
+.page {
+  min-height: 100%;
+  color: var(--text);
+  color-scheme: dark;
+  font-family: "Inter", sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.content {
+  width: 100%;
+  max-width: 56rem;
+  margin-inline: auto;
+}
+
+.header {
+  margin-bottom: 1.5rem;
+}
+
+.header h1 {
+  font-size: clamp(1.5rem, 3vw, 1.9rem);
+  line-height: 1.3;
+}
+
+.header p {
+  margin-top: 0.5rem;
+  color: var(--text-muted);
+}
+
+.panel {
+  padding: clamp(1rem, 3vw, 2rem);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+
+.note {
+  padding: 0.85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--primary-bg) 35%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--primary-bg) 12%, transparent);
+}
+
+.section {
+  margin-top: 1.5rem;
+}
+
+.section h2 {
+  margin-bottom: 0.65rem;
+  font-size: 1.15rem;
+  line-height: 1.4;
+}
+
+.page p,
+.page li,
+.page dd {
+  color: var(--text-muted);
+}
+
+.page strong,
+.page dt {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.section ol {
+  padding-inline-start: 1.5rem;
+}
+
+.section li {
+  padding-inline-start: 0.25rem;
+}
+
+.section li + li {
+  margin-top: 0.65rem;
+}
+
+.reference {
+  display: grid;
+  gap: 1rem;
+}
+
+.reference > div + div {
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.reference dd {
+  margin-top: 0.25rem;
+}
+
+.section p + p {
+  margin-top: 0.65rem;
+}
+
+.section ul {
+  padding-inline-start: 1.25rem;
+}
+
+.figure {
+  margin: 1rem 0 0;
+}
+
+.figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}

@@ -202,3 +202,85 @@
     background: rgba(3, 8, 28, 0.45);
   }
 }
+
+/* ─── Second row: the signed-in role's tools ─────────────────────
+   Not sticky: only the main row stays pinned while scrolling. */
+.tools {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-sans);
+}
+
+.toolsInner {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  min-height: 2.6rem;
+  padding: 0 var(--gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.toolsRole {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.toolLinks {
+  display: flex;
+  align-items: stretch;
+  align-self: stretch;
+  gap: 0.25rem;
+  list-style: none;
+  margin-right: auto;
+}
+
+.toolLinks > li {
+  display: flex;
+}
+
+.toolLink {
+  display: flex;
+  align-items: center;
+  padding: 0 0.6rem;
+  color: var(--text);
+  font-size: 0.92rem;
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+}
+
+.toolLink:hover {
+  text-decoration: underline;
+}
+
+.toolActive {
+  font-weight: 600;
+  color: var(--heading);
+  border-bottom-color: var(--illini-orange);
+}
+
+.toolsUser {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.tools .signOut {
+  flex-shrink: 0;
+  color: var(--link);
+  font-size: 0.88rem;
+}
+
+.tools .signOut:hover {
+  color: var(--link);
+}
+
+@media (max-width: 640px) {
+  .toolsUser {
+    display: none;
+  }
+}

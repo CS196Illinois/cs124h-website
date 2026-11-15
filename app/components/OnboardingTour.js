@@ -4,46 +4,47 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import styles from "./OnboardingTour.module.css";
+import { ROLE_NAMES } from "../../lib/siteConfig";
 
-const ROLE_LABELS = {
-  course_lead: "Course Lead", head_pm: "Head PM", lead_web_dev: "Lead Web Dev",
-  pm: "Project Manager", student: "Student",
-};
+const ROLE_LABELS = ROLE_NAMES;
 
+// Each step opens `href` (a path, no #hash) and highlights `target`
+// (an element's data-tour attribute) when it's on the page.
 const TOUR_STEPS = {
   course_lead: [
-    { title: "Your course command center", copy: "This tour shows the pages you use to run the course: people, sprints, events, and grades.", href: "/user/course_lead", target: "nav-dashboard" },
-    { title: "People", copy: "Add people, set their roles and groups, and import rosters. A person’s role decides what they can see.", href: "/user/course_lead/people", target: "nav-people" },
-    { title: "Plan sprints", copy: "Create each sprint with its goal, dates, and understanding check questions. Students don’t see a sprint until its start date.", href: "/user/course_lead/sprints", target: "sprint-new" },
-    { title: "Events and attendance", copy: "Create events for everyone or for chosen roles, groups, or people, then open check-in to take attendance.", href: "/user/course_lead/events", target: "event-new" },
-    { title: "Gradebook", copy: "See understanding check scores by group or by sprint, and export them as a CSV.", href: "/user/course_lead/gradebook", target: "nav-gradebook" },
+    { title: "Everything is on the main site", copy: "Your tools are in the second row of the top bar. Events, sprints, and grades are managed right where students read them.", href: "/", target: "role-tools" },
+    { title: "People", copy: "Add people, set their roles and groups, and import rosters. A person’s role decides what they can see and do.", href: "/people", target: "tool-people" },
+    { title: "Plan sprints", copy: "On Assignments, create each sprint with its goal, dates, and understanding check questions. Students don’t see a sprint until its start date.", href: "/assignments", target: "sprint-new" },
+    { title: "Add events", copy: "On the Schedule, click Add event or click a day. Choose a category and who it’s for, and repeat it weekly if you like.", href: "/schedule", target: "schedule-add-event" },
+    { title: "Run check-in", copy: "Under Manage events, open check-in, show the code, and see who attended. You can manage every event, whoever created it.", href: "/schedule", target: "manage-events" },
+    { title: "Gradebook", copy: "Understanding check scores by group or by sprint, with CSV export, are on Assignments.", href: "/assignments", target: "gradebook-view" },
   ],
   head_pm: [
-    { title: "Your PM leadership workspace", copy: "This tour shows the pages you use to support PMs and their groups.", href: "/user/head_pm", target: "nav-dashboard" },
-    { title: "People", copy: "Keep PM and student group assignments correct before each week starts.", href: "/user/head_pm/people", target: "nav-people" },
-    { title: "Sprints", copy: "Review sprint goals and check questions. You can grade any group’s understanding checks here.", href: "/user/head_pm/sprints", target: "nav-sprints" },
-    { title: "Events and attendance", copy: "Create events for the right audience, open check-in, and review who attended.", href: "/user/head_pm/events", target: "event-new" },
-    { title: "Gradebook", copy: "Compare groups and open any student’s grade history.", href: "/user/head_pm/gradebook", target: "nav-gradebook" },
+    { title: "Everything is on the main site", copy: "Your tools are in the second row of the top bar. Events, sprints, and grades are managed right where students read them.", href: "/", target: "role-tools" },
+    { title: "People", copy: "Keep PM and student group assignments correct before each week starts.", href: "/people", target: "tool-people" },
+    { title: "Sprints", copy: "On Assignments, review sprint goals and check questions, and grade any group’s understanding checks.", href: "/assignments", target: "sprint-new" },
+    { title: "Events and check-in", copy: "Add events from the Schedule, then open check-in and see who attended under Manage events.", href: "/schedule", target: "manage-events" },
+    { title: "Gradebook", copy: "Compare groups and open any student’s grade history on Assignments.", href: "/assignments", target: "gradebook-view" },
   ],
   lead_web_dev: [
-    { title: "Support tickets", copy: "Read and resolve problems people report from the Support page.", href: "/user/lead_web_dev/support", target: "nav-support-tickets" },
-    { title: "Events", copy: "You can see every course event and its attendance.", href: "/user/lead_web_dev/events", target: "nav-events" },
+    { title: "Support tickets", copy: "Read and resolve problems people report from the Support page.", href: "/support/tickets", target: "tool-support-tickets" },
+    { title: "Events", copy: "You can see every course event and its attendance under Manage events.", href: "/schedule", target: "manage-events" },
   ],
   pm: [
-    { title: "Your PM workspace", copy: "This tour shows the pages you use each week. You don’t need to change anything as you go.", href: "/user/pm", target: "nav-dashboard" },
-    { title: "Your students", copy: "Check that your group’s names and NetIDs are right. Ask a Course Lead to fix anything missing.", href: "/user/pm/students", target: "nav-my-students" },
-    { title: "Track sprint progress", copy: "Mark each student’s sprint as Done here, and use Export CSV to download the list.", href: "/user/pm/students", target: "students-export" },
-    { title: "Sprints", copy: "Each sprint has a goal and understanding check questions. Use Edit Questions to add your own.", href: "/user/pm/sprints", target: "nav-sprints" },
-    { title: "Run the understanding check", copy: "Click Open Understanding Check when your meeting starts and close it when students finish. Grade each submission from the list below it.", href: "/user/pm/sprints", target: "sprint-open-check" },
-    { title: "Take attendance", copy: "Use + New Event to set the time and audience, then open check-in and show the code.", href: "/user/pm/events", target: "event-new" },
-    { title: "Gradebook", copy: "See your group’s check scores and feedback over time.", href: "/user/pm/gradebook", target: "gradebook-view" },
-    { title: "PM Guide", copy: "The PM Guide walks through each week step by step. Come back to it anytime.", href: "/user/pm/guide", target: "nav-pm-guide" },
+    { title: "Everything is on the main site", copy: "Your tools are in the second row of the top bar. You don’t need to change anything as you go.", href: "/", target: "role-tools" },
+    { title: "Your group", copy: "Check that your group’s names and NetIDs are right. Ask a Course Lead to fix anything missing.", href: "/my-group", target: "tool-my-group" },
+    { title: "Track sprint progress", copy: "Mark each student’s sprint as Done here, and use Export CSV to download the list.", href: "/my-group", target: "students-export" },
+    { title: "Run the understanding check", copy: "On Assignments, click Open Understanding Check when your meeting starts and close it when students finish. Grade each submission below it.", href: "/assignments", target: "sprint-open-check" },
+    { title: "Add your group’s meetings", copy: "On the Schedule, click Add event. Group meetings default to your group, and you can repeat them every week.", href: "/schedule", target: "schedule-add-event" },
+    { title: "Take attendance", copy: "Under Manage events, open check-in and show the code or its QR code.", href: "/schedule", target: "manage-events" },
+    { title: "Gradebook", copy: "Your group’s check scores and feedback over time are on Assignments.", href: "/assignments", target: "gradebook-view" },
+    { title: "PM guide", copy: "The PM guide on Resources walks through each week step by step. Come back to it anytime.", href: "/resources", target: "pm-guide" },
   ],
   student: [
-    { title: "Welcome to CS 124H", copy: "This tour shows where to find your sprint checks and attendance.", href: "/user/student", target: "nav-dashboard" },
-    { title: "Sprint checks", copy: "When your PM opens your group’s understanding check, your questions appear here. Answer every question and submit once. Your grade and feedback show up here too.", href: "/user/student/sprints", target: "nav-sprints" },
-    { title: "Attendance", copy: "During an event, enter the code your PM shows or scan the QR code.", href: "/user/student/attendance", target: "nav-attendance" },
-    { title: "Need help?", copy: "Read the message on screen and try again. Still stuck? Use Support in the top bar.", href: "/user/student", target: "nav-dashboard" },
+    { title: "Welcome to CS 124H", copy: "The home page shows the current sprint and MP and what’s coming up. Your tools are in the second row of the top bar.", href: "/", target: "role-tools" },
+    { title: "Understanding checks", copy: "When your PM opens your group’s check, your questions appear on Assignments. Answer every question and submit once. Your grade and feedback show up there too.", href: "/assignments", target: "student-checks" },
+    { title: "Check in", copy: "During an event, enter the code your PM shows or scan the QR code.", href: "/checkin", target: "tool-check-in" },
+    { title: "Need help?", copy: "Read the message on screen and try again. Still stuck? Use Support at the bottom of any page.", href: "/", target: "role-tools" },
   ],
 };
 
@@ -112,14 +113,14 @@ export default function OnboardingTour() {
     <div className={`${styles.backdrop} ${spotlight ? styles.hasSpotlight : ""}`} role="presentation">
       {spotlight && <div className={styles.spotlight} style={spotlight} aria-hidden="true" />}
       <section className={styles.card} role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
-        <div className={styles.progress}><span>Getting started · {ROLE_LABELS[role]}</span><span>{step + 1}/{steps.length}</span></div>
+        <div className={styles.progress}><span>Getting started as {ROLE_LABELS[role]}</span><span>{step + 1}/{steps.length}</span></div>
         <div className={styles.progressBar}><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
         <h2 id="onboarding-title">{title}</h2>
         <p>{copy}</p>
         <div className={styles.actions}>
           <button className={styles.skip} onClick={finish}>Skip tour</button>
           {step > 0 && <button className={styles.secondary} onClick={() => setStep(step - 1)}>Back</button>}
-          <button className={styles.primary} onClick={() => last ? finish() : setStep(step + 1)}>{last ? "Go to my dashboard" : "Next"}</button>
+          <button className={styles.primary} onClick={() => last ? finish() : setStep(step + 1)}>{last ? "Finish" : "Next"}</button>
         </div>
       </section>
     </div>

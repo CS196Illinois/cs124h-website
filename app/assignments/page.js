@@ -1,5 +1,7 @@
 import Link from "next/link";
 import styles from "./Assignments.module.css";
+import RoleTools from "./RoleTools";
+import StudentSprintChecks from "../../components/staff/StudentSprintChecks";
 import { courseTodayISO } from "../../lib/dateFormat";
 import {
   getViewer, loadSprints, loadMps, loadCompletedSprintIds, courseDayOf, daysBetween, longDay, shortDay,
@@ -7,6 +9,9 @@ import {
 } from "../../lib/courseData";
 
 export const metadata = { title: "Assignments" };
+
+// Per-viewer (signed-in students see their own status), so never prerendered.
+export const dynamic = "force-dynamic";
 
 const external = { target: "_blank", rel: "noopener noreferrer" };
 
@@ -35,6 +40,12 @@ export default async function AssignmentsPage() {
         <h1>Assignments</h1>
         <p>MPs earn points and are done on PrairieLearn. Sprints are checked off by your PM at your weekly meeting, and every sprint is required.</p>
       </header>
+
+      {isStudent && (
+        <section className={styles.checks} id="checks" data-tour="student-checks">
+          <StudentSprintChecks />
+        </section>
+      )}
 
       <div className={styles.columns}>
         <section id="mps" aria-labelledby="mps-heading" className={styles.section}>
@@ -100,6 +111,8 @@ export default async function AssignmentsPage() {
           )}
         </section>
       </div>
+
+      {viewer && <RoleTools role={viewer.role} />}
     </main>
   );
 }

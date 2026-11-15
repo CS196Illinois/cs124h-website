@@ -1,96 +1,20 @@
-/* Container for the entire page */
-.pageContainer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-height: 100vh;
-  padding: 2rem;
-  color: #0f172a;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+.page {
+  max-width: 40rem;
 }
 
-/* Large error code text */
-.error {
-  font-size: 56px;
-  font-weight: 700;
-  color: #ef4444;
-  margin-bottom: 1rem;
-}
-
-/* Icon used for the friendlier "not enrolled yet" state */
-.icon {
-  font-size: 56px;
-  margin-bottom: 1rem;
-  line-height: 1;
-}
-
-/* Heading "Unauthorized" */
-.heading {
-  font-size: 24px;
-  margin: 0.5rem 0;
-}
-
-/* Description paragraph */
-.description {
-  color: #76859b;
-  margin-bottom: 1.5rem;
-  max-width: 480px; /* optional for readability */
-}
-
-.description a {
-  color: #0ea5e9;
+.code {
+  color: var(--text-muted);
+  font-size: 0.9rem;
   font-weight: 600;
-  text-decoration: none;
 }
 
-.description a:hover {
-  text-decoration: underline;
+.page p + p {
+  margin-top: 0.75rem;
 }
 
-/* Wider variant for the not-enrolled state, whose paragraphs (roster
-   explanation, Discord + course-lead emails) run noticeably longer than the
-   generic 401's - the default 480px wrapped them too tightly. */
-.wideDescription {
-  max-width: 640px;
-}
-
-/* Container for buttons */
-.buttonGroup {
+.actions {
   display: flex;
-  gap: 12px;
-  justify-content: center;
   flex-wrap: wrap;
-}
-
-/* Sign In button */
-.signInButton {
-  background: #0ea5e9;
-  color: #fff;
-  padding: 0.6rem 1rem;
-  border-radius: 6px;
-  text-decoration: none;
-  font-weight: 600;
-  transition: background 0.2s;
-}
-
-.signInButton:hover {
-  background: #0284c7;
-}
-
-/* Home button */
-.homeButton {
-  background: transparent;
-  color: #ffffff;
-  padding: 0.55rem 0.9rem;
-  border-radius: 6px;
-  text-decoration: none;
-  border: 1px solid #e2e8f0;
-  transition: background 0.2s, color 0.2s;
-}
-
-.homeButton:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  gap: 0.6rem;
+  margin-top: 1.5rem;
 }

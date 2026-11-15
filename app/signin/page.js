@@ -29,9 +29,11 @@ function SignInInner() {
     try {
       const reset = await fetch("/api/auth/reset", { method: "POST" });
       if (!reset.ok) throw new Error();
-      const target = new URL(searchParams.get("callbackUrl") || "/user", window.location.origin);
-      const callbackUrl = target.origin === window.location.origin && (target.pathname === "/user" || target.pathname.startsWith("/user/"))
-        ? target.pathname + target.search : "/user";
+      // Return to where they came from, but only ever to a page on this
+      // site (never another origin, an API route, or back to sign-in).
+      const target = new URL(searchParams.get("callbackUrl") || "/", window.location.origin);
+      const safe = target.origin === window.location.origin && !target.pathname.startsWith("/api/") && target.pathname !== "/signin";
+      const callbackUrl = safe ? target.pathname + target.search : "/";
       await signIn("cilogon", { callbackUrl });
     } catch {
       setFailure("Sign-in could not start. Check your connection and try again, or submit a support ticket.");

@@ -17,7 +17,7 @@ for (const width of [390, 1280]) {
       await r.fulfill({ json: { is_open: true } });
     });
     await loginAs({ netID: "pm1", role: "pm" });
-    await page.goto("/user/pm/sprints");
+    await page.goto("/assignments");
     const open = page.getByRole("button", { name: "Open Understanding Check", exact: true });
     await expect(open).toBeVisible();
     const bounds = await open.boundingBox();

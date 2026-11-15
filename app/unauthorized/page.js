@@ -3,6 +3,7 @@ import { getSupabaseServer } from "../../lib/supabaseServer";
 import { table } from "../../lib/tables";
 import SignOutButton from "./SignOutButton";
 import styles from "./Unauthorized.module.css";
+import { SITE } from "../../lib/siteConfig";
 
 // Same mechanism the homepage footer uses for "Questions? Contact the course
 // leads" - the real users table's LEAD role, not the course_staff bio page
@@ -26,7 +27,7 @@ async function getCourseLeadContacts() {
 
 export default async function UnauthorizedPage({ searchParams }) {
   const params = await searchParams;
-  const callbackUrl = params?.callbackUrl || "/user";
+  const callbackUrl = params?.callbackUrl || "/";
   const loginUrl = `/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`;
 
   // Signed in successfully, but not (yet) on the Supabase roster. This is
@@ -38,20 +39,17 @@ export default async function UnauthorizedPage({ searchParams }) {
     const leads = await getCourseLeadContacts();
 
     return (
-      <div className={styles.pageContainer}>
-        <div className={styles.icon} aria-hidden="true">🎓</div>
-        <h1 className={styles.heading}>You're not on the roster yet</h1>
-        <p className={`${styles.description} ${styles.wideDescription}`}>
-          We signed you in, but couldn&apos;t find your NetID on the course
-          roster. If you just enrolled, this is expected: the roster gets
-          updated around kickoff. Sign out and back in afterward to pick up
-          your access.
+      <main className={`page ${styles.page}`}>
+        <header className="pageHeading">
+          <h1>You&apos;re not on the roster yet</h1>
+        </header>
+        <p>
+          We signed you in, but couldn&apos;t find your NetID on the course roster. If you just enrolled, this is
+          expected: the roster gets updated around kickoff. Sign out and back in afterward to pick up your access.
         </p>
-        <p className={`${styles.description} ${styles.wideDescription}`}>
+        <p>
           Questions in the meantime? Reach out on our{" "}
-          <a href="https://discord.gg/HBZ2thqde" target="_blank" rel="noopener noreferrer">
-            Discord
-          </a>
+          <a href={SITE.links.discord} target="_blank" rel="noopener noreferrer">Discord</a>
           {leads.length > 0 && (
             <>
               , or contact{" "}
@@ -65,36 +63,27 @@ export default async function UnauthorizedPage({ searchParams }) {
           )}
           .
         </p>
-
-        <div className={styles.buttonGroup}>
-          <Link href="/support" className={styles.homeButton}>Get help</Link>
+        <div className={styles.actions}>
           <SignOutButton />
-          <Link href="/" className={styles.homeButton}>
-            Home
-          </Link>
+          <Link href="/support" className="btn">Get help</Link>
+          <Link href="/" className="btn">Home</Link>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className={styles.pageContainer}>
-      <div className={styles.error}>401</div>
-      <h1 className={styles.heading}>{params?.reason === "identity-missing" ? "We couldn't identify your Illinois account" : "Unauthorized"}</h1>
-      <p className={styles.description}>
-        You don't have permission to view this page. Sign in with an account
-        that has access or return to the homepage.
-      </p>
-
-      <div className={styles.buttonGroup}>
-        <Link href="/support" className={styles.homeButton}>Get help</Link>
-        <Link href={loginUrl} className={styles.signInButton}>
-          Sign in
-        </Link>
-        <Link href="/" className={styles.homeButton}>
-          Home
-        </Link>
+    <main className={`page ${styles.page}`}>
+      <header className="pageHeading">
+        <p className={styles.code}>Error 401</p>
+        <h1>{params?.reason === "identity-missing" ? "We couldn't identify your Illinois account" : "Unauthorized"}</h1>
+      </header>
+      <p>You don&apos;t have permission to view this page. Sign in with an account that has access, or go back to the home page.</p>
+      <div className={styles.actions}>
+        <Link href={loginUrl} className="btn btnPrimary">Sign in</Link>
+        <Link href="/support" className="btn">Get help</Link>
+        <Link href="/" className="btn">Home</Link>
       </div>
-    </div>
+    </main>
   );
 }

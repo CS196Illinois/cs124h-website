@@ -8,7 +8,7 @@ test.describe("sprints: course lead manages sprints, pm marks completions", () =
   test("a new sprint defaults to the week after the latest one and a max score of 100", async ({ page, loginAs }) => {
     await insertSprint({ number: 3, start_date: "2026-10-05", end_date: "2026-10-11" });
     await loginAs({ netID: "e2e-lead", role: "course_lead" });
-    await page.goto("/user/course_lead/sprints");
+    await page.goto("/assignments");
 
     await expect(page.getByRole("button", { name: "Sprint 3" })).toBeVisible();
     await page.getByRole("button", { name: "+ New Sprint" }).click();
@@ -24,7 +24,7 @@ test.describe("sprints: course lead manages sprints, pm marks completions", () =
 
   test("course lead creates, edits, and deletes a sprint", async ({ page, loginAs }) => {
     await loginAs({ netID: "e2e-lead", role: "course_lead" });
-    await page.goto("/user/course_lead/sprints");
+    await page.goto("/assignments");
 
     await expect(page.getByText("No sprints yet")).toBeVisible();
     await page.getByRole("button", { name: "+ New Sprint" }).click();
@@ -57,17 +57,19 @@ test.describe("sprints: course lead manages sprints, pm marks completions", () =
     await insertSprint({ number: 1, goal: "Sprint One Goal" });
 
     await loginAs({ netID: "e2e-lead", role: "course_lead" });
-    await page.goto("/user/course_lead/sprints");
+    await page.goto("/assignments");
+    // The public sprint list above also shows goals; work in the manager.
+    const manage = page.locator("#manage-sprints");
 
     // Select sprint 0 explicitly and delete it while it's the active one.
-    await page.getByRole("button", { name: "Sprint 0" }).click();
-    await expect(page.getByText("Sprint Zero Goal")).toBeVisible();
+    await manage.getByRole("button", { name: "Sprint 0" }).click();
+    await expect(manage.getByText("Sprint Zero Goal")).toBeVisible();
     await page.getByRole("button", { name: "Delete", exact: true }).click();
 
     // It's gone from the chip list and the detail panel fell back to the
     // remaining sprint.
-    await expect(page.getByRole("button", { name: "Sprint 0" })).not.toBeVisible();
-    await expect(page.getByText("Sprint One Goal")).toBeVisible();
+    await expect(manage.getByRole("button", { name: "Sprint 0" })).not.toBeVisible();
+    await expect(manage.getByText("Sprint One Goal")).toBeVisible();
 
     const toast = page.getByText("Deleted Sprint 0");
     await expect(toast).toBeVisible();
@@ -76,8 +78,8 @@ test.describe("sprints: course lead manages sprints, pm marks completions", () =
     // Sprint 0 is back in the chip list, and selection snapped back to it
     // (not just re-inserted and left unselected) with its exact goal and
     // date range intact.
-    await expect(page.getByRole("button", { name: "Sprint 0" })).toBeVisible();
-    await expect(page.getByText("Sprint Zero Goal")).toBeVisible();
+    await expect(manage.getByRole("button", { name: "Sprint 0" })).toBeVisible();
+    await expect(manage.getByText("Sprint Zero Goal")).toBeVisible();
 
     // Undo cancels the pending request outright - the row was never touched
     // server-side, so it's still there with every field as originally inserted.
@@ -93,7 +95,7 @@ test.describe("sprints: course lead manages sprints, pm marks completions", () =
     await insertSprint({ number: 1, goal: "Get the API working" });
 
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/pm/students");
+    await page.goto("/my-group");
 
     const toggleBtn = page.getByRole("button", { name: "Pending" });
     await expect(toggleBtn).toBeVisible();

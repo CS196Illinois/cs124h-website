@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import styles from "../app/user/dashboard.module.css";
+import styles from "./staff/dashboard.module.css";
 import { ALL_ROLES, ROLE_ALIASES } from "../lib/roles";
 import { parseGroupNumber } from "../lib/fieldRules";
 
@@ -109,39 +109,33 @@ function processRows(mappedRows) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 function RoleBadge({ role }) {
-  const colors = {
-    LEAD:     { bg: "rgba(124,58,237,0.2)",  color: "#c4b5fd" },
-    LEAD_WEB: { bg: "rgba(99,102,241,0.2)",  color: "#a5b4fc" },
-    HEAD:     { bg: "rgba(5,150,105,0.2)",   color: "#6ee7b7" },
-    PM:       { bg: "rgba(79,141,222,0.2)",  color: "#93c5fd" },
-    STUDENT:  { bg: "rgba(236,181,87,0.2)",  color: "#fcd34d" },
-  };
-  const c = colors[role] ?? { bg: "rgba(255,255,255,0.08)", color: "rgba(249,249,249,0.45)" };
+  // Neutral in both themes; the label itself carries the meaning.
+  const c = { bg: "var(--surface-2)", color: "var(--text)" };
   return (
-    <span style={{ display: "inline-block", padding: "0.15rem 0.55rem", borderRadius: 20, fontSize: "0.7rem", fontWeight: 600, fontFamily: "Inter, sans-serif", background: c.bg, color: c.color }}>
+    <span style={{ display: "inline-block", padding: "0.15rem 0.55rem", borderRadius: 20, fontSize: "0.7rem", fontWeight: 600, fontFamily: "var(--font-sans)", background: c.bg, color: c.color }}>
       {role || "-"}
     </span>
   );
 }
 
-function StatPill({ value, label, color = "rgba(249,249,249,0.5)" }) {
+function StatPill({ value, label, color = "var(--text-muted)" }) {
   return (
-    <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 8, padding: "0.5rem 0.85rem", textAlign: "center", minWidth: 72 }}>
-      <div style={{ color, fontWeight: 700, fontSize: "1.35rem", fontFamily: "Kufam, sans-serif", lineHeight: 1 }}>{value}</div>
-      <div style={{ color: "rgba(249,249,249,0.4)", fontSize: "0.7rem", fontFamily: "Inter, sans-serif", marginTop: "0.2rem", whiteSpace: "nowrap" }}>{label}</div>
+    <div style={{ background: "var(--surface-2)", borderRadius: 8, padding: "0.5rem 0.85rem", textAlign: "center", minWidth: 72 }}>
+      <div style={{ color, fontWeight: 700, fontSize: "1.35rem", fontFamily: "var(--font-display)", lineHeight: 1 }}>{value}</div>
+      <div style={{ color: "var(--text-muted)", fontSize: "0.7rem", fontFamily: "var(--font-sans)", marginTop: "0.2rem", whiteSpace: "nowrap" }}>{label}</div>
     </div>
   );
 }
 
 function RadioOption({ selected, onClick, title, desc, danger = false }) {
-  const accent = danger ? "#f87171" : "#ecb557";
-  const accentBg = danger ? "rgba(248,113,113,0.07)" : "rgba(236,181,87,0.07)";
-  const accentBorder = danger ? "rgba(248,113,113,0.45)" : "rgba(236,181,87,0.45)";
+  const accent = danger ? "var(--danger)" : "var(--link)";
+  const accentBg = danger ? "color-mix(in srgb, var(--danger) 8%, transparent)" : "var(--band)";
+  const accentBorder = danger ? "var(--danger)" : "var(--primary-bg)";
   return (
     <div
       onClick={onClick}
       style={{
-        border: `1px solid ${selected ? accentBorder : "rgba(255,255,255,0.1)"}`,
+        border: `1px solid ${selected ? accentBorder : "var(--line)"}`,
         borderRadius: 8,
         padding: "0.75rem 1rem",
         marginBottom: "0.5rem",
@@ -153,13 +147,13 @@ function RadioOption({ selected, onClick, title, desc, danger = false }) {
       <div style={{ display: "flex", alignItems: "flex-start", gap: "0.65rem" }}>
         <div style={{
           width: 16, height: 16, borderRadius: "50%",
-          border: `2px solid ${selected ? accent : "rgba(255,255,255,0.25)"}`,
+          border: `2px solid ${selected ? accent : "var(--line-strong)"}`,
           background: selected ? accent : "transparent",
           flexShrink: 0, marginTop: 2, transition: "all 0.18s",
         }} />
         <div>
-          <p style={{ color: "#f9f9f9", fontSize: "0.88rem", fontFamily: "Inter, sans-serif", fontWeight: 600, margin: 0 }}>{title}</p>
-          <p style={{ color: "rgba(249,249,249,0.45)", fontSize: "0.78rem", fontFamily: "Inter, sans-serif", margin: "0.2rem 0 0" }}>{desc}</p>
+          <p style={{ color: "var(--text)", fontSize: "0.88rem", fontFamily: "var(--font-sans)", fontWeight: 600, margin: 0 }}>{title}</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.78rem", fontFamily: "var(--font-sans)", margin: "0.2rem 0 0" }}>{desc}</p>
         </div>
       </div>
     </div>
@@ -296,13 +290,13 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
             <h2 style={{ marginBottom: "0.2rem" }}>
               {roleScope ? `Replace ${ROLE_LABELS[roleScope] ?? roleScope}s` : "Import Roster"}
             </h2>
-            <p style={{ color: "rgba(249,249,249,0.4)", fontSize: "0.78rem", fontFamily: "Inter, sans-serif", margin: 0 }}>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.78rem", fontFamily: "var(--font-sans)", margin: 0 }}>
               Step {step + 1} of {STEPS.length} - {STEPS[step]}
             </p>
           </div>
           <button
             onClick={onClose}
-            style={{ background: "none", border: "none", color: "rgba(249,249,249,0.45)", fontSize: "1.3rem", cursor: "pointer", lineHeight: 1, padding: "0 0.1rem", marginTop: "-0.1rem" }}
+            style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "1.3rem", cursor: "pointer", lineHeight: 1, padding: "0 0.1rem", marginTop: "-0.1rem" }}
             aria-label="Close"
           >
             ✕
@@ -310,8 +304,8 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
         </div>
 
         {/* Progress bar */}
-        <div style={{ height: 3, background: "rgba(255,255,255,0.08)", borderRadius: 2, marginBottom: "1.75rem" }}>
-          <div style={{ height: "100%", background: "#ecb557", borderRadius: 2, width: `${((step + 1) / STEPS.length) * 100}%`, transition: "width 0.35s ease" }} />
+        <div style={{ height: 3, background: "var(--surface-2)", borderRadius: 2, marginBottom: "1.75rem" }}>
+          <div style={{ height: "100%", background: "var(--primary-bg)", borderRadius: 2, width: `${((step + 1) / STEPS.length) * 100}%`, transition: "width 0.35s ease" }} />
         </div>
 
         {/* ── Step 0: Source ── */}
@@ -333,20 +327,20 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
                 onDragLeave={() => setDragOver(false)}
                 onClick={() => fileInputRef.current?.click()}
                 style={{
-                  border: `2px dashed ${dragOver ? "rgba(236,181,87,0.6)" : "rgba(255,255,255,0.15)"}`,
+                  border: `2px dashed ${dragOver ? "var(--primary-bg)" : "var(--line-strong)"}`,
                   borderRadius: 10,
                   padding: "2.75rem 1.5rem",
                   textAlign: "center",
                   cursor: "pointer",
-                  background: dragOver ? "rgba(236,181,87,0.04)" : "transparent",
+                  background: dragOver ? "var(--band)" : "transparent",
                   transition: "all 0.18s",
                 }}
               >
                 <div style={{ fontSize: "2rem", marginBottom: "0.6rem" }}>📄</div>
-                <p style={{ color: "#f9f9f9", fontFamily: "Inter, sans-serif", fontWeight: 600, marginBottom: "0.25rem", fontSize: "0.95rem" }}>
+                <p style={{ color: "var(--text)", fontFamily: "var(--font-sans)", fontWeight: 600, marginBottom: "0.25rem", fontSize: "0.95rem" }}>
                   Drop a CSV file here
                 </p>
-                <p style={{ color: "rgba(249,249,249,0.35)", fontFamily: "Inter, sans-serif", fontSize: "0.82rem" }}>
+                <p style={{ color: "var(--text-muted)", fontFamily: "var(--font-sans)", fontSize: "0.82rem" }}>
                   or click to browse your files
                 </p>
                 <input
@@ -368,8 +362,8 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
                     onKeyDown={(e) => e.key === "Enter" && handleSheetsLoad()}
                   />
                 </div>
-                <p style={{ color: "rgba(249,249,249,0.35)", fontSize: "0.78rem", fontFamily: "Inter, sans-serif", marginBottom: "1rem", lineHeight: 1.5 }}>
-                  The spreadsheet must be shared with <strong style={{ color: "rgba(249,249,249,0.55)" }}>"Anyone with the link can view"</strong> access. Paste any tab&apos;s URL to import that specific sheet.
+                <p style={{ color: "var(--text-muted)", fontSize: "0.78rem", fontFamily: "var(--font-sans)", marginBottom: "1rem", lineHeight: 1.5 }}>
+                  The spreadsheet must be shared with <strong style={{ color: "var(--text-muted)" }}>"Anyone with the link can view"</strong> access. Paste any tab&apos;s URL to import that specific sheet.
                 </p>
                 <button
                   className={styles.btnPrimary}
@@ -384,16 +378,16 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
 
             {sourceError && <div className={styles.alertError} style={{ marginTop: "1rem" }}>{sourceError}</div>}
 
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", marginTop: "1.5rem", paddingTop: "1rem" }}>
-              <p style={{ color: "rgba(249,249,249,0.28)", fontSize: "0.75rem", fontFamily: "Inter, sans-serif", lineHeight: 1.6 }}>
-                <strong style={{ color: "rgba(249,249,249,0.45)" }}>Expected columns:</strong>{" "}
-                <code style={{ color: "rgba(249,249,249,0.5)" }}>net_id</code> is required.{" "}
+            <div style={{ borderTop: "1px solid var(--line)", marginTop: "1.5rem", paddingTop: "1rem" }}>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.75rem", fontFamily: "var(--font-sans)", lineHeight: 1.6 }}>
+                <strong style={{ color: "var(--text-muted)" }}>Expected columns:</strong>{" "}
+                <code style={{ color: "var(--text-muted)" }}>net_id</code> is required.{" "}
                 {roleScope
-                  ? <>All imported people will be set to <strong style={{ color: "rgba(249,249,249,0.55)" }}>{ROLE_LABELS[roleScope] ?? roleScope}</strong> - the role column is optional.</>
-                  : <><code style={{ color: "rgba(249,249,249,0.5)" }}>role</code> is required. Valid roles: {VALID_ROLES.join(", ")}.</>
+                  ? <>All imported people will be set to <strong style={{ color: "var(--text-muted)" }}>{ROLE_LABELS[roleScope] ?? roleScope}</strong> - the role column is optional.</>
+                  : <><code style={{ color: "var(--text-muted)" }}>role</code> is required. Valid roles: {VALID_ROLES.join(", ")}.</>
                 }{" "}
-                <code style={{ color: "rgba(249,249,249,0.5)" }}>name</code> and{" "}
-                <code style={{ color: "rgba(249,249,249,0.5)" }}>group_number</code> are optional.
+                <code style={{ color: "var(--text-muted)" }}>name</code> and{" "}
+                <code style={{ color: "var(--text-muted)" }}>group_number</code> are optional.
               </p>
             </div>
           </div>
@@ -402,8 +396,8 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
         {/* ── Step 1: Column Mapping ── */}
         {step === 1 && (
           <div>
-            <p style={{ color: "rgba(249,249,249,0.45)", fontSize: "0.85rem", fontFamily: "Inter, sans-serif", marginBottom: "1.25rem" }}>
-              <strong style={{ color: "rgba(249,249,249,0.7)" }}>{rawRows.length} rows</strong> detected.
+            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontFamily: "var(--font-sans)", marginBottom: "1.25rem" }}>
+              <strong style={{ color: "var(--text)" }}>{rawRows.length} rows</strong> detected.
               Confirm which column in your file maps to each field. Columns with a good match were auto-detected.
             </p>
 
@@ -417,8 +411,8 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
                 <label>
                   {label}{" "}
                   {required
-                    ? <span style={{ color: "#ecb557" }}>*</span>
-                    : <span style={{ color: "rgba(249,249,249,0.3)", fontWeight: 400 }}>(optional)</span>
+                    ? <span style={{ color: "var(--link)" }}>*</span>
+                    : <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(optional)</span>
                   }
                 </label>
                 <select
@@ -434,7 +428,7 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
             {/* Live preview */}
             {mapping.net_id && (
               <div style={{ marginTop: "1.25rem" }}>
-                <p style={{ color: "rgba(249,249,249,0.35)", fontSize: "0.73rem", fontFamily: "Inter, sans-serif", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.73rem", fontFamily: "var(--font-sans)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>
                   Preview - first 3 rows
                 </p>
                 <div style={{ overflowX: "auto" }}>
@@ -476,9 +470,9 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
             {/* Summary pills */}
             <div style={{ display: "flex", gap: "0.65rem", marginBottom: "1.25rem", flexWrap: "wrap" }}>
               <StatPill value={processed.length} label="Total rows" />
-              <StatPill value={validRows.length} label="Ready to import" color="#4ade80" />
-              {mergedCount > 0 && <StatPill value={mergedCount} label="Duplicates merged" color="#ecb557" />}
-              {errorRows.length > 0 && <StatPill value={errorRows.length} label="Will be skipped" color="#f87171" />}
+              <StatPill value={validRows.length} label="Ready to import" color="var(--success)" />
+              {mergedCount > 0 && <StatPill value={mergedCount} label="Duplicates merged" color="var(--link)" />}
+              {errorRows.length > 0 && <StatPill value={errorRows.length} label="Will be skipped" color="var(--danger)" />}
             </div>
 
             {/* Row errors */}
@@ -488,7 +482,7 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
                 <ul style={{ margin: "0.4rem 0 0 1.1rem", fontSize: "0.8rem", lineHeight: 1.7 }}>
                   {errorRows.slice(0, 5).map((r, i) => (
                     <li key={i}>
-                      <code style={{ color: "#fca5a5" }}>{r.net_id || "(no netid)"}</code>: {r._errors.join(", ")}
+                      <code style={{ color: "var(--danger)" }}>{r.net_id || "(no netid)"}</code>: {r._errors.join(", ")}
                     </li>
                   ))}
                   {errorRows.length > 5 && <li style={{ opacity: 0.7 }}>…and {errorRows.length - 5} more</li>}
@@ -504,10 +498,10 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
 
             {/* Data preview */}
             <div style={{ marginBottom: "1.25rem" }}>
-              <p style={{ color: "rgba(249,249,249,0.35)", fontSize: "0.73rem", fontFamily: "Inter, sans-serif", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.73rem", fontFamily: "var(--font-sans)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>
                 Data preview {validRows.length > 8 ? `(8 of ${validRows.length} shown)` : `(${validRows.length} rows)`}
               </p>
-              <div style={{ overflowX: "auto", maxHeight: 200, overflowY: "auto", borderRadius: 6, border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ overflowX: "auto", maxHeight: 200, overflowY: "auto", borderRadius: 6, border: "1px solid var(--line)" }}>
                 <table className={styles.table} style={{ fontSize: "0.78rem" }}>
                   <thead>
                     <tr><th>NetID</th><th>Name</th><th>Role</th><th>Group</th></tr>
@@ -528,15 +522,15 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
 
             {/* Import mode */}
             {roleScope ? (
-              <div className={styles.alertError} style={{ marginBottom: "1.1rem", background: "rgba(248,113,113,0.08)", borderColor: "rgba(248,113,113,0.35)" }}>
-                <strong style={{ color: "#fca5a5" }}>Scoped replace:</strong>{" "}
-                <span style={{ color: "rgba(249,249,249,0.65)", fontSize: "0.85rem" }}>
+              <div className={styles.alertError} style={{ marginBottom: "1.1rem", background: "color-mix(in srgb, var(--danger) 8%, transparent)", borderColor: "color-mix(in srgb, var(--danger) 35%, transparent)" }}>
+                <strong style={{ color: "var(--danger)" }}>Scoped replace:</strong>{" "}
+                <span style={{ color: "var(--text)", fontSize: "0.85rem" }}>
                   All existing <strong>{ROLE_LABELS[roleScope] ?? roleScope}</strong> users not present in this file will be removed. People in other roles are unaffected. Login bindings for returning members are preserved.
                 </span>
               </div>
             ) : (
               <div style={{ marginBottom: "1.1rem" }}>
-                <p style={{ color: "rgba(249,249,249,0.45)", fontSize: "0.73rem", fontFamily: "Inter, sans-serif", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.65rem" }}>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.73rem", fontFamily: "var(--font-sans)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.65rem" }}>
                   Import Mode
                 </p>
                 <RadioOption
@@ -557,8 +551,8 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
 
             {/* Conflict resolution - append only (not available in scoped replace) */}
             {!roleScope && mode === "append" && (
-              <div style={{ marginBottom: "1rem", paddingTop: "0.25rem", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-                <p style={{ color: "rgba(249,249,249,0.45)", fontSize: "0.73rem", fontFamily: "Inter, sans-serif", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", margin: "1rem 0 0.65rem" }}>
+              <div style={{ marginBottom: "1rem", paddingTop: "0.25rem", borderTop: "1px solid var(--line)" }}>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.73rem", fontFamily: "var(--font-sans)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", margin: "1rem 0 0.65rem" }}>
                   When a Person Already Exists in the Roster
                 </p>
                 <RadioOption
@@ -597,18 +591,18 @@ export default function ImportModal({ onClose, onComplete, roleScope }) {
         {step === 3 && result && (
           <div style={{ textAlign: "center", padding: "0.5rem 0" }}>
             <div style={{ fontSize: "2.75rem", marginBottom: "0.65rem" }}>✅</div>
-            <h3 style={{ color: "#f9f9f9", fontFamily: "Kufam, sans-serif", fontSize: "1.2rem", marginBottom: "0.4rem" }}>
+            <h3 style={{ color: "var(--text)", fontFamily: "var(--font-display)", fontSize: "1.2rem", marginBottom: "0.4rem" }}>
               Import Complete
             </h3>
-            <p style={{ color: "rgba(249,249,249,0.4)", fontSize: "0.85rem", fontFamily: "Inter, sans-serif", marginBottom: "1.75rem" }}>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontFamily: "var(--font-sans)", marginBottom: "1.75rem" }}>
               The roster has been updated successfully.
             </p>
 
             <div style={{ display: "flex", gap: "0.65rem", justifyContent: "center", flexWrap: "wrap", marginBottom: "1.75rem" }}>
-              {result.inserted > 0 && <StatPill value={result.inserted} label="Added" color="#4ade80" />}
-              {result.updated > 0 && <StatPill value={result.updated} label="Updated" color="#93c5fd" />}
-              {result.deleted > 0 && <StatPill value={result.deleted} label="Removed" color="#f87171" />}
-              {result.skipped > 0 && <StatPill value={result.skipped} label="Skipped" color="rgba(249,249,249,0.4)" />}
+              {result.inserted > 0 && <StatPill value={result.inserted} label="Added" color="var(--success)" />}
+              {result.updated > 0 && <StatPill value={result.updated} label="Updated" color="var(--link)" />}
+              {result.deleted > 0 && <StatPill value={result.deleted} label="Removed" color="var(--danger)" />}
+              {result.skipped > 0 && <StatPill value={result.skipped} label="Skipped" color="var(--text-muted)" />}
               {result.inserted === 0 && result.updated === 0 && result.deleted === 0 && result.skipped === 0 && (
                 <StatPill value={0} label="Changes" />
               )}

@@ -1,9 +1,16 @@
-.backdrop { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; padding: 1rem; background: rgba(3, 8, 28, 0.78); backdrop-filter: blur(5px); }
-.hasSpotlight { background: rgba(3, 8, 28, 0.42); backdrop-filter: none; }
-.spotlight { position: fixed; z-index: 3001; border: 2px solid #ecb557; border-radius: 9px; box-shadow: 0 0 0 9999px rgba(3, 8, 28, 0.62), 0 0 24px rgba(236,181,87,.55); pointer-events: none; transition: top .2s ease, left .2s ease, width .2s ease, height .2s ease; }
-.card { position: relative; z-index: 3002; width: min(100%, 560px); padding: clamp(1.35rem, 4vw, 2.4rem); border: 1px solid rgba(236,181,87,.35); border-radius: 20px; background: #18245d; color: #f9f9f9; box-shadow: 0 24px 80px rgba(0,0,0,.5); }
-.progress { display: flex; justify-content: space-between; gap: 1rem; color: rgba(249,249,249,.58); font: .75rem Inter,sans-serif; text-transform: uppercase; letter-spacing: .06em; }
-.progressBar { height: 5px; margin: .7rem 0 2rem; overflow: hidden; border-radius: 9px; background: rgba(255,255,255,.1); }.progressBar span { display: block; height: 100%; border-radius: inherit; background: #ecb557; transition: width .2s ease; }
-.card h2 { margin-bottom: .75rem; color: #f9f9f9; font: 700 clamp(1.35rem, 4vw, 1.8rem) Kufam,sans-serif; }.card p { min-height: 5rem; color: rgba(249,249,249,.78); font: 1rem/1.65 Inter,sans-serif; }
-.actions { display: flex; align-items: center; justify-content: flex-end; gap: .6rem; margin-top: 1.4rem; }.actions button { min-height: 42px; padding: .65rem 1rem; border-radius: 8px; font: 600 .85rem Inter,sans-serif; cursor: pointer; }.primary { border: 1px solid #ecb557; background: #ecb557; color: #112a67; }.secondary { border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.07); color: #f9f9f9; }.skip { margin-right: auto; border: 0; background: transparent; color: rgba(249,249,249,.5); }.skip:hover,.secondary:hover { color: #fff; border-color: rgba(255,255,255,.45); }
-@media (max-width: 480px) { .card p { min-height: 7rem; font-size: .92rem; }.actions { flex-wrap: wrap; }.skip { width: 100%; margin-right: 0; text-align: left; } }
+.backdrop { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; padding: 1rem; background: rgba(10, 16, 28, 0.6); }
+.hasSpotlight { background: transparent; }
+.spotlight { position: fixed; z-index: 3001; border: 2px solid var(--illini-orange); border-radius: 9px; box-shadow: 0 0 0 9999px rgba(10, 16, 28, 0.55); pointer-events: none; transition: top .2s ease, left .2s ease, width .2s ease, height .2s ease; }
+.card { position: relative; z-index: 3002; width: min(100%, 540px); padding: clamp(1.25rem, 4vw, 2rem); border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); }
+.progress { display: flex; justify-content: space-between; gap: 1rem; color: var(--text-muted); font-size: .85rem; }
+.progressBar { height: 4px; margin: .6rem 0 1.5rem; overflow: hidden; border-radius: 4px; background: var(--surface-2); }
+.progressBar span { display: block; height: 100%; border-radius: inherit; background: var(--illini-orange); transition: width .2s ease; }
+.card h2 { margin-bottom: .6rem; color: var(--heading); font-family: var(--font-display); font-size: clamp(1.3rem, 4vw, 1.6rem); font-weight: 700; }
+.card p { min-height: 4.5rem; color: var(--text); line-height: 1.6; }
+.actions { display: flex; align-items: center; justify-content: flex-end; gap: .6rem; margin-top: 1.25rem; }
+.actions button { min-height: 40px; padding: .55rem 1rem; border-radius: 6px; font-size: .9rem; font-weight: 600; cursor: pointer; }
+.primary { border: 1px solid var(--primary-bg); background: var(--primary-bg); color: var(--primary-text); }
+.secondary { border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); }
+.skip { margin-right: auto; border: 0; background: transparent; color: var(--text-muted); }
+.skip:hover, .secondary:hover { color: var(--text); }
+@media (max-width: 480px) { .card p { min-height: 6.5rem; font-size: .95rem; } .actions { flex-wrap: wrap; } .skip { width: 100%; margin-right: 0; text-align: left; } }

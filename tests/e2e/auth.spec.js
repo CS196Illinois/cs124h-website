@@ -1,82 +1,69 @@
 import { test, expect } from "./fixtures";
 import { clearAllTestTables } from "../helpers/db";
 
-const ROLE_HOME = {
-  course_lead: { path: "/user/course_lead", heading: /course lead/i },
-  head_pm: { path: "/user/head_pm", heading: /head pm/i },
-  pm: { path: "/user/pm", heading: /pm/i },
-  lead_web_dev: { path: "/user/lead_web_dev", heading: /support tickets/i },
-  student: { path: "/user/student", heading: /student/i },
+// Signed-in tool pages and the roles allowed on each (see middleware.js).
+const TOOL_PAGES = {
+  "/checkin": ["student", "pm", "head_pm", "course_lead", "lead_web_dev"],
+  "/my-group": ["pm"],
+  "/people": ["course_lead", "head_pm"],
+  "/support/tickets": ["lead_web_dev"],
 };
+const ROLES = ["student", "pm", "head_pm", "course_lead", "lead_web_dev"];
 
-test.describe("auth + role-gated dashboards", () => {
-  // Like every other spec, start each test from empty test tables.
+test.describe("auth + role-gated pages", () => {
   test.beforeEach(clearAllTestTables);
 
-  test("visiting a /user page while signed out redirects to sign-in", async ({ page }) => {
-    await page.goto("/user/pm");
-    await expect(page).toHaveURL(/\/signin/);
+  test("a signed-out visitor is sent to sign-in and comes back afterward", async ({ page }) => {
+    await page.goto("/people");
+    await expect(page).toHaveURL(/\/signin\?callbackUrl=%2Fpeople/);
   });
 
-  for (const [role, { path }] of Object.entries(ROLE_HOME)) {
-    test(`${role} can reach their own dashboard`, async ({ page, loginAs }) => {
+  for (const role of ROLES) {
+    test(`${role} can open exactly their own tool pages`, async ({ page, loginAs }) => {
       await loginAs({ netID: `e2e-${role}`, role });
-      await page.goto(path);
-      await expect(page).toHaveURL(new RegExp(path.replace(/\//g, "\\/")));
-    });
-
-    // Covers the post-sign-in flow: /signin defaults callbackUrl to the bare
-    // /user root, which app/user/page.js redirects onward from.
-    test(`${role} lands on their own dashboard via the bare /user redirect`, async ({ page, loginAs }) => {
-      await loginAs({ netID: `e2e-${role}-root`, role });
-      await page.goto("/user");
-      await expect(page).toHaveURL(new RegExp(path.replace(/\//g, "\\/")));
+      for (const [path, allowed] of Object.entries(TOOL_PAGES)) {
+        await page.goto(path);
+        if (allowed.includes(role)) await expect(page).toHaveURL(new RegExp(`${path.replace(/\//g, "\\/")}$`));
+        else await expect(page).toHaveURL(/\/unauthorized/);
+      }
     });
   }
 
-  test("a student is redirected away from a pm-only page", async ({ page, loginAs }) => {
-    await loginAs({ netID: "e2e-student2", role: "student" });
+  test("the second top-bar row lists the signed-in role's tools", async ({ page, loginAs }) => {
+    await loginAs({ netID: "e2e-pm-tools", role: "pm" });
+    await page.goto("/");
+    const tools = page.getByRole("navigation", { name: "PM tools" });
+    await expect(tools.getByRole("link", { name: "Check in" })).toBeVisible();
+    await expect(tools.getByRole("link", { name: "My group" })).toBeVisible();
+    await expect(tools.getByRole("link", { name: "People" })).toHaveCount(0);
+  });
+
+  test("old dashboard URLs redirect to where things live now, keeping the query", async ({ page, loginAs }) => {
+    await loginAs({ netID: "e2e-redirect", role: "pm" });
+    await page.goto("/user/checkin?event=abc");
+    await expect(page).toHaveURL(/\/checkin\?event=abc$/);
+    await page.goto("/user/pm/students");
+    await expect(page).toHaveURL(/\/my-group$/);
+    await page.goto("/user/pm/events");
+    await expect(page).toHaveURL(/\/schedule/);
     await page.goto("/user/pm");
-    await expect(page).toHaveURL(/\/unauthorized/);
+    await expect(page).toHaveURL(/localhost:\d+\/$/);
   });
 
-  test("a pm is redirected away from a course_lead-only page", async ({ page, loginAs }) => {
-    await loginAs({ netID: "e2e-pm2", role: "pm" });
-    await page.goto("/user/course_lead");
-    await expect(page).toHaveURL(/\/unauthorized/);
-  });
-
-  test("lead_web_dev can't open other roles' dashboards", async ({ page, loginAs }) => {
-    await loginAs({ netID: "e2e-leadweb", role: "lead_web_dev" });
-    for (const path of ["/user/course_lead", "/user/pm", "/user/student"]) {
-      await page.goto(path);
-      await expect(page).toHaveURL(/\/unauthorized/);
-    }
-  });
-
-  // Regression test: a student who has enrolled but hasn't been added to the
-  // roster yet (common right before kickoff) shouldn't see a generic 401 -
-  // they get a friendlier "not on the roster yet" explanation instead, on
-  // both the bare /user root and a specific role path.
+  // A student who signed in but isn't on the roster yet (common before
+  // kickoff) gets a friendly explanation, not a generic 401.
   test("a signed-in user with no roster role sees a friendly 'not enrolled yet' message, not a generic 401", async ({ page, loginAs }) => {
     await loginAs({ netID: "e2e-not-enrolled", role: "error" });
-
-    await page.goto("/user");
+    await page.goto("/checkin");
     await expect(page).toHaveURL(/\/unauthorized\?.*reason=not-enrolled/);
     await expect(page.getByText(/not on the roster yet/i)).toBeVisible();
     await expect(page.getByText("401")).not.toBeVisible();
-
-    await page.goto("/user/student");
-    await expect(page).toHaveURL(/\/unauthorized\?.*reason=not-enrolled/);
-    await expect(page.getByText(/not on the roster yet/i)).toBeVisible();
   });
 
-  // A genuine role mismatch (an enrolled user on the wrong dashboard) should
-  // keep the generic 401 copy - it's a different situation from not being
-  // enrolled yet, and shouldn't be told to "check back after kickoff".
+  // A real role mismatch keeps the generic message.
   test("a genuine role mismatch still shows the generic Unauthorized message", async ({ page, loginAs }) => {
     await loginAs({ netID: "e2e-student-mismatch", role: "student" });
-    await page.goto("/user/pm");
+    await page.goto("/people");
     await expect(page).toHaveURL(/\/unauthorized/);
     await expect(page.getByText("401")).toBeVisible();
     await expect(page.getByText(/not on the roster yet/i)).not.toBeVisible();

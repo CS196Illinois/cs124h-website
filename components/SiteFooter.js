@@ -1,14 +1,8 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import styles from "./SiteFooter.module.css";
 import { SITE } from "../lib/siteConfig";
 
 export default function SiteFooter() {
-  // Dashboards fill the viewport exactly, so they get no footer.
-  if (usePathname()?.startsWith("/user")) return null;
-
   return (
     <footer className={styles.footer}>
       <div className={styles.inner}>

@@ -14,7 +14,7 @@ for (const width of [390, 1280]) {
       } else await r.fulfill({ json: bank });
     });
     await loginAs({ netID: "layout-lead", role: "course_lead" });
-    await page.goto("/user/course_lead/sprints");
+    await page.goto("/assignments");
     await page.getByRole("button", { name: "+ New Sprint" }).click();
     const dialog = page.getByRole("dialog", { name: "Sprint details" });
     await expect(dialog.getByRole("checkbox")).toHaveCount(1);

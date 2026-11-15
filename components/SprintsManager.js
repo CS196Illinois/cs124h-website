@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useUndo } from "./UndoProvider";
-import styles from "../app/user/dashboard.module.css";
+import styles from "./staff/dashboard.module.css";
 import { parseMaxScore, parseSprintNumber } from "../lib/fieldRules";
 import { getCurrentSprint, defaultSprintDates } from "../lib/sprintVisibility";
 import { resolveMaxScore } from "../lib/sprintChecks";
@@ -252,7 +252,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
             <div key={i} className={styles.skeletonBlock} style={{ height: "2rem", width: "80px", borderRadius: "20px" }} />
           ))
         ) : sprints.length === 0 ? (
-          <span style={{ color: "rgba(249,249,249,0.4)", fontFamily: "Inter", fontSize: "0.85rem" }}>
+          <span style={{ color: "var(--text-muted)", fontFamily: "Inter", fontSize: "0.85rem" }}>
             No sprints yet
           </span>
         ) : (
@@ -278,14 +278,14 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
         <div className={styles.panel} style={{ marginBottom: "1rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem" }}>
             <div>
-              <div style={{ color: "rgba(249,249,249,0.45)", fontFamily: "Inter", fontSize: "0.8rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              <div style={{ color: "var(--text-muted)", fontFamily: "Inter", fontSize: "0.8rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                 Sprint {selectedSprint.number}
               </div>
-              <div style={{ color: "#f9f9f9", fontFamily: "Inter", fontSize: "1.05rem", fontWeight: 600 }}>
+              <div style={{ color: "var(--text)", fontFamily: "Inter", fontSize: "1.05rem", fontWeight: 600 }}>
                 {selectedSprint.goal}
               </div>
               {(selectedSprint.start_date || selectedSprint.end_date) && (
-                <div style={{ color: "rgba(249,249,249,0.4)", fontFamily: "Inter", fontSize: "0.8rem", marginTop: "0.4rem" }}>
+                <div style={{ color: "var(--text-muted)", fontFamily: "Inter", fontSize: "0.8rem", marginTop: "0.4rem" }}>
                   {selectedSprint.start_date &&
                     new Date(selectedSprint.start_date + "T00:00:00").toLocaleDateString()}
                   {selectedSprint.start_date && selectedSprint.end_date && " - "}
@@ -307,11 +307,11 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
               </div>
             )}
           </div>
-          <div style={{ marginTop: "0.85rem", display: "inline-flex", gap: "0.4rem", alignItems: "center", background: "rgba(255,255,255,0.04)", borderRadius: "8px", padding: "0.4rem 0.75rem" }}>
-            <span style={{ color: "#4ade80", fontFamily: "Inter", fontWeight: 700, fontSize: "1rem" }}>
+          <div style={{ marginTop: "0.85rem", display: "inline-flex", gap: "0.4rem", alignItems: "center", background: "var(--surface-2)", borderRadius: "8px", padding: "0.4rem 0.75rem" }}>
+            <span style={{ color: "var(--success)", fontFamily: "Inter", fontWeight: 700, fontSize: "1rem" }}>
               {students.filter((student) => completedIds.has(student.net_id)).length}
             </span>
-            <span style={{ color: "rgba(249,249,249,0.5)", fontFamily: "Inter", fontSize: "0.85rem" }}>
+            <span style={{ color: "var(--text-muted)", fontFamily: "Inter", fontSize: "0.85rem" }}>
               / {students.length} {groupScoped ? "students in your group marked sprint complete" : "students marked sprint complete"}
             </span>
           </div>
@@ -325,7 +325,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
       {/* Completion table */}
       {!loading && selectedSprint && (
         <div className={styles.panel}>
-          <div style={{ color: "#f9f9f9", fontFamily: "Inter", fontWeight: 600, marginBottom: "1rem" }}>
+          <div style={{ color: "var(--text)", fontFamily: "Inter", fontWeight: 600, marginBottom: "1rem" }}>
             Sprint Completions
           </div>
           {loadingComp ? (
@@ -354,7 +354,7 @@ export default function SprintsManager({ canManage = false, canManageQuestions =
                               rowSpan={groupStudents.length}
                               style={{
                                 verticalAlign: "top",
-                                color: "rgba(249,249,249,0.5)",
+                                color: "var(--text-muted)",
                                 fontWeight: 600,
                                 fontSize: "0.85rem",
                                 paddingTop: "0.85rem",

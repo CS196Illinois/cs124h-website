@@ -14,7 +14,7 @@ test.describe("event check-in", () => {
     const event = await insertEvent({ title: "Live Workshop", check_in_open: true, presenter: "Jane Doe" });
 
     await loginAs({ netID: "e2e-stu", role: "student" });
-    await page.goto("/user/student/attendance");
+    await page.goto("/checkin");
 
     await expect(page.getByText("Live Workshop")).toBeVisible();
     await page.getByPlaceholder("6-digit code").fill(deriveCode(event.id));
@@ -31,7 +31,7 @@ test.describe("event check-in", () => {
     await insertEvent({ title: "Live Workshop", check_in_open: true });
 
     await loginAs({ netID: "e2e-stu", role: "student" });
-    await page.goto("/user/student/attendance");
+    await page.goto("/checkin");
     await page.getByPlaceholder("6-digit code").fill("000000");
     await page.getByRole("button", { name: "Check In" }).click();
 
@@ -39,23 +39,19 @@ test.describe("event check-in", () => {
   });
 
   // Regression coverage: check-in used to only be reachable at
-  // /user/student/attendance, which middleware restricted to role ===
+  // /checkin, which middleware restricted to role ===
   // "student" - staff had no way to check themselves into an event they
-  // attended. /user/checkin is the shared, role-agnostic route every role's
+  // attended. /checkin is the shared, role-agnostic route every role's
   // sidebar now links to instead.
-  test("any role - not just students - can check in via the shared /user/checkin page", async ({ page, loginAs }) => {
+  test("any role - not just students - can check in via the shared /checkin page", async ({ page, loginAs }) => {
     await insertUser({ net_id: "e2e-pm", role: "PM", group_number: 1 });
     const event = await insertEvent({ title: "All-Staff Social", check_in_open: true });
 
     await loginAs({ netID: "e2e-pm", role: "pm" });
-    await page.goto("/user/checkin");
+    await page.goto("/checkin");
 
-    // Regression coverage: /user/checkin lives outside every role's own
-    // layout.js (that's the whole point - it's role-agnostic), which at
-    // first meant it rendered with no sidebar at all. checkin/layout.js
-    // picks the signed-in user's own sidebar dynamically instead.
-    await expect(page.locator("aside").getByRole("link", { name: "Dashboard" })).toBeVisible();
-    await expect(page.locator("aside").getByRole("link", { name: "Attendance" })).toBeVisible();
+    // The signed-in tools row is there, with Check in marked as the current page.
+    await expect(page.getByRole("navigation", { name: "PM tools" }).getByRole("link", { name: "Check in" })).toHaveAttribute("aria-current", "page");
 
     await expect(page.getByText("All-Staff Social")).toBeVisible();
     await page.getByPlaceholder("6-digit code").fill(deriveCode(event.id));
@@ -76,7 +72,7 @@ test.describe("event check-in", () => {
     await insertEvent({ title: "Other Talk", check_in_open: true });
 
     await loginAs({ netID: "e2e-stu", role: "student" });
-    await page.goto(`/user/checkin?event=${target.id}`);
+    await page.goto(`/checkin?event=${target.id}`);
 
     await expect(page.getByText("Target Talk")).toBeVisible();
     await expect(page.getByText("Other Talk")).not.toBeVisible();

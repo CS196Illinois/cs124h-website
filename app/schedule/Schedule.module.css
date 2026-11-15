@@ -67,11 +67,14 @@
 .scroller {
   overflow-x: auto;
   overscroll-behavior-x: contain;
+  container-type: inline-size; /* lets the grid size days from this width */
 }
 
 .grid {
-  --day: 2.4rem;
   --label: 5.5rem;
+  /* Two weeks fill the visible width; scroll for the rest of the semester.
+     On narrow screens days keep a usable minimum, so fewer fit. */
+  --day: max(2.1rem, calc((100cqw - var(--label)) / 14));
   display: grid;
   grid-template-columns: var(--label) repeat(var(--days), var(--day));
   width: max-content;
@@ -427,4 +430,22 @@
   .kind {
     display: none;
   }
+}
+
+/* ─── Staff: manage events ────────────────────────────────────── */
+.manageEvents {
+  margin-top: 2.75rem;
+  scroll-margin-top: calc(var(--navbar-height) + 1rem);
+}
+
+.manageEvents > h2 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--heading);
+}
+
+.manageEvents > p {
+  margin: 0.2rem 0 1rem;
+  color: var(--text-muted);
 }

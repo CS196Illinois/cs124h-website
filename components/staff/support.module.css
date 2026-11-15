@@ -1,0 +1,20 @@
+.section { display: grid; gap: 1rem; font-family: Inter, sans-serif; color: var(--text); }
+.toolbar { display: flex; gap: 1rem; flex-wrap: wrap; }
+.toolbar label { display: grid; gap: .45rem; font-size: .8rem; flex: 1; min-width: 140px; }
+.toolbar label:first-child { flex: 2; }
+.toolbar input, .toolbar select { width: 100%; min-width: 0; padding: .7rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; }
+.assignment { border: 1px solid var(--line-strong); border-radius: 12px; overflow: hidden; }
+.summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.25rem; padding: 1.25rem; }
+.summary h2 { color: var(--text); font-size: 1rem; line-height: 1.5; overflow-wrap: anywhere; }
+.muted { font-size: .8rem; color: var(--text-muted); line-height: 1.65; }
+.pending { font-size: .72rem; border-radius: 10px; padding: .25rem .55rem; background: var(--surface); color: var(--link); }
+.details { border-top: 1px solid var(--line-strong); padding: .8rem 1.25rem; }
+.details summary { cursor: pointer; color: var(--link); font-size: .85rem; }
+.details p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85rem; line-height: 1.65; margin-top: .75rem; }
+.details button { margin-top: 1rem; padding: .5rem .8rem; border: 1px solid var(--line-strong); border-radius: 6px; background: transparent; color: var(--text); cursor: pointer; }
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-top: 1rem; }
+.actions > a, .actions > button { margin-top: 0; display: inline-flex; align-items: center; padding: .5rem .8rem; border: 1px solid var(--line-strong); border-radius: 6px; background: transparent; color: var(--text); font: inherit; font-size: .85rem; line-height: 1.4; text-decoration: none; cursor: pointer; }
+.actions > a:hover, .actions > button:hover:not(:disabled) { background: var(--surface-2); }
+.actions > button:disabled { opacity: .55; cursor: not-allowed; }
+.section :focus-visible { outline: 3px solid var(--primary-bg); outline-offset: 3px; }
+@media (max-width: 450px) { .summary { flex-direction: column; gap: .75rem; padding: 1rem; } .toolbar label { flex-basis: 100%; } }

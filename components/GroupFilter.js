@@ -1,4 +1,4 @@
-import styles from "../app/user/dashboard.module.css";
+import styles from "./staff/dashboard.module.css";
 
 export default function GroupFilter({ users, value, onChange }) {
   const groups = [...new Set(users.filter((u) => u.group_number != null).map((u) => Number(u.group_number)))]

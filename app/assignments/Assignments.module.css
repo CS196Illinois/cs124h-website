@@ -117,3 +117,29 @@
     align-items: flex-start;
   }
 }
+
+/* ─── Signed-in tools below the public lists ─────────────────── */
+.tool {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: calc(var(--navbar-height) + 1rem);
+}
+
+/* A student's own checks come first, right under the page heading. */
+.checks {
+  margin-bottom: 2.5rem;
+  scroll-margin-top: calc(var(--navbar-height) + 1rem);
+}
+
+.tool > h2 {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--heading);
+}
+
+.toolLede {
+  margin: 0.2rem 0 1.25rem;
+  color: var(--text-muted);
+}

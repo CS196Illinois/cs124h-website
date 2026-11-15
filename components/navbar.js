@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { List, X, Sun, Moon } from "@phosphor-icons/react";
 import styles from "./Navbar.module.css";
-import { NAV_ITEMS, SITE } from "../lib/siteConfig";
+import { NAV_ITEMS, SITE, ROLE_NAMES, ROLE_TOOLS } from "../lib/siteConfig";
 
 const isActive = (pathname, href) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
@@ -54,58 +54,75 @@ export default function Navbar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
-  const account = status === "loading" ? (
-    <span className={styles.accountPlaceholder} aria-hidden="true" />
-  ) : session ? (
-    <>
-      <Link href="/user" className={`${styles.accountLink} ${pathname.startsWith("/user") ? styles.accountActive : ""}`}>
-        Dashboard
-      </Link>
-      <button type="button" className={styles.signOut} onClick={() => signOut({ callbackUrl: "/" })}>
-        Sign out
-      </button>
-    </>
-  ) : (
-    <Link href="/signin" className={styles.accountLink}>
-      Sign in
-    </Link>
-  );
+  const role = session?.user?.role;
+  const tools = ROLE_TOOLS[role] || [];
+  const signedIn = status === "authenticated" && Boolean(ROLE_NAMES[role]);
+  const signIn = status === "unauthenticated" || (status === "authenticated" && !signedIn) ? (
+    <Link href="/signin" className={styles.accountLink}>Sign in</Link>
+  ) : null;
+  const dataTour = (label) => `tool-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
   return (
-    <header className={styles.header}>
-      <nav className={styles.navbar} aria-label="Main">
-        <Link href="/" className={styles.brand} aria-label={`${SITE.shortName} home`}>
-          <Image src="/images/cs124h-logo.png" alt="" width={26} height={26} priority />
-          <span>{SITE.shortName}</span>
-        </Link>
+    <>
+      <header className={styles.header}>
+        <nav className={styles.navbar} aria-label="Main">
+          <Link href="/" className={styles.brand} aria-label={`${SITE.shortName} home`}>
+            <Image src="/images/cs124h-logo.png" alt="" width={26} height={26} priority />
+            <span>{SITE.shortName}</span>
+          </Link>
 
-        <ul id="main-nav" className={`${styles.links} ${menuOpen ? styles.linksOpen : ""}`}>
-          {NAV_ITEMS.map((item) => (
-            <li key={item.href}>
-              <Link href={item.href} className={`${styles.link} ${isActive(pathname, item.href) ? styles.active : ""}`} aria-current={isActive(pathname, item.href) ? "page" : undefined}>
-                {item.label}
-              </Link>
-            </li>
-          ))}
-          <li className={styles.mobileAccount}>{account}</li>
-        </ul>
+          <ul id="main-nav" className={`${styles.links} ${menuOpen ? styles.linksOpen : ""}`}>
+            {NAV_ITEMS.map((item) => (
+              <li key={item.href}>
+                <Link href={item.href} className={`${styles.link} ${isActive(pathname, item.href) ? styles.active : ""}`} aria-current={isActive(pathname, item.href) ? "page" : undefined}>
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+            {signIn && <li className={styles.mobileAccount}>{signIn}</li>}
+          </ul>
 
-        <div className={styles.actions}>
-          <ThemeToggle />
-          <div className={styles.desktopAccount}>{account}</div>
-          <button
-            type="button"
-            className={`${styles.iconButton} ${styles.menuButton}`}
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-label="Toggle menu"
-            aria-expanded={menuOpen}
-            aria-controls="main-nav"
-          >
-            {menuOpen ? <X size={20} weight="bold" /> : <List size={20} weight="bold" />}
-          </button>
-        </div>
-      </nav>
-      {menuOpen && <div className={styles.backdrop} onClick={() => setMenuOpen(false)} aria-hidden="true" />}
-    </header>
+          <div className={styles.actions}>
+            <ThemeToggle />
+            {signIn && <div className={styles.desktopAccount}>{signIn}</div>}
+            <button
+              type="button"
+              className={`${styles.iconButton} ${styles.menuButton}`}
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-label="Toggle menu"
+              aria-expanded={menuOpen}
+              aria-controls="main-nav"
+            >
+              {menuOpen ? <X size={20} weight="bold" /> : <List size={20} weight="bold" />}
+            </button>
+          </div>
+        </nav>
+        {menuOpen && <div className={styles.backdrop} onClick={() => setMenuOpen(false)} aria-hidden="true" />}
+      </header>
+
+      {signedIn && (
+        <nav className={styles.tools} aria-label={`${ROLE_NAMES[role]} tools`} data-tour="role-tools">
+          <div className={styles.toolsInner}>
+            <span className={styles.toolsRole}>{ROLE_NAMES[role]}</span>
+            <ul className={styles.toolLinks}>
+              {tools.map((tool) => (
+                <li key={tool.href}>
+                  <Link
+                    href={tool.href}
+                    className={`${styles.toolLink} ${isActive(pathname, tool.href) ? styles.toolActive : ""}`}
+                    aria-current={isActive(pathname, tool.href) ? "page" : undefined}
+                    data-tour={dataTour(tool.label)}
+                  >
+                    {tool.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <span className={styles.toolsUser}>{session.user.name || session.user.netID}</span>
+            <button type="button" className={styles.signOut} onClick={() => signOut({ callbackUrl: "/" })}>Sign out</button>
+          </div>
+        </nav>
+      )}
+    </>
   );
 }

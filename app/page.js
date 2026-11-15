@@ -1,12 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import styles from "./home.module.css";
+import CheckInNotice from "./CheckInNotice";
 import { SITE } from "../lib/siteConfig";
 import { getHomeData } from "../lib/upcoming";
 import { getViewer } from "../lib/courseData";
 
-// Rendered per request: signed-in viewers also see their own events (their
-// group's meetings, staff-only sessions).
+// Rendered per request, never prerendered: signed-in viewers also see their
+// own events (their group's meetings, staff-only sessions).
+export const dynamic = "force-dynamic";
 
 const external = { target: "_blank", rel: "noopener noreferrer" };
 
@@ -84,6 +86,8 @@ export default async function Home() {
       </section>
 
       <div className={`page ${styles.home}`}>
+      <CheckInNotice />
+
       <section aria-labelledby="now-heading">
         <h2 id="now-heading" className={styles.sectionTitle}>Right now</h2>
         <div className={styles.now}>

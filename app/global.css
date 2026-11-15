@@ -21,6 +21,8 @@
   --surface-2: #f3f4f6;
   --band: #eef2f8;            /* pale Illinois-blue panel */
   --heading: #13294b;
+  --primary-bg: #13294b;      /* primary buttons / selected states */
+  --primary-text: #ffffff;
   --text: #1b2333;
   --text-muted: #5a6478;
   --line: #e3e6eb;
@@ -58,6 +60,8 @@
     --surface-2: #1a202b;
     --band: #161e2c;
     --heading: #f1f4f9;
+    --primary-bg: #e8ecf3;
+    --primary-text: #13294b;
     --text: #e6e9ef;
     --text-muted: #9aa4b5;
     --line: #2a3140;
@@ -81,6 +85,8 @@
 }
 
 :root[data-theme="dark"] {
+  --primary-bg: #e8ecf3;
+  --primary-text: #13294b;
   --bg: #10141c;
   --surface: #10141c;
   --surface-2: #1a202b;
@@ -263,76 +269,4 @@ input[type="number"] {
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-}
-
-/* ─── Legacy surface ──────────────────────────────────────────────
-   Pages not yet redesigned are wrapped in <div class="legacy"> (see the
-   LegacySurface component), which restores the old navy theme and
-   element colors exactly. Rules use :where() so they keep the same low
-   specificity the old global element selectors had, letting page modules
-   override them as before. Delete a page's wrapper once it's redesigned,
-   and this whole block once none are left. */
-.legacy {
-  flex: 1;
-  background-color: #112a67;
-  color: #000;
-  color-scheme: dark;
-  font-family: "Playfair Display", serif;
-  font-size: medium;
-  line-height: normal;
-  -webkit-font-smoothing: auto;
-}
-
-:where(.legacy) .pageContainer {
-  height: 100%;
-  width: 100%;
-  padding: 2rem;
-}
-
-@media (max-width: 768px) {
-  :where(.legacy) .pageContainer { padding: 1.25rem 1rem; }
-}
-
-@media (max-width: 480px) {
-  :where(.legacy) .pageContainer { padding: 1rem 0.75rem; }
-}
-
-:where(.legacy) h1 {
-  color: #f9f9f9;
-  font-family: "Kufam", sans-serif;
-  letter-spacing: normal;
-  line-height: normal;
-}
-
-:where(.legacy) :is(h2, h3, h4) {
-  color: #070707;
-  font-family: "Inter", sans-serif;
-  letter-spacing: normal;
-  line-height: normal;
-}
-
-:where(.legacy) :is(p, a, button) {
-  color: #f9f9f9;
-  font-family: "Inter", sans-serif;
-}
-
-:where(.legacy) select {
-  color: #f9f9f9;
-  background-color: #18245d;
-  color-scheme: dark;
-  font-family: "Inter", sans-serif;
-}
-
-:where(.legacy) :is(select option, select optgroup) {
-  color: #f9f9f9;
-  background-color: #18245d;
-}
-
-:where(.legacy) :is(input[type="date"], input[type="datetime-local"], input[type="time"], input[type="month"], input[type="week"]) {
-  color-scheme: dark;
-}
-
-:where(.legacy) .skeleton {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.13) 50%, rgba(255, 255, 255, 0.05) 75%);
-  background-size: 200% 100%;
 }

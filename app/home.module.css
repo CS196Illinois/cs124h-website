@@ -93,6 +93,20 @@
   background: #e55400;
 }
 
+/* Shown when the signed-in viewer has an open check-in. */
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-bottom: 2rem;
+  padding: 0.85rem 1.1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--band);
+}
+
 .sectionTitle {
   font-family: var(--font-display);
   font-size: 1.15rem;

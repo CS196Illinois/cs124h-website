@@ -37,7 +37,7 @@ for (const [role, dbRole] of [["pm", "PM"]]) {
     const sprint = await insertSprint({ number: 1, goal: "Group progress" });
     await testClient().from(table("sprintCompletions")).insert(["group-student1", "outside-student"].map((student_net_id) => ({ sprint_id: sprint.id, student_net_id, marked_by: "lead" })));
     await loginAs({ netID: "group-manager", role });
-    await page.goto(`/user/${role}/sprints`);
+    await page.goto("/assignments");
     const count = page.getByText("/ 2 students in your group marked sprint complete", { exact: true }).locator("..");
     await expect(count).toHaveText(/1\s*\/ 2 students in your group marked sprint complete/);
     await expect(page.getByText("outside-student", { exact: true })).toHaveCount(0);
@@ -46,9 +46,9 @@ for (const [role, dbRole] of [["pm", "PM"]]) {
 
 test("an invalid session lands on a stable recovery screen with its callback intact", async ({ page, context }) => {
   await context.addCookies([{ name: "next-auth.session-token", value: "corrupt", domain: "localhost", path: "/", httpOnly: true }]);
-  await page.goto("/user/student/sprints?tab=done");
+  await page.goto("/checkin?event=abc");
   await expect(page).toHaveURL(/\/signin\?/);
-  expect(new URL(page.url()).searchParams.get("callbackUrl")).toBe("/user/student/sprints?tab=done");
+  expect(new URL(page.url()).searchParams.get("callbackUrl")).toBe("/checkin?event=abc");
   await expect(page.getByRole("button", { name: "Sign in with Illinois" })).toBeVisible();
 });
 
@@ -105,7 +105,7 @@ test("lead developer can read and resolve a ticket and retry a pending notificat
     return route.fulfill({ json: [ticket] });
   });
   await loginAs({ netID: "leadweb", role: "lead_web_dev" });
-  await page.goto("/user/lead_web_dev/support");
+  await page.goto("/support/tickets");
   await expect(page.getByRole("heading", { name: "Help with login" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Reply by email" })).toHaveAttribute("href", /^mailto:student1@illinois.edu/);
   await page.getByRole("button", { name: "Retry email notification" }).click();
@@ -119,7 +119,7 @@ test("PM sees saved non-bank questions locked and can append a new question", as
   await insertUser({ net_id: "pm-lock", role: "PM", group_number: 1 });
   const sprint = await insertSprint({ number: 1, goal: "Protected sprint", check_questions: ["Required course lead question"], check_max_score: 20 });
   await loginAs({ netID: "pm-lock", role: "pm" });
-  await page.goto("/user/pm/sprints");
+  await page.goto("/assignments");
   await page.getByRole("button", { name: /edit.*check|edit.*question/i }).click();
   await expect(page.getByRole("checkbox", { name: "Required course lead question" })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: "Required course lead question" })).toBeDisabled();

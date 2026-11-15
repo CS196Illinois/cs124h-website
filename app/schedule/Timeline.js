@@ -23,7 +23,9 @@ export default function Timeline({ data, viewer }) {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const scroller = useRef(null);
-  const todayCell = useRef(null);
+  const weekStartCell = useRef(null);
+  // Monday of the current week (getUTCDay: 0 = Sunday).
+  const thisMonday = addDays(today, -((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7));
 
   const col = (day) => Math.min(Math.max(daysBetween(start, day), 0), days - 1) + 2; // column 1 is the row label
   const dayList = useMemo(() => Array.from({ length: days }, (_, i) => addDays(start, i)), [start, days]);
@@ -58,11 +60,15 @@ export default function Timeline({ data, viewer }) {
   }, [events, sprints, today]);
   const [selected, setSelected] = useState(initial);
 
+  // Show this week and next: put this week's Monday right after the labels.
   const jumpToToday = (behavior = "smooth") => {
     const el = scroller.current;
-    const cell = todayCell.current;
+    const cell = weekStartCell.current;
     if (!el || !cell) return;
-    el.scrollTo({ left: Math.max(0, cell.offsetLeft - el.clientWidth * 0.3), behavior });
+    const labelWidth = el.querySelector(`.${styles.corner}`)?.offsetWidth ?? 0;
+    // Position within the scrolling content, independent of the page layout.
+    const x = cell.getBoundingClientRect().left - el.getBoundingClientRect().left + el.scrollLeft;
+    el.scrollTo({ left: Math.max(0, x - labelWidth), behavior });
   };
   useEffect(() => { jumpToToday("instant"); }, []);
 
@@ -88,7 +94,7 @@ export default function Timeline({ data, viewer }) {
       <div className={styles.toolbar}>
         <div className={styles.toolbarActions}>
           <button type="button" className="btn" onClick={() => jumpToToday()} disabled={!todayInRange}>Jump to today</button>
-          {canCreate && <button type="button" className="btn btnPrimary" onClick={() => setFormDay(today)}>Add event</button>}
+          {canCreate && <button type="button" className="btn btnPrimary" onClick={() => setFormDay(today)} data-tour="schedule-add-event">Add event</button>}
           {status && <span className={styles.status} role="status">{status}</span>}
         </div>
         <ul className={styles.legend} aria-label="Legend">
@@ -111,7 +117,7 @@ export default function Timeline({ data, viewer }) {
             const isToday = day === today;
             const cls = `${weekday === 0 || weekday === 6 ? styles.weekend : ""} ${weekday === 1 ? styles.monday : ""} ${isToday ? styles.today : ""}`;
             return [
-              <div key={`h-${day}`} ref={isToday ? todayCell : undefined} className={`${styles.dayHead} ${cls}`} style={{ gridColumn: i + 2, gridRow: 2 }}>
+              <div key={`h-${day}`} ref={day === thisMonday ? weekStartCell : undefined} className={`${styles.dayHead} ${cls}`} style={{ gridColumn: i + 2, gridRow: 2 }}>
                 <span>{fmt(day, { weekday: "narrow" })}</span>
                 <strong>{fmt(day, { day: "numeric" })}</strong>
               </div>,

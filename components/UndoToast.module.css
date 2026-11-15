@@ -14,27 +14,26 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  background: #16233f;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.75rem 1rem;
   min-width: 280px;
   max-width: 420px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   animation: slideIn 0.18s ease-out;
 }
 
 .message {
   flex: 1;
-  color: #f9f9f9;
+  color: var(--text);
   font-family: Inter, sans-serif;
   font-size: 0.88rem;
 }
 
 .undoBtn {
-  background: rgba(236, 181, 87, 0.15);
-  color: #ecb557;
-  border: 1px solid rgba(236, 181, 87, 0.35);
+  background: color-mix(in srgb, var(--primary-bg) 15%, transparent);
+  color: var(--link);
+  border: 1px solid color-mix(in srgb, var(--primary-bg) 35%, transparent);
   border-radius: 6px;
   padding: 0.3rem 0.75rem;
   font-family: Inter, sans-serif;
@@ -45,7 +44,7 @@
 }
 
 .undoBtn:hover {
-  background: rgba(236, 181, 87, 0.25);
+  background: color-mix(in srgb, var(--primary-bg) 25%, transparent);
 }
 
 .progressTrack {
@@ -54,13 +53,13 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-2);
 }
 
 .progressBar {
   height: 100%;
   width: 100%;
-  background: #ecb557;
+  background: var(--primary-bg);
   transform-origin: left;
   /* animation-duration is set inline per-toast (matches its undo window) */
   animation-name: shrink;

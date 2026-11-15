@@ -29,8 +29,7 @@ async function route(req, token, hadSessionCookie) {
   // enrolled but hasn't been added to the Supabase roster yet (e.g. before
   // kickoff at the start of a semester). This isn't a permissions mismatch
   // like the role-specific checks below, so it gets its own explanation
-  // rather than the generic "Unauthorized" messaging. Checked before the
-  // /user passthrough so it also covers the bare root.
+  // rather than the generic "Unauthorized" messaging.
   if (!role || role === "error") {
     const url = new URL("/unauthorized", req.url);
     url.searchParams.set("reason", token.authError || "not-enrolled");
@@ -38,29 +37,16 @@ async function route(req, token, hadSessionCookie) {
     return NextResponse.redirect(url);
   }
 
-  // The bare /user root just redirects to /user/<role> (handled by that page
-  // itself, which also gates on an invalid/missing role) - every role needs
-  // to reach it, so let it through before any role-specific path checks.
-  if (path === "/user") {
-    return NextResponse.next();
-  }
-
-  // Role-agnostic shared routes - any enrolled role can reach these.
-  const SHARED_PATHS = ["/user/checkin"];
-  if (SHARED_PATHS.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
-    return NextResponse.next();
-  }
-
-  // Each dashboard area belongs to exactly one role.
-  const ROLE_AREAS = {
-    "/user/student": "student",
-    "/user/pm": "pm",
-    "/user/head_pm": "head_pm",
-    "/user/course_lead": "course_lead",
-    "/user/lead_web_dev": "lead_web_dev",
+  // Which signed-in roles may open each signed-in page. Any enrolled role
+  // may check in; the rest are staff tools. Anything not listed is denied.
+  const PAGE_ROLES = {
+    "/checkin": ["student", "pm", "head_pm", "course_lead", "lead_web_dev"],
+    "/my-group": ["pm"],
+    "/people": ["course_lead", "head_pm"],
+    "/support/tickets": ["lead_web_dev"],
   };
-  const area = Object.keys(ROLE_AREAS).find((prefix) => path === prefix || path.startsWith(`${prefix}/`));
-  if (!area || ROLE_AREAS[area] !== role) {
+  const page = Object.keys(PAGE_ROLES).find((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+  if (!page || !PAGE_ROLES[page].includes(role)) {
     const url = new URL("/unauthorized", req.url);
     url.searchParams.set("callbackUrl", path);
     return NextResponse.redirect(url);
@@ -69,5 +55,5 @@ async function route(req, token, hadSessionCookie) {
 }
 
 export const config = {
-  matcher: ["/user/:path*"],
+  matcher: ["/checkin", "/my-group", "/people", "/support/tickets"],
 };

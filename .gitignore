@@ -4,6 +4,7 @@
 # Next.js build output
 /.next/
 /.next-e2e/
+/.next-check/
 /out/
 
 # Optional npm/yarn logs
