@@ -12,7 +12,7 @@ const ROLE_LABELS = ROLE_NAMES;
 // (an element's data-tour attribute) when it's on the page.
 const TOUR_STEPS = {
   course_lead: [
-    { title: "Everything is on the main site", copy: "Your tools are in the second row of the top bar. Events, sprints, and grades are managed right where students read them.", href: "/", target: "role-tools" },
+    { title: "Everything is on the main site", copy: "Your own tabs are at the end of the top bar. Events, sprints, and grades are managed right where students read them.", href: "/", target: "role-tools" },
     { title: "People", copy: "Add people, set their roles and groups, and import rosters. A person’s role decides what they can see and do.", href: "/people", target: "tool-people" },
     { title: "Plan sprints", copy: "On Assignments, create each sprint with its goal, dates, and understanding check questions. Students don’t see a sprint until its start date.", href: "/assignments", target: "sprint-new" },
     { title: "Add events", copy: "On the Schedule, click Add event or click a day. Choose a category and who it’s for, and repeat it weekly if you like.", href: "/schedule", target: "schedule-add-event" },
@@ -20,7 +20,7 @@ const TOUR_STEPS = {
     { title: "Gradebook", copy: "Understanding check scores by group or by sprint, with CSV export, are on Assignments.", href: "/assignments", target: "gradebook-view" },
   ],
   head_pm: [
-    { title: "Everything is on the main site", copy: "Your tools are in the second row of the top bar. Events, sprints, and grades are managed right where students read them.", href: "/", target: "role-tools" },
+    { title: "Everything is on the main site", copy: "Your own tabs are at the end of the top bar. Events, sprints, and grades are managed right where students read them.", href: "/", target: "role-tools" },
     { title: "People", copy: "Keep PM and student group assignments correct before each week starts.", href: "/people", target: "tool-people" },
     { title: "Sprints", copy: "On Assignments, review sprint goals and check questions, and grade any group’s understanding checks.", href: "/assignments", target: "sprint-new" },
     { title: "Events and check-in", copy: "Add events from the Schedule, then open check-in and see who attended under Manage events.", href: "/schedule", target: "manage-events" },
@@ -31,7 +31,7 @@ const TOUR_STEPS = {
     { title: "Events", copy: "You can see every course event and its attendance under Manage events.", href: "/schedule", target: "manage-events" },
   ],
   pm: [
-    { title: "Everything is on the main site", copy: "Your tools are in the second row of the top bar. You don’t need to change anything as you go.", href: "/", target: "role-tools" },
+    { title: "Everything is on the main site", copy: "Your own tabs are at the end of the top bar. You don’t need to change anything as you go.", href: "/", target: "role-tools" },
     { title: "Your group", copy: "Check that your group’s names and NetIDs are right. Ask a Course Lead to fix anything missing.", href: "/my-group", target: "tool-my-group" },
     { title: "Track sprint progress", copy: "Mark each student’s sprint as Done here, and use Export CSV to download the list.", href: "/my-group", target: "students-export" },
     { title: "Run the understanding check", copy: "On Assignments, click Open Understanding Check when your meeting starts and close it when students finish. Grade each submission below it.", href: "/assignments", target: "sprint-open-check" },
@@ -41,7 +41,7 @@ const TOUR_STEPS = {
     { title: "PM guide", copy: "The PM guide on Resources walks through each week step by step. Come back to it anytime.", href: "/resources", target: "pm-guide" },
   ],
   student: [
-    { title: "Welcome to CS 124H", copy: "The home page shows the current sprint and MP and what’s coming up. Your tools are in the second row of the top bar.", href: "/", target: "role-tools" },
+    { title: "Welcome to CS 124H", copy: "The home page shows the current sprint and MP and what’s coming up. Your own tabs are at the end of the top bar.", href: "/", target: "role-tools" },
     { title: "Understanding checks", copy: "When your PM opens your group’s check, your questions appear on Assignments. Answer every question and submit once. Your grade and feedback show up there too.", href: "/assignments", target: "student-checks" },
     { title: "Check in", copy: "During an event, enter the code your PM shows or scan the QR code.", href: "/checkin", target: "tool-check-in" },
     { title: "Need help?", copy: "Read the message on screen and try again. Still stuck? Use Support at the bottom of any page.", href: "/", target: "role-tools" },

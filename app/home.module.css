@@ -1,5 +1,5 @@
 .home {
-  max-width: 880px;
+  min-width: 0;
 }
 
 /* ─── Photo banner: short enough that "Right now" stays in view ── */

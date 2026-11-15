@@ -29,10 +29,11 @@ test.describe("auth + role-gated pages", () => {
     });
   }
 
-  test("the second top-bar row lists the signed-in role's tools", async ({ page, loginAs }) => {
+  test("the top bar adds the signed-in role's own tabs", async ({ page, loginAs }) => {
+    await page.setViewportSize({ width: 1300, height: 700 });
     await loginAs({ netID: "e2e-pm-tools", role: "pm" });
     await page.goto("/");
-    const tools = page.getByRole("navigation", { name: "PM tools" });
+    const tools = page.getByRole("navigation", { name: "Main" });
     await expect(tools.getByRole("link", { name: "Check in" })).toBeVisible();
     await expect(tools.getByRole("link", { name: "My group" })).toBeVisible();
     await expect(tools.getByRole("link", { name: "People" })).toHaveCount(0);

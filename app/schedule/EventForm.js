@@ -36,7 +36,7 @@ function audienceOptions(groupNumber) {
 }
 
 // The audience a category usually goes with, until the person picks one.
-const AUDIENCE_FOR_CATEGORY = { workshop: "students", info_session: "students", social: "everyone", group_meeting: "group", staff_meeting: "staff", other: "students" };
+const AUDIENCE_FOR_CATEGORY = { workshop: "students", info_session: "students", presentation: "everyone", social: "everyone", group_meeting: "group", staff_meeting: "staff", other: "students" };
 
 export default function EventForm({ day, viewer, onClose, onCreated }) {
   const options = audienceOptions(viewer.groupNumber);

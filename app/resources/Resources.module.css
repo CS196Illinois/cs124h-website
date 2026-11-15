@@ -19,7 +19,7 @@
 /* Blog posts: a reading list, not cards. */
 .posts {
   list-style: none;
-  max-width: 46rem;
+  max-width: 60rem;
   border-top: 1px solid var(--line);
 }
 
@@ -54,7 +54,7 @@
 }
 
 .vault {
-  max-width: 46rem;
+  max-width: 60rem;
 }
 
 .empty {

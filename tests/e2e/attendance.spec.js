@@ -50,8 +50,9 @@ test.describe("event check-in", () => {
     await loginAs({ netID: "e2e-pm", role: "pm" });
     await page.goto("/checkin");
 
-    // The signed-in tools row is there, with Check in marked as the current page.
-    await expect(page.getByRole("navigation", { name: "PM tools" }).getByRole("link", { name: "Check in" })).toHaveAttribute("aria-current", "page");
+    // Check in is one of the PM's top-bar tabs, marked as the current page.
+    await page.setViewportSize({ width: 1300, height: 800 });
+    await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Check in" })).toHaveAttribute("aria-current", "page");
 
     await expect(page.getByText("All-Staff Social")).toBeVisible();
     await page.getByPlaceholder("6-digit code").fill(deriveCode(event.id));

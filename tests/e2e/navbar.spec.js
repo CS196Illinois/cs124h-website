@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures";
 
-// The full row of links only fits from ~1080px up; below that they move into
+// The full row of links (plus a signed-in role's tabs) only fits from ~1240px up; below that they move into
 // a drop-down panel behind the menu button. Regression coverage for the old
 // navbar, which clipped or wrapped items between breakpoints.
 test.describe("navbar responsiveness", () => {

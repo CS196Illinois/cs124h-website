@@ -1,7 +1,7 @@
 -- Run in Supabase SQL editor before deploying event categories.
 -- Safe to run more than once.
 -- category: one of lib/eventCategories.js EVENT_CATEGORIES ids (workshop,
--- group_meeting, info_session, social, staff_meeting, other). Null means
+-- group_meeting, info_session, presentation, social, staff_meeting, other). Null means
 -- "work it out from the audience" (see eventCategory()).
 
 -- Production events
