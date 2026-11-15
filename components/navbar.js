@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { List, X, Sun, Moon } from "@phosphor-icons/react";
+import { List, X, Sun, Moon, DiscordLogo } from "@phosphor-icons/react";
 import styles from "./Navbar.module.css";
 import { NAV_ITEMS, SITE, ROLE_NAMES, ROLE_TOOLS } from "../lib/siteConfig";
 
@@ -126,6 +126,9 @@ export default function Navbar() {
         </ul>
 
         <div className={styles.actions}>
+          <a href={SITE.links.discord} target="_blank" rel="noopener noreferrer" className={`${styles.iconButton} ${styles.discordInline}`} aria-label="Join the course Discord" title="Join the course Discord">
+            <DiscordLogo size={19} weight="fill" />
+          </a>
           <span className={styles.themeInline}><ThemeToggle /></span>
           {account}
           <button
@@ -144,6 +147,11 @@ export default function Navbar() {
         <ul id="main-nav" className={`${styles.menuPanel} ${menuOpen ? styles.menuOpen : closing ? styles.menuClosing : ""}`}>
           {extras.map((item) => <li key={item.href}>{navLink(item)}</li>)}
           {roleTabs(true)}
+          <li className={styles.menuDiscord}>
+            <a href={SITE.links.discord} target="_blank" rel="noopener noreferrer" className={styles.link}>
+              <DiscordLogo size={18} weight="fill" aria-hidden="true" /> Join the Discord
+            </a>
+          </li>
           <li className={styles.menuTheme}><ThemeToggle /> <span>Theme</span></li>
         </ul>
       </nav>

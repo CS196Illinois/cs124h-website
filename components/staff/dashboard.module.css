@@ -213,9 +213,9 @@
 }
 
 .activeChip {
-  background: hsl(223, 44%, 47%);
-  border-color: transparent;
-  color: var(--text);
+  background: var(--primary-bg);
+  border-color: var(--primary-bg);
+  color: var(--primary-text);
   font-weight: 600;
 }
 
@@ -285,7 +285,7 @@
 }
 
 .btnPrimary:hover {
-  background-color: var(--primary-bg);
+  background-color: color-mix(in srgb, var(--primary-bg) 88%, var(--text));
 }
 
 .btnPrimary:disabled {
@@ -737,9 +737,9 @@ select.roleSelect {
 }
 
 .activeSubTab {
-  background: hsl(223, 44%, 47%);
-  border-color: transparent;
-  color: var(--text);
+  background: var(--primary-bg);
+  border-color: var(--primary-bg);
+  color: var(--primary-text);
   font-weight: 600;
 }
 

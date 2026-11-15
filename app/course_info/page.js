@@ -20,6 +20,8 @@ async function getLeads() {
 
 const SECTIONS = [
   { id: "about", label: "About" },
+  { id: "syllabus", label: "Syllabus" },
+  { id: "discord", label: "Discord" },
   { id: "register", label: "How to register" },
   { id: "contact", label: "Contact" },
 ];
@@ -66,6 +68,29 @@ export default async function CourseInfoPage() {
             </div>
           </section>
 
+          <section id="syllabus" className={styles.section}>
+            <h2>Syllabus</h2>
+            <p>
+              The syllabus covers how the course works: sprints, MPs, attendance, grading, and what you need to do
+              to pass.
+            </p>
+            <p className={styles.actions}>
+              <a href={SITE.links.syllabus} target="_blank" rel="noopener noreferrer" className="btn btnPrimary">Read the syllabus</a>
+            </p>
+          </section>
+
+          <section id="discord" className={styles.section}>
+            <h2>Join the Discord</h2>
+            <p>
+              <strong>Everyone in the course joins the Discord.</strong> It&apos;s where announcements, reminders, and
+              quick questions for staff happen, and where you talk with your group. Deadlines, assignments, and grades
+              are always official here on the website.
+            </p>
+            <p className={styles.actions}>
+              <a href={SITE.links.discord} target="_blank" rel="noopener noreferrer" className="btn btnPrimary">Join the Discord</a>
+            </p>
+          </section>
+
           <section id="register" className={styles.section}>
             <h2>How to register</h2>
             <ol className={styles.steps}>
@@ -106,11 +131,11 @@ export default async function CourseInfoPage() {
                 </p>
               </li>
               <li>
-                <h3>Join the Discord</h3>
+                <h3>Join the Discord (required)</h3>
                 <p>
-                  Quick updates and conversations happen on{" "}
-                  <a href={SITE.links.discord} target="_blank" rel="noopener noreferrer">Discord</a>. Official information
-                  (deadlines, assignments, grades) always lives on this website.
+                  Announcements and reminders go out on{" "}
+                  <a href={SITE.links.discord} target="_blank" rel="noopener noreferrer">the course Discord</a>, so join it
+                  as soon as you register. Official information (deadlines, assignments, grades) always lives on this website.
                 </p>
               </li>
             </ol>

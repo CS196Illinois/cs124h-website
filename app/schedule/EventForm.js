@@ -2,19 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { EVENT_CATEGORIES } from "../../lib/eventCategories";
+import { courseTimeToISO } from "../../lib/courseTime";
 import styles from "./EventForm.module.css";
-
-const TIME_ZONE = "America/Chicago";
-
-/** "2026-11-18" + "17:30" in course time → ISO timestamp. */
-function courseTimeToISO(day, time) {
-  const guess = Date.parse(`${day}T${time}:00Z`);
-  const name = new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, timeZoneName: "longOffset" })
-    .formatToParts(new Date(guess)).find((p) => p.type === "timeZoneName")?.value || "GMT";
-  const m = name.match(/GMT([+-])(\d{2}):(\d{2})/);
-  const offset = m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) : 0;
-  return new Date(guess - offset * 60_000).toISOString();
-}
 
 const addMinutes = (time, minutes) => {
   const [h, m] = time.split(":").map(Number);

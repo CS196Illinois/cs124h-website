@@ -143,7 +143,8 @@
    panel under the bar. */
 /* Short labels and the in-menu theme row only appear on small screens. */
 .labelShort,
-.menuTheme {
+.menuTheme,
+.menuDiscord {
   display: none;
 }
 
@@ -250,8 +251,23 @@
   }
 
   .brand span,
-  .themeInline {
+  .themeInline,
+  .discordInline {
     display: none;
+  }
+
+  .menuPanel > .menuDiscord {
+    grid-column: 1 / -1;
+    display: block;
+    margin-top: 0.35rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .menuDiscord .link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .link {
@@ -278,9 +294,6 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-top: 0.35rem;
-    padding-top: 0.45rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.14);
     color: var(--nav-text);
     font-size: 0.95rem;
   }

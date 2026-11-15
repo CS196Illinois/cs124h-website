@@ -26,20 +26,27 @@
   object-position: center 55%;
 }
 
-/* Darken the photo so the text reads. */
+/* Darken the photo a little; the blurred box behind the text does the rest. */
 .hero::after {
   content: "";
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: rgba(14, 20, 32, 0.62);
+  background: rgba(7, 17, 36, 0.35);
 }
 
+/* The blurred, see-through box behind the logo, title, and buttons. */
 .heroInner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  max-width: 40rem;
+  width: min(100%, 52rem);
+  padding: 1.5rem clamp(1rem, 4vw, 2.5rem) 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(19, 41, 75, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .heroLogo {
@@ -72,6 +79,9 @@
 }
 
 .heroButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   padding: 0.55rem 1.3rem;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.55);
@@ -91,6 +101,12 @@
 
 .heroButtonPrimary:hover {
   background: #e55400;
+}
+
+.heroInner .heroNote {
+  margin-top: 0.75rem;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* Shown when the signed-in viewer has an open check-in. */

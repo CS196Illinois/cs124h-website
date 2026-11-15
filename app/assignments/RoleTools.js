@@ -4,6 +4,7 @@ import SprintsManager from "../../components/SprintsManager";
 import UnderstandingCheckPanel from "../../components/UnderstandingCheckPanel";
 import GradebookAll from "../../components/staff/GradebookAll";
 import GradebookGroup from "../../components/staff/GradebookGroup";
+import MpManager from "./MpManager";
 import styles from "./Assignments.module.css";
 
 /**
@@ -17,6 +18,8 @@ export default function RoleTools({ role }) {
 
   return (
     <>
+      {allGroups && <MpManager />}
+
       <section id="manage-sprints" className={styles.tool} aria-labelledby="manage-sprints-heading">
         <h2 id="manage-sprints-heading">Manage sprints</h2>
         <p className={styles.toolLede}>

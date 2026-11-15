@@ -164,13 +164,14 @@ const TABLE_PK = {
   staff: "id",
   resources: "id",
   projects: "id",
+  mps: "id",
   users: "net_id",
 };
 
 // Children before parents, though FKs are ON DELETE CASCADE anyway.
 const CLEAR_ORDER = [
   "sprintGroupChecks", "sprintCompletions", "sprintCheckWindows", "eventCheckins", "actionItems",
-  "sprints", "events", "staff", "resources", "projects",
+  "sprints", "events", "staff", "resources", "projects", "mps",
   "users",
 ];
 

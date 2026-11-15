@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { DiscordLogo } from "@phosphor-icons/react/dist/ssr";
 import styles from "./home.module.css";
 import CheckInNotice from "./CheckInNotice";
 import { SITE } from "../lib/siteConfig";
@@ -61,7 +62,7 @@ function MpCard({ mp }) {
 
 export default async function Home() {
   const viewer = await getViewer();
-  const { sprint, lastSprint, mp, announcements } = await getHomeData(viewer);
+  const { registration, sprint, lastSprint, mp, announcements } = await getHomeData(viewer);
 
   return (
     <main className={styles.main}>
@@ -79,9 +80,13 @@ export default async function Home() {
           <h1 id="home-title">CS124Honors@Illinois</h1>
           <p>{SITE.tagline}</p>
           <div className={styles.heroActions}>
-            <a href={SITE.links.syllabus} {...external} className={styles.heroButton}>Syllabus</a>
-            <Link href="/course_info#register" className={`${styles.heroButton} ${styles.heroButtonPrimary}`}>Register</Link>
+            {/* Register only around the start of a semester (see registrationOpen). */}
+            {registration && <Link href="/course_info#register" className={`${styles.heroButton} ${styles.heroButtonPrimary}`}>Register</Link>}
+            <a href={SITE.links.discord} {...external} className={`${styles.heroButton} ${registration ? "" : styles.heroButtonPrimary}`}>
+              <DiscordLogo size={18} weight="fill" aria-hidden="true" /> Join the Discord
+            </a>
           </div>
+          <p className={styles.heroNote}>Everyone in the course joins the Discord for announcements and reminders.</p>
         </div>
       </section>
 
