@@ -10,11 +10,23 @@ const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 export const WINDOW_MS = 30_000; // 30-second rotation
 
 /**
+ * The key codes are derived from. ATTENDANCE_SECRET if set, otherwise the
+ * auth secret every deployment already has. Never a value from the source
+ * code: anyone who can read the repo could then compute valid codes.
+ */
+function attendanceSecret() {
+  const secret = process.env.ATTENDANCE_SECRET || process.env.NEXTAUTH_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === "production") throw new Error("Set ATTENDANCE_SECRET or NEXTAUTH_SECRET to issue check-in codes.");
+  return "local-development-only";
+}
+
+/**
  * Derives a 6-digit code from an event ID and a time window index.
  * Never stored in the DB - recomputed on every request.
  */
 export function deriveCode(eventId, windowOffset = 0) {
-  const secret = process.env.ATTENDANCE_SECRET ?? "cs124h-dev-only-fallback";
+  const secret = attendanceSecret();
   const window = Math.floor(Date.now() / WINDOW_MS) + windowOffset;
   const hmac = crypto.createHmac("sha256", secret);
   hmac.update(`${eventId}:${window}`);

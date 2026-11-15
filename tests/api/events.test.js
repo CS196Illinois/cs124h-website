@@ -350,6 +350,20 @@ describe("attendance code + check-in", () => {
   });
 });
 
+describe("check-in guessing limit", () => {
+  beforeEach(clearAllTestTables);
+
+  it("refuses check-in after 20 attempts in an hour, even with the right code", async () => {
+    await insertUser({ net_id: "stu1", role: "STUDENT" });
+    const event = await insertEvent({ title: "Guessable?", check_in_open: true });
+    asRole("student", "stu1");
+    const attempt = (code) => POST_CHECKIN(makeRequest(`http://localhost/api/events/${event.id}/checkin`, { method: "POST", body: { code } }), { params: { id: event.id } });
+    const wrong = deriveCode(event.id) === "000000" ? "111111" : "000000";
+    for (let i = 0; i < 20; i++) expect((await attempt(wrong)).status).toBe(400);
+    expect((await attempt(deriveCode(event.id))).status).toBe(429);
+  });
+});
+
 describe("checkInWindowClosed", () => {
   it("only closes once the grace period after the end time has passed", async () => {
     const { checkInWindowClosed } = await import("../../lib/events");

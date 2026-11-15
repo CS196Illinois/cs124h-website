@@ -731,7 +731,7 @@ export default function EventsPanel() {
             <div className={panelStyles.enlargeDivider} />
 
             <div className={panelStyles.qrSection}>
-              <span className={panelStyles.qrLabel}>Or Scan To Check In</span>
+              <span className={panelStyles.qrLabel}>Scan to open check-in, then enter the code</span>
               <div className={panelStyles.qrCard}>
                 {qrDataUrl && (
                   <img className={panelStyles.qrImage} src={qrDataUrl} alt="QR code to the check-in link for this event" />

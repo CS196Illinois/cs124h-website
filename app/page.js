@@ -86,7 +86,7 @@ export default async function Home() {
               <DiscordLogo size={18} weight="fill" aria-hidden="true" /> Join the Discord
             </a>
           </div>
-          <p className={styles.heroNote}>Everyone in the course joins the Discord for announcements and reminders.</p>
+          <p className={styles.heroNote}>All CS 124H students should join the Discord. It&apos;s where announcements and reminders go out.</p>
         </div>
       </section>
 

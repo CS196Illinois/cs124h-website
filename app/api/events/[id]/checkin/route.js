@@ -7,6 +7,20 @@ import { syncEventAttendance } from "../../../../../lib/eventAttendanceSync";
 import { audienceMatches, checkInWindowClosed } from "../../../../../lib/events";
 import { serverError, signInRequired } from "../../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../../lib/session";
+import { createHash } from "crypto";
+
+// Check-in attempts allowed per person per event per hour. Generous for
+// mistyped codes; far too few to guess a 6-digit code.
+const MAX_ATTEMPTS_PER_HOUR = 20;
+
+/** True when this person is still under the attempt limit for this event. */
+async function underAttemptLimit(netID, eventId) {
+  const bucket_key = createHash("sha256").update(`checkin:${netID}:${eventId}`).digest("hex");
+  const { data, error } = await supabaseServer.rpc(table("supportRateLimit"), { bucket_key, max_requests: MAX_ATTEMPTS_PER_HOUR });
+  // If the limiter itself is down, don't lock a room full of students out.
+  if (error) { console.error("check-in rate limit unavailable:", error.message); return true; }
+  return Boolean(data);
+}
 
 const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 
@@ -41,9 +55,9 @@ export async function POST(request, { params }) {
   }
 
   const { id } = await params;
-  const { code } = await request.json();
+  const { code } = (await request.json().catch(() => null)) || {};
 
-  if (!code?.trim()) {
+  if (typeof code !== "string" || !code.trim()) {
     return NextResponse.json({ error: "Please enter the check-in code." }, { status: 400 });
   }
 
@@ -71,6 +85,10 @@ export async function POST(request, { params }) {
   const { data: viewer } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
   if (!audienceMatches(event, { netID, role: userRole, groupNumber: viewer?.group_number ?? null })) {
     return NextResponse.json({ error: "You are not included in this event's audience." }, { status: 403 });
+  }
+
+  if (!(await underAttemptLimit(netID, id))) {
+    return NextResponse.json({ error: "Too many check-in attempts. Ask the event's host to check you in." }, { status: 429 });
   }
 
   // Validate against current window and previous window (grace period for slow typers)

@@ -82,4 +82,32 @@ test.describe("event check-in", () => {
     await page.getByRole("button", { name: "See all open events" }).click();
     await expect(page.getByText("Other Talk")).toBeVisible();
   });
+
+  test("a host shows the rotating code and QR; a student follows the QR link and checks in", async ({ page, loginAs }) => {
+    await insertUser({ net_id: "e2e-host", role: "PM", group_number: 2 });
+    await insertUser({ net_id: "e2e-stu2", role: "STUDENT", group_number: 2 });
+    const event = await insertEvent({
+      title: "Group 2 meeting", created_by: "e2e-host", audience_type: "groups", audience_values: ["2"],
+      start_time: new Date(Date.now() - 5 * 60_000).toISOString(), end_time: new Date(Date.now() + 55 * 60_000).toISOString(),
+    });
+
+    await loginAs({ netID: "e2e-host", role: "pm" });
+    await page.goto("/schedule");
+    await page.getByRole("button", { name: "Open Check-in" }).click();
+    await page.getByRole("button", { name: "Enlarge check-in code" }).click();
+    await expect(page.getByAltText("QR code to the check-in link for this event")).toBeVisible();
+    const link = page.getByRole("link", { name: /\/checkin\?event=/ });
+    const href = await link.getAttribute("href");
+    expect(new URL(href).pathname + new URL(href).search).toBe(`/checkin?event=${event.id}`);
+    const code = (await page.getByText(/^\d{6}$/).first().textContent()).trim();
+    expect(code).toMatch(/^\d{6}$/);
+
+    await loginAs({ netID: "e2e-stu2", role: "student" });
+    await page.goto(`/checkin?event=${event.id}`);
+    await page.getByPlaceholder("6-digit code").first().fill(code);
+    await page.getByRole("button", { name: "Check In" }).first().click();
+    await expect(page.getByText(/Checked in to "Group 2 meeting"/)).toBeVisible();
+    const { data } = await testClient().from(table("eventCheckins")).select("net_id").eq("event_id", event.id);
+    expect(data.map((r) => r.net_id)).toEqual(["e2e-stu2"]);
+  });
 });
