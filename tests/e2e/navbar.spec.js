@@ -35,6 +35,20 @@ test.describe("navbar responsiveness", () => {
     await expect(nav.getByRole("link", { name: "Resources", exact: true })).not.toBeVisible();
   });
 
+  test("Home, Schedule, Assignments, Course Info, and Sign in stay in the bar on phones", async ({ page }) => {
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 700 });
+      await page.goto("/");
+      const nav = page.getByRole("navigation", { name: "Main" });
+      for (const label of ["Home", "Schedule", "Assignments", "Course Info"]) {
+        await expect(nav.getByRole("link", { name: label, exact: true })).toBeVisible();
+      }
+      await expect(nav.getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
+      await expect(nav.getByRole("link", { name: "Resources", exact: true })).not.toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    }
+  });
+
   test("the theme toggle switches and remembers the theme", async ({ page }) => {
     await page.emulateMedia({ colorScheme: "light" });
     await page.goto("/");

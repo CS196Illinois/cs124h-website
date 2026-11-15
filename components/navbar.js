@@ -90,10 +90,25 @@ export default function Navbar() {
       href={item.href}
       className={`${styles.link} ${isActive(pathname, item.href) ? styles.active : ""}`}
       aria-current={isActive(pathname, item.href) ? "page" : undefined}
+      {...(item.short ? { "aria-label": item.label } : {})}
       {...extra}
     >
-      {item.label}
+      {item.short ? (
+        <>
+          <span className={styles.labelFull}>{item.label}</span>
+          <span className={styles.labelShort} aria-hidden="true">{item.short}</span>
+        </>
+      ) : item.label}
     </Link>
+  );
+  const extras = NAV_ITEMS.filter((item) => !item.core);
+  const roleTabs = (inMenu) => tools.length > 0 && (
+    // The signed-in role's own tabs, after the public pages.
+    <li className={`${styles.roleTabs} ${inMenu ? "" : styles.extra}`} data-tour={inMenu ? undefined : "role-tools"} data-label={ROLE_NAMES[role]}>
+      <ul aria-label={`${ROLE_NAMES[role]} tools`}>
+        {tools.map((tool) => <li key={tool.href}>{navLink(tool, inMenu ? {} : { "data-tour": dataTour(tool.label) })}</li>)}
+      </ul>
+    </li>
   );
 
   return (
@@ -104,22 +119,15 @@ export default function Navbar() {
           <span>{SITE.shortName}</span>
         </Link>
 
-        <ul id="main-nav" className={`${styles.links} ${menuOpen ? styles.linksOpen : closing ? styles.linksClosing : ""}`}>
-          {NAV_ITEMS.map((item) => <li key={item.href}>{navLink(item)}</li>)}
-          {tools.length > 0 && (
-            // The signed-in role's own tabs, after the public pages.
-            <li className={styles.roleTabs} data-tour="role-tools" data-label={ROLE_NAMES[role]}>
-              <ul aria-label={`${ROLE_NAMES[role]} tools`}>
-                {tools.map((tool) => <li key={tool.href}>{navLink(tool, { "data-tour": dataTour(tool.label) })}</li>)}
-              </ul>
-            </li>
-          )}
-          {account && <li className={styles.mobileAccount}>{account}</li>}
+        {/* Every page in order; non-core ones hide below 1240px and move into the menu. */}
+        <ul className={styles.links}>
+          {NAV_ITEMS.map((item) => <li key={item.href} className={item.core ? undefined : styles.extra}>{navLink(item)}</li>)}
+          {roleTabs(false)}
         </ul>
 
         <div className={styles.actions}>
-          <ThemeToggle />
-          {account && <div className={styles.desktopAccount}>{account}</div>}
+          <span className={styles.themeInline}><ThemeToggle /></span>
+          {account}
           <button
             type="button"
             className={`${styles.iconButton} ${styles.menuButton}`}
@@ -131,6 +139,13 @@ export default function Navbar() {
             {menuOpen ? <X size={20} weight="bold" /> : <List size={20} weight="bold" />}
           </button>
         </div>
+
+        {/* The menu: only what doesn't fit in the bar. */}
+        <ul id="main-nav" className={`${styles.menuPanel} ${menuOpen ? styles.menuOpen : closing ? styles.menuClosing : ""}`}>
+          {extras.map((item) => <li key={item.href}>{navLink(item)}</li>)}
+          {roleTabs(true)}
+          <li className={styles.menuTheme}><ThemeToggle /> <span>Theme</span></li>
+        </ul>
       </nav>
       {(menuOpen || closing) && (
         <div className={`${styles.backdrop} ${closing ? styles.backdropClosing : ""}`} onClick={closeMenu} aria-hidden="true" />

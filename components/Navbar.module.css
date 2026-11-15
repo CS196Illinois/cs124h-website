@@ -92,15 +92,7 @@
   margin-left: auto;
 }
 
-.desktopAccount {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
 
-.links > .mobileAccount {
-  display: none;
-}
 
 .iconButton {
   display: inline-grid;
@@ -137,16 +129,7 @@
   text-decoration: underline;
 }
 
-.accountActive {
-  color: #fff;
-  font-weight: 600;
-}
 
-.accountPlaceholder {
-  display: inline-block;
-  width: 5rem;
-  height: 1.2rem;
-}
 
 .menuButton {
   display: none;
@@ -158,26 +141,37 @@
 
 /* Below this width the full row doesn't fit; links move into a drop-down
    panel under the bar. */
+/* Short labels and the in-menu theme row only appear on small screens. */
+.labelShort,
+.menuTheme {
+  display: none;
+}
+
+/* The drop-down menu: only exists below 1240px. */
+.menuPanel {
+  display: none;
+}
+
 @media (max-width: 1240px) {
   .menuButton {
     display: inline-grid;
   }
 
-  .desktopAccount {
+  /* Non-core pages and the role's tabs move from the bar into the menu. */
+  .links > .extra {
     display: none;
   }
 
-  /* The menu panel: links flow into columns so it stays short. */
-  .links {
-    display: none;
+  .menuPanel {
     position: absolute;
     top: var(--navbar-height);
     left: 0;
     right: 0;
     z-index: 2;
-    grid-template-columns: repeat(4, minmax(0, 1fr)); /* 7 pages: two even rows */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-content: start;
     gap: 0.1rem 1.5rem;
+    list-style: none;
     padding: 0.6rem var(--gutter) 0.9rem;
     background: var(--nav-bg);
     border-bottom: 2px solid var(--illini-orange);
@@ -185,22 +179,18 @@
     overflow-y: auto;
   }
 
-  .linksOpen {
+  .menuOpen {
     display: grid;
     animation: menuOpen 0.18s ease-out;
   }
 
-  .linksClosing {
+  .menuClosing {
     display: grid;
     pointer-events: none;
     animation: menuClose 0.16s ease-in forwards;
   }
 
-  .links > li {
-    display: block;
-  }
-
-  .link {
+  .menuPanel .link {
     display: block;
     padding: 0.5rem 0.25rem;
     margin: 0;
@@ -208,14 +198,13 @@
     border-bottom: 0;
   }
 
-  .active {
+  .menuPanel .active {
     text-decoration: underline;
     text-underline-offset: 4px;
   }
 
-  /* Role tabs and the account action each take a full row of the grid. */
-  .links > .roleTabs,
-  .links > .mobileAccount {
+  /* The role's tabs take a full row, under a small role label. */
+  .menuPanel > .roleTabs {
     grid-column: 1 / -1;
     margin: 0.35rem 0 0;
     padding: 0.35rem 0 0;
@@ -223,7 +212,7 @@
     border-top: 1px solid rgba(255, 255, 255, 0.14);
   }
 
-  .roleTabs::before {
+  .menuPanel .roleTabs::before {
     content: attr(data-label);
     display: block;
     padding: 0.2rem 0.25rem 0.1rem;
@@ -232,24 +221,14 @@
     font-weight: 600;
   }
 
-  .roleTabs > ul {
+  .menuPanel .roleTabs > ul {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.1rem 1.5rem;
   }
 
-  .roleTabs > ul > li {
-    display: block;
-  }
-
-  .roleTabs .link {
+  .menuPanel .roleTabs .link {
     margin-block: 0;
-  }
-
-  .links > .mobileAccount {
-    display: flex;
-    gap: 1.25rem;
-    padding: 0.6rem 0.25rem 0.1rem;
   }
 
   .backdrop {
@@ -263,10 +242,101 @@
   }
 }
 
+/* Phones: logo only, tighter links, theme toggle moves into the menu. */
 @media (max-width: 640px) {
-  .links,
-  .roleTabs > ul {
+  .navbar {
+    gap: 0.5rem;
+    padding: 0 0.75rem;
+  }
+
+  .brand span,
+  .themeInline {
+    display: none;
+  }
+
+  .link {
+    padding: 0 0.4rem;
+    font-size: 0.88rem;
+  }
+
+  .actions {
+    gap: 0.6rem;
+  }
+
+  .accountLink,
+  .signOut {
+    font-size: 0.88rem;
+  }
+
+  .menuPanel,
+  .menuPanel .roleTabs > ul {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .menuPanel > .menuTheme {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    color: var(--nav-text);
+    font-size: 0.95rem;
+  }
+}
+
+/* The narrowest phones: "Course Info" shows as "Info". */
+@media (max-width: 430px) {
+  .link {
+    padding: 0 0.3rem;
+    font-size: 0.84rem;
+  }
+
+  .labelFull {
+    display: none;
+  }
+
+  .labelShort {
+    display: inline;
+  }
+}
+
+/* Down to 320px wide: everything still fits on one line. */
+@media (max-width: 400px) {
+  .navbar {
+    gap: 0.3rem;
+    padding: 0 0.5rem;
+  }
+
+  .brand img {
+    width: 22px;
+    height: 22px;
+  }
+
+  .link {
+    padding: 0 0.2rem;
+    font-size: 0.78rem;
+  }
+
+  .actions {
+    gap: 0.35rem;
+  }
+
+  .accountLink,
+  .signOut {
+    font-size: 0.78rem;
+  }
+
+  .menuButton {
+    width: 1.75rem;
+  }
+}
+
+/* The very smallest phones: drop the logo (Home is right beside it). */
+@media (max-width: 340px) {
+  .brand {
+    display: none;
   }
 }
 
@@ -293,8 +363,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .linksOpen,
-  .linksClosing,
+  .menuOpen,
+  .menuClosing,
   .backdrop,
   .backdropClosing {
     animation: none;
