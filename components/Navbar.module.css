@@ -167,6 +167,7 @@
     display: none;
   }
 
+  /* The menu panel: links flow into columns so it stays short. */
   .links {
     display: none;
     position: absolute;
@@ -174,10 +175,10 @@
     left: 0;
     right: 0;
     z-index: 2;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.15rem;
-    padding: 0.75rem var(--gutter) 1rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr)); /* 7 pages: two even rows */
+    align-content: start;
+    gap: 0.1rem 1.5rem;
+    padding: 0.6rem var(--gutter) 0.9rem;
     background: var(--nav-bg);
     border-bottom: 2px solid var(--illini-orange);
     max-height: calc(100vh - var(--navbar-height));
@@ -185,7 +186,8 @@
   }
 
   .linksOpen {
-    display: flex;
+    display: grid;
+    animation: menuOpen 0.18s ease-out;
   }
 
   .links > li {
@@ -194,7 +196,7 @@
 
   .link {
     display: block;
-    padding: 0.6rem 0.25rem;
+    padding: 0.5rem 0.25rem;
     margin: 0;
     font-size: 1rem;
     border-bottom: 0;
@@ -205,15 +207,29 @@
     text-underline-offset: 4px;
   }
 
-  .links > .roleTabs {
-    margin: 0.4rem 0 0;
-    padding: 0.4rem 0 0;
+  /* Role tabs and the account action each take a full row of the grid. */
+  .links > .roleTabs,
+  .links > .mobileAccount {
+    grid-column: 1 / -1;
+    margin: 0.35rem 0 0;
+    padding: 0.35rem 0 0;
     border-left: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .roleTabs::before {
+    content: attr(data-label);
+    display: block;
+    padding: 0.2rem 0.25rem 0.1rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.78rem;
+    font-weight: 600;
   }
 
   .roleTabs > ul {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.1rem 1.5rem;
   }
 
   .roleTabs > ul > li {
@@ -226,19 +242,40 @@
 
   .links > .mobileAccount {
     display: flex;
-    flex-wrap: wrap;
     gap: 1.25rem;
-    padding: 0.75rem 0.25rem 0;
-    margin-top: 0.4rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 0.6rem 0.25rem 0.1rem;
   }
 
   .backdrop {
     display: block;
+    animation: backdropIn 0.18s ease-out;
     position: fixed;
     inset: 0;
     top: var(--navbar-height);
     z-index: 1;
     background: rgba(3, 8, 28, 0.45);
+  }
+}
+
+@media (max-width: 640px) {
+  .links,
+  .roleTabs > ul {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@keyframes menuOpen {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linksOpen,
+  .backdrop {
+    animation: none;
   }
 }

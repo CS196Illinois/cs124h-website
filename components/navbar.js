@@ -86,7 +86,7 @@ export default function Navbar() {
           {NAV_ITEMS.map((item) => <li key={item.href}>{navLink(item)}</li>)}
           {tools.length > 0 && (
             // The signed-in role's own tabs, after the public pages.
-            <li className={styles.roleTabs} data-tour="role-tools">
+            <li className={styles.roleTabs} data-tour="role-tools" data-label={ROLE_NAMES[role]}>
               <ul aria-label={`${ROLE_NAMES[role]} tools`}>
                 {tools.map((tool) => <li key={tool.href}>{navLink(tool, { "data-tour": dataTour(tool.label) })}</li>)}
               </ul>
