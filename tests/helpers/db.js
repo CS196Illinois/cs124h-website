@@ -82,6 +82,8 @@ export async function insertSprintCheckWindow(overrides = {}) {
     closed_by: null,
     ...overrides,
   };
+  // An open window was opened just now unless the test says otherwise.
+  if (row.is_open && !row.opened_at) row.opened_at = new Date().toISOString();
   if (!row.sprint_id || row.group_number == null) {
     throw new Error("insertSprintCheckWindow requires sprint_id and group_number");
   }
@@ -96,11 +98,7 @@ export async function insertEvent(overrides = {}) {
     description: null,
     location: null,
     presenter: null,
-    point_value: 10,
-    qr_code_secret: "1234",
-    is_active: true,
     check_in_open: false,
-    checked_in_students: [],
     ...overrides,
   };
   const { data, error } = await client().from(table("events")).insert(row).select().single();

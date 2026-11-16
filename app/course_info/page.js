@@ -3,11 +3,19 @@ import styles from "./CourseInfo.module.css";
 import { SITE } from "../../lib/siteConfig";
 import { getSupabaseServer } from "../../lib/supabaseServer";
 import { table } from "../../lib/tables";
+import { currentTerm } from "../../lib/term";
 
 export const metadata = { title: "Course Info" };
 
 // The lead contact line comes from the roster, so refresh it periodically.
 export const revalidate = 60;
+
+/** Course Explorer's page for CS 199 this term, where section 124 and its CRN are listed. */
+function courseExplorerUrl() {
+  const { year, season } = currentTerm();
+  const { subject, number } = SITE.courseExplorer;
+  return `https://courses.illinois.edu/schedule/${year}/${season}/${subject}/${number}`;
+}
 
 async function getLeads() {
   try {
@@ -108,7 +116,8 @@ export default async function CourseInfoPage() {
                   <div>
                     <h4>Everyone else</h4>
                     <p>
-                      Enroll in <strong>CS 199 124</strong> (CRN <code>{SITE.crn}</code>) on Self-Service. It&apos;s zero
+                      Enroll in <strong>CS 199 124</strong> on Self-Service. Its CRN is listed on{" "}
+                      <a href={courseExplorerUrl()} target="_blank" rel="noopener noreferrer">Course Explorer</a>. It&apos;s zero
                       credit hours and graded S/U. You need to participate to earn the S.
                     </p>
                   </div>

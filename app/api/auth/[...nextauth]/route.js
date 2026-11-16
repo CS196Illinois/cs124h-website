@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { randomUUID } from "node:crypto";
 import { supabaseServer } from "../../../../lib/supabaseServer";
 import { table } from "../../../../lib/tables";
+import { SESSION_ROLE_BY_DB } from "../../../../lib/roles";
 
 // Re-verify the role from the DB at most once per this interval.
 // Ensures that admin role-changes take effect within this window
@@ -260,12 +261,5 @@ function getNetIDFromIdentity(user) {
  * role) maps to "error", which the app treats as not enrolled.
  */
 function mapRole(dbRole) {
-  const map = {
-    LEAD: "course_lead",
-    LEAD_WEB: "lead_web_dev",
-    HEAD: "head_pm",
-    PM: "pm",
-    STUDENT: "student",
-  };
-  return map[dbRole] ?? "error";
+  return SESSION_ROLE_BY_DB[dbRole] ?? "error";
 }

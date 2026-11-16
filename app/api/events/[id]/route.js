@@ -6,8 +6,8 @@ import { checkInWindowClosed, CHECK_IN_GRACE_MS, validateEventAudience, validate
 import { EVENT_TEXT_MAX } from "../../../../lib/fieldRules";
 import { serverError, signInRequired } from "../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../lib/session";
+import { STAFF_ROLES } from "../../../../lib/roles";
 
-const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 
 export async function PATCH(request, { params }) {
   const { role: userRole, netID } = await getSessionUser();
@@ -49,6 +49,10 @@ export async function PATCH(request, { params }) {
     if (body.check_in_open) {
       updates.check_in_opened_at = new Date().toISOString();
     }
+  } else if (managed.check_in_open && checkInWindowClosed(managed)) {
+    // Check-in that already closed after the event stays closed, even if the
+    // event's times are moved later. A host can open it again.
+    updates.check_in_open = false;
   }
   if (body.title !== undefined) {
     if (typeof body.title !== "string" || !body.title.trim()) return NextResponse.json({ error: "Please enter a title." }, { status: 400 });

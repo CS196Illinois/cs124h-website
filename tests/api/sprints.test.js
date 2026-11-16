@@ -79,7 +79,7 @@ describe("sprints CRUD", () => {
     asRole("course_lead", "lead1");
     const dup = await POST(makeRequest("http://localhost/api/sprints", { method: "POST", body: { number: 1, goal: "Dup" } }));
     expect(dup.status).toBe(409);
-    expect((await dup.json()).error).toBe("Sprint 1 already exists. Choose a different number.");
+    expect((await dup.json()).error).toBe("Sprint 1 already exists this semester. Choose a different number.");
 
     const clash = await PATCH(makeRequest(`http://localhost/api/sprints/${two.id}`, { method: "PATCH", body: { number: 1 } }), { params: { id: two.id } });
     expect(clash.status).toBe(409);
@@ -88,6 +88,16 @@ describe("sprints CRUD", () => {
     expect(same.status).toBe(200);
     const { data } = await testClient().from(table("sprints")).select("number");
     expect(data.map((r) => r.number).sort()).toEqual([1, 2]);
+  });
+
+  it("restarts sprint numbers each semester and hides earlier semesters' sprints", async () => {
+    await insertSprint({ number: 1, goal: "Last year", start_date: "2025-09-01", end_date: "2025-09-07" });
+    asRole("course_lead", "lead1");
+    const today = new Date().toISOString().slice(0, 10);
+    const res = await POST(makeRequest("http://localhost/api/sprints", { method: "POST", body: { number: 1, goal: "This term", start_date: today, end_date: today } }));
+    expect(res.status).toBe(201);
+    const list = await (await GET(makeRequest("http://localhost/api/sprints"))).json();
+    expect(list.map((s) => s.goal)).toEqual(["This term"]);
   });
 
   it("requires number and goal on create", async () => {

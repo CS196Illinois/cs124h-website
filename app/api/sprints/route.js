@@ -8,8 +8,9 @@ import { isSprintVisibleToRole, validateSprintDates } from "../../../lib/sprintV
 import { forbidden, invalidInput, serverError, signInRequired } from "../../../lib/apiResponses";
 import { getSessionUser } from "../../../lib/session";
 import { sprintNumberTaken, sprintNumberTakenMessage } from "../../../lib/sprintNumbers";
+import { currentTerm, beforeTerm } from "../../../lib/term";
 
-const MANAGE_ROLES = ["course_lead", "head_pm", "lead_web_dev"];
+const MANAGE_ROLES = ["course_lead", "head_pm"];
 
 export async function GET(request) {
   const { role: userRole, netID } = await getSessionUser();
@@ -22,8 +23,9 @@ export async function GET(request) {
     .order("number", { ascending: false });
   if (error) return serverError();
 
-  let rows = data ?? [];
-  rows = rows.filter((sprint) => isSprintVisibleToRole(sprint, userRole));
+  // This semester's sprints (and any prepared for later); earlier semesters drop off.
+  const term = currentTerm();
+  let rows = (data ?? []).filter((sprint) => !beforeTerm(sprint.end_date, term) && isSprintVisibleToRole(sprint, userRole));
 
   if (userRole === "pm") {
     rows = await groupSprintChecks(rows, await getUserGroup(netID));
@@ -51,13 +53,14 @@ export async function POST(request) {
   const parsedNumber = parseSprintNumber(number);
   if (parsedNumber.error) return NextResponse.json({ error: parsedNumber.error }, { status: 400 });
   const sprintNumber = parsedNumber.value;
+  const dateError = validateSprintDates(start_date, end_date);
+  if (dateError) return NextResponse.json({ error: dateError }, { status: 400 });
   try {
-    if (await sprintNumberTaken(sprintNumber)) {
+    if (await sprintNumberTaken(sprintNumber, { startDate: start_date || null })) {
       return NextResponse.json({ error: sprintNumberTakenMessage(sprintNumber) }, { status: 409 });
     }
   } catch { return serverError(); }
-  const dateError = validateSprintDates(start_date, end_date);
-  if (dateError) return NextResponse.json({ error: dateError }, { status: 400 });
+
   if (check_max_score != null && check_max_score !== "" && (!Number.isFinite(Number(check_max_score)) || Number(check_max_score) <= 0)) {
     return NextResponse.json({ error: "Maximum score must be a positive number." }, { status: 400 });
   }

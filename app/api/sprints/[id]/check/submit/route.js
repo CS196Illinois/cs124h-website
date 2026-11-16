@@ -5,6 +5,7 @@ import { table } from "../../../../../../lib/tables";
 import { resolveMaxScore, formatCheckAnswers } from "../../../../../../lib/sprintChecks";
 import { isSprintVisibleToRole } from "../../../../../../lib/sprintVisibility";
 import { getSessionUser } from "../../../../../../lib/session";
+import { checkWindowOpen } from "../../../../../../lib/sprintCheckAccess";
 
 // Students only.
 export async function POST(request, { params }) {
@@ -34,7 +35,7 @@ export async function POST(request, { params }) {
     .eq("sprint_id", id)
     .eq("group_number", groupNumber ?? -1)
     .maybeSingle();
-  if (!window?.is_open) {
+  if (!checkWindowOpen(window)) {
     return NextResponse.json({ error: "This check is closed right now. Ask your PM to open it." }, { status: 403 });
   }
 

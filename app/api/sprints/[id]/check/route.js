@@ -1,4 +1,4 @@
-import { CHECK_MANAGE_ROLES } from "../../../../../lib/sprintCheckAccess";
+import { CHECK_MANAGE_ROLES, checkWindowOpen } from "../../../../../lib/sprintCheckAccess";
 import { getUserGroup, groupSprintChecks, fetchGroupChecks, applyGroupQuestions } from "../../../../../lib/groupSprintChecks";
 import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../../../lib/supabaseServer";
@@ -60,7 +60,7 @@ export async function GET(request, { params }) {
     const myWindow = windows.find((w) => w.group_number === groupNumber);
     const mine = submissions.find((s) => s.net_id === netID);
     if (!hasCheck && !mine) return NextResponse.json({ hasCheck: false });
-    const isOpen = !!myWindow?.is_open;
+    const isOpen = checkWindowOpen(myWindow);
     return NextResponse.json({
       hasCheck: true,
       isOpen,
@@ -82,7 +82,7 @@ export async function GET(request, { params }) {
       fetchSubmissions(id, (students ?? []).map((s) => s.net_id)),
     ]);
     return NextResponse.json({
-      hasCheck, groupNumber, isOpen: !!windows[0]?.is_open,
+      hasCheck, groupNumber, isOpen: checkWindowOpen(windows[0]),
       questions: hasCheck ? sprint.check_questions : null,
       maxScore,
       roster: rosterFor(students ?? [], new Map(submissions.map((s) => [s.net_id, s]))),
@@ -110,7 +110,7 @@ export async function GET(request, { params }) {
       questions: applyGroupQuestions(sprint, questionsByGroup.get(g)).check_questions ?? [],
       additionalQuestions: (questionsByGroup.get(g) ?? []).filter((q) => !(sprint.check_questions ?? []).includes(q)),
       groupNumber: g,
-      isOpen: !!windowsByGroup.get(g)?.is_open,
+      isOpen: checkWindowOpen(windowsByGroup.get(g)),
       roster: rosterFor(studentsByGroup.get(g), submissionsByNetID),
     }));
     return NextResponse.json({ hasCheck: hasCheck || groups.some((g) => g.questions.length > 0), questions: hasCheck ? sprint.check_questions : null, maxScore, groups });

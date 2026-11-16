@@ -5,7 +5,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "migrate": "node --env-file=.env.local scripts/migrate-to-supabase.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

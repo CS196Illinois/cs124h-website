@@ -10,15 +10,12 @@ import styles from "./dashboard.module.css";
 import panelStyles from "./EventsPanel.module.css";
 import EventAudiencePicker from "./EventAudiencePicker";
 import EventHostsPicker from "./EventHostsPicker";
-import { roleLabel } from "../../lib/roles";
+import { roleLabel, SHEET_ACCESS_SESSION_ROLES } from "../../lib/roles";
 import { isStaffAudience, STAFF_AUDIENCE } from "../../lib/eventAudience";
 import { CHECKIN_NETID_MAX, EVENT_TEXT_MAX } from "../../lib/fieldRules";
 
-// Roles with standing Editor access to the shared attendance sheet (kept in
-// sync with lib/sheetAccess.js's SHEET_ACCESS_PATH_ROLES) - only these see
-// the "Open Attendance Sheet" button, since it 404s/prompts for access for
-// everyone else.
-const SHEET_ACCESS_ROLES = new Set(["course_lead", "head_pm", "lead_web_dev"]);
+// Only these roles see "Open Attendance Sheet"; everyone else would hit an access prompt.
+const SHEET_ACCESS_ROLES = SHEET_ACCESS_SESSION_ROLES;
 
 function timeAgo(isoString) {
   const seconds = Math.max(Math.round((Date.now() - new Date(isoString).getTime()) / 1000), 0);

@@ -6,8 +6,8 @@ import { syncEventAttendance } from "../../../../../../lib/eventAttendanceSync";
 import { CHECKIN_NETID_MAX } from "../../../../../../lib/fieldRules";
 import { serverError, signInRequired } from "../../../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../../../lib/session";
+import { STAFF_ROLES } from "../../../../../../lib/roles";
 
-const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 
 // Staff: manually check someone in - e.g. they forgot their phone, or a
 // guest isn't doing the self-service code flow. Same insert and same

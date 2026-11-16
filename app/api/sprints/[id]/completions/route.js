@@ -32,7 +32,7 @@ export async function GET(request, { params }) {
 export async function POST(request, { params }) {
   const { role: userRole, netID: userNetId } = await getSessionUser();
 
-  if (!["pm", "head_pm", "course_lead", "lead_web_dev"].includes(userRole)) {
+  if (!["pm", "head_pm", "course_lead"].includes(userRole)) {
     return forbidden();
   }
 
@@ -65,7 +65,7 @@ export async function POST(request, { params }) {
 export async function DELETE(request, { params }) {
   const { role: userRole, netID: userNetId } = await getSessionUser();
 
-  if (!["pm", "head_pm", "course_lead", "lead_web_dev"].includes(userRole)) {
+  if (!["pm", "head_pm", "course_lead"].includes(userRole)) {
     return forbidden();
   }
 

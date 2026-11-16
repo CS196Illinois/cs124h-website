@@ -8,6 +8,7 @@ import { audienceMatches, checkInWindowClosed } from "../../../../../lib/events"
 import { serverError, signInRequired } from "../../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../../lib/session";
 import { createHash } from "crypto";
+import { STAFF_ROLES } from "../../../../../lib/roles";
 
 // Check-in attempts allowed per person per event per hour. Generous for
 // mistyped codes; far too few to guess a 6-digit code.
@@ -22,7 +23,6 @@ async function underAttemptLimit(netID, eventId) {
   return Boolean(data);
 }
 
-const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 
 // The event's creator, hosts, or a course lead: view its attendee list
 export async function GET(request, { params }) {

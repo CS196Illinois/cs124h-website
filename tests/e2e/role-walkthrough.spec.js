@@ -139,7 +139,7 @@ test("course lead: sprint form validation and editing", async ({ page, loginAs }
   await page.locator('input[type="number"]').first().fill("1");
   await page.getByPlaceholder("What should students accomplish this sprint?").fill("Dup");
   await page.getByRole("button", { name: "Create Sprint" }).click();
-  await expect.soft(page.getByText("Sprint 1 already exists. Choose a different number.")).toBeVisible(SLOW);
+  await expect.soft(page.getByText("Sprint 1 already exists this semester. Choose a different number.")).toBeVisible(SLOW);
   await page.getByRole("button", { name: "Cancel" }).click();
 
   // End before start.

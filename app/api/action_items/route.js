@@ -4,6 +4,7 @@ import { table } from "../../../lib/tables";
 import { manageableCheckStudents } from "../../../lib/sprintCheckAccess";
 import { serverError, signInRequired } from "../../../lib/apiResponses";
 import { getSessionUser } from "../../../lib/session";
+import { currentTerm } from "../../../lib/term";
 
 export async function GET(request) {
   const { role: userRole, netID } = await getSessionUser();
@@ -34,9 +35,11 @@ export async function GET(request) {
     }
   }
 
+  // This semester's items only, so gradebooks start fresh each term.
   let query = supabaseServer
     .from(table("actionItems"))
     .select("*")
+    .gte("created_at", `${currentTerm().from}T00:00:00Z`)
     .order("created_at", { ascending: false });
 
   if (visibleRecipients) query = query.in("net_id", visibleRecipients);

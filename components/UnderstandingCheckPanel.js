@@ -153,7 +153,7 @@ export default function UnderstandingCheckPanel({ sprint, scope }) {
             <span style={{ color: data.isOpen ? "var(--success)" : "var(--text)", fontWeight: 600 }}>
               {data.isOpen ? "● Open" : "● Closed"}
             </span>
-            <p>{data.isOpen ? "Your students can submit their answers now." : "Open the check when your group’s meeting begins so students can submit."}</p>
+            <p>{data.isOpen ? "Your students can submit their answers now. It closes on its own 3 hours after opening." : "Open the check when your group’s meeting begins so students can submit."}</p>
           </div>
           <button data-tour="sprint-open-check"
             className={`${data.isOpen ? styles.btnDanger : styles.btnPrimary} ${styles.checkToggle}`}

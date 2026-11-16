@@ -5,8 +5,8 @@ import { table } from "../../../../../lib/tables";
 import crypto from "crypto";
 import { signInRequired } from "../../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../../lib/session";
+import { STAFF_ROLES } from "../../../../../lib/roles";
 
-const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 export const WINDOW_MS = 30_000; // 30-second rotation
 
 /**

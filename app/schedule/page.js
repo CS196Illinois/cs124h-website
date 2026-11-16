@@ -4,6 +4,7 @@ import EventsPanel from "../../components/staff/EventsPanel";
 import { SITE } from "../../lib/siteConfig";
 import { getViewer } from "../../lib/courseData";
 import { getScheduleData } from "../../lib/schedule";
+import { STAFF_ROLES } from "../../lib/roles";
 
 // Per-viewer (signed-in users also see their own events), so never prerendered.
 export const dynamic = "force-dynamic";
@@ -11,7 +12,6 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Schedule" };
 
 // Staff roles that can add events from the schedule (same as the events API).
-const CAN_CREATE = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 
 function Week({ week }) {
   return (
@@ -52,10 +52,10 @@ export default async function SchedulePage() {
 
       <Timeline
         data={timeline}
-        viewer={viewer && CAN_CREATE.includes(viewer.role) ? { role: viewer.role, groupNumber: viewer.groupNumber, canCreate: true } : null}
+        viewer={viewer && STAFF_ROLES.includes(viewer.role) ? { role: viewer.role, groupNumber: viewer.groupNumber, canCreate: true } : null}
       />
 
-      {viewer && CAN_CREATE.includes(viewer.role) && (
+      {viewer && STAFF_ROLES.includes(viewer.role) && (
         <section id="manage-events" aria-labelledby="manage-events-heading" className={styles.manageEvents}>
           <h2 id="manage-events-heading" data-tour="manage-events">Manage events</h2>
           <p>Open and close check-in, show the code, see who attended, and change an event&apos;s audience or hosts.</p>

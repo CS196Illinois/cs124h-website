@@ -72,7 +72,7 @@ beforeEach(() => {
       { net_id: "student1", role: "STUDENT", group_number: 1 },
       { net_id: "student2", role: "STUDENT", group_number: 2 },
     ],
-    test_sprint_check_windows: [1, 2].map((group_number) => ({ sprint_id: "sprint", group_number, is_open: true, opened_by: `pm${group_number}` })),
+    test_sprint_check_windows: [1, 2].map((group_number) => ({ sprint_id: "sprint", group_number, is_open: true, opened_at: new Date().toISOString(), opened_by: `pm${group_number}` })),
     test_sprint_question_bank: [{ id: "shared", question: "Shared bank question", group_number: null }],
   };
 });

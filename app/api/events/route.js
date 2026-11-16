@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
-import { canAdminEvents, validateEventAudience, validateEventHosts, audienceMatches, checkInWindowClosed, eventHosts } from "../../../lib/events";
+import { canAdminEvents, validateEventAudience, validateEventHosts, audienceMatches, checkInOpen, eventHosts } from "../../../lib/events";
 import { EVENT_TEXT_MAX } from "../../../lib/fieldRules";
 import { invalidInput, serverError, signInRequired } from "../../../lib/apiResponses";
 import { getSessionUser } from "../../../lib/session";
 import { isEventCategory } from "../../../lib/eventCategories";
 import { SITE } from "../../../lib/siteConfig";
+import { STAFF_ROLES } from "../../../lib/roles";
 
 // A weekly series is capped so a typo in the end date can't create hundreds of events.
 const MAX_OCCURRENCES = 20;
@@ -27,7 +28,6 @@ function addWeeksLocal(ms, weeks) {
   return shifted + (courseOffsetMinutes(ms) - courseOffsetMinutes(shifted)) * 60_000;
 }
 
-const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 
 export async function GET(request) {
   const { role: userRole, netID } = await getSessionUser();
@@ -40,7 +40,7 @@ export async function GET(request) {
   // Events: created, hosted, or joined events. Lead web devs and course leads see all.
   const scope = new URL(request.url).searchParams.get("scope") || "mine";
 
-  const columns = "id, title, description, location, presenter, start_time, end_time, check_in_open, check_in_opened_at, created_by, created_at, point_value, sheet_synced_at, sheet_sync_error, audience_type, audience_values";
+  const columns = "id, title, description, location, presenter, start_time, end_time, check_in_open, check_in_opened_at, created_by, created_at, sheet_synced_at, sheet_sync_error, audience_type, audience_values";
   let { data, error } = await supabaseServer
     .from(table("events"))
     .select(`${columns}, hosts`)
@@ -53,7 +53,7 @@ export async function GET(request) {
   if (error) return serverError();
 
   // A GET never writes: an expired window just reads as closed here.
-  let rows = data.map((event) => event.check_in_open && checkInWindowClosed(event) ? { ...event, check_in_open: false } : event);
+  let rows = data.map((event) => ({ ...event, check_in_open: checkInOpen(event) }));
 
   const { data: viewer, error: viewerError } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
   if (viewerError) return NextResponse.json({ error: "Your event access could not be checked. Please try again." }, { status: 503 });
