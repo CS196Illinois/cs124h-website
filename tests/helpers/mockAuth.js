@@ -17,7 +17,7 @@ import { getServerSession } from "next-auth";
 /**
  * Point the mocked getServerSession() at a fake session for the given role.
  * `role` is the URL-path role string used throughout the app
- * (course_lead / lead_web_dev / head_pm / pm / web_dev / student).
+ * (course_lead / lead_web_dev / head_pm / pm / student).
  */
 export function asRole(role, netID, extra = {}) {
   getServerSession.mockResolvedValue({

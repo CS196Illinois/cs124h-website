@@ -107,7 +107,7 @@ export default function EventsPanel() {
   // Only roles with standing Editor access to the sheet get a link to it -
   // ask the server (which knows the real signed-in role, not just which
   // dashboard directory this happens to be rendered under - a lead_web_dev
-  // or web_dev with an approved view can land here from another role's path).
+  // can land here from another role's path).
   useEffect(() => {
     if (!SHEET_ACCESS_ROLES.has(session?.user?.role)) { setSheetUrl(null); return; }
     fetch("/api/sheet-link").then(async (res) => {
@@ -366,8 +366,6 @@ export default function EventsPanel() {
     let audience = { audience_type: "all", audience_values: [] };
     if (["course_lead", "head_pm", "lead_web_dev"].includes(role)) {
       audience = { ...STAFF_AUDIENCE, audience_values: [...STAFF_AUDIENCE.audience_values] };
-    } else if (role === "web_dev" && myGroup == null) {
-      audience = { audience_type: "roles", audience_values: ["WEB", "LEAD_WEB"] };
     } else if (isPmViewRole(role)) {
       audience = { audience_type: "groups", audience_values: myGroup != null ? [String(myGroup)] : [] };
     }

@@ -4,11 +4,11 @@ import { table } from "../../../../lib/tables";
 import { isSandboxRole, getSandboxMode, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../../lib/sandbox";
 import { syncSheetAccessForRole } from "../../../../lib/sheetAccess";
 import { parseGroupNumber } from "../../../../lib/fieldRules";
-import { WEB_TEAM_ROLE_IDS, DEFAULT_WEB_SANDBOX_MODE } from "../../../../lib/roles";
+import { WEB_TEAM_ROLE_IDS } from "../../../../lib/roles";
 import { forbidden, serverError, signInRequired } from "../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../lib/session";
 
-const FULL_USER_ACCESS = ["course_lead", "web_dev"];
+const FULL_USER_ACCESS = ["course_lead"];
 const WEB_TEAM_ROLES   = WEB_TEAM_ROLE_IDS;
 const HEAD_PM_ROLES    = ["PM", "STUDENT"];
 
@@ -76,12 +76,6 @@ export async function PATCH(request, { params }) {
     return NextResponse.json(merged);
   }
 
-  // Joining the web team starts the person in the default sandbox mode.
-  if (updates.role !== undefined && WEB_TEAM_ROLES.includes(updates.role)) {
-    const { data: before } = await supabaseServer.from(table("users")).select("role").eq("net_id", net_id).maybeSingle();
-    if (before && !WEB_TEAM_ROLES.includes(before.role)) updates.sandbox_mode = DEFAULT_WEB_SANDBOX_MODE;
-  }
-
   const { data, error } = await supabaseServer
     .from(table("users"))
     .update(updates)
@@ -91,12 +85,6 @@ export async function PATCH(request, { params }) {
 
   if (error) return serverError();
 
-  // "until their access is revoked" - a role change away from the web team
-  // clears any sandbox (ephemeral or persistent) regardless of the user's
-  // own preference, since they can no longer reach the routes that read it.
-  if (updates.role !== undefined && !WEB_TEAM_ROLES.includes(updates.role)) {
-    await resetSandbox(net_id);
-  }
 
   // Keep the shared attendance sheet's access list in sync with the roster -
   // grants course_lead/head_pm/lead_web_dev, revokes everyone else. Fire and
@@ -145,7 +133,6 @@ export async function DELETE(request, { params }) {
 
   // Hygiene: a removed user can never reach a sandboxed route again, so
   // this is just avoiding an orphaned overlay, not a security requirement.
-  await resetSandbox(net_id);
 
   // A deleted user is gone from the roster entirely - revoke sheet access
   // the same as any other role change away from a privileged role.

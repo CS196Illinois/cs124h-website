@@ -79,7 +79,7 @@ describe("sprints CRUD", () => {
     asRole("course_lead", "lead1");
     const dup = await POST(makeRequest("http://localhost/api/sprints", { method: "POST", body: { number: 1, goal: "Dup" } }));
     expect(dup.status).toBe(409);
-    expect((await dup.json()).error).toBe("Sprint 1 already exists. Choose a different number.");
+    expect((await dup.json()).error).toBe("Sprint 1 already exists this semester. Choose a different number.");
 
     const clash = await PATCH(makeRequest(`http://localhost/api/sprints/${two.id}`, { method: "PATCH", body: { number: 1 } }), { params: { id: two.id } });
     expect(clash.status).toBe(409);
@@ -88,6 +88,16 @@ describe("sprints CRUD", () => {
     expect(same.status).toBe(200);
     const { data } = await testClient().from(table("sprints")).select("number");
     expect(data.map((r) => r.number).sort()).toEqual([1, 2]);
+  });
+
+  it("restarts sprint numbers each semester and hides earlier semesters' sprints", async () => {
+    await insertSprint({ number: 1, goal: "Last year", start_date: "2025-09-01", end_date: "2025-09-07" });
+    asRole("course_lead", "lead1");
+    const today = new Date().toISOString().slice(0, 10);
+    const res = await POST(makeRequest("http://localhost/api/sprints", { method: "POST", body: { number: 1, goal: "This term", start_date: today, end_date: today } }));
+    expect(res.status).toBe(201);
+    const list = await (await GET(makeRequest("http://localhost/api/sprints"))).json();
+    expect(list.map((s) => s.goal)).toEqual(["This term"]);
   });
 
   it("requires number and goal on create", async () => {
@@ -139,85 +149,6 @@ describe("sprints CRUD", () => {
     expect(rows[0].check_questions).toEqual(["Lead-only question", "Second question"]);
     asRole("course_lead", "lead1");
     expect((await PATCH(makeRequest(`http://localhost/api/sprints/${sprint.id}`, { method: "PATCH", body: { check_questions: ["Updated by lead"] } }), { params: { id: sprint.id } })).status).toBe(200);
-  });
-});
-
-describe("sprints CRUD - sandbox mode", () => {
-  beforeEach(clearAllTestTables);
-
-  it("a web_dev with sandbox off behaves exactly like the real-table path", async () => {
-    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "off" });
-    asRole("web_dev", "webdev1");
-
-    const res = await POST(makeRequest("http://localhost/api/sprints", { method: "POST", body: { number: 1, goal: "Real" } }));
-    expect(res.status).toBe(201);
-
-    const { data } = await testClient().from(table("sprints")).select("*");
-    expect(data).toHaveLength(1);
-    const { data: overlay } = await testClient().from(table("sandboxOverlay")).select("*");
-    expect(overlay).toHaveLength(0);
-  });
-
-  it("a sandboxed create writes to the overlay, never the real table", async () => {
-    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
-    asRole("web_dev", "webdev1");
-
-    const res = await POST(makeRequest("http://localhost/api/sprints", { method: "POST", body: { number: 1, goal: "Sandboxed" } }));
-    expect(res.status).toBe(201);
-    const created = await res.json();
-    expect(created.goal).toBe("Sandboxed");
-
-    const { data: real } = await testClient().from(table("sprints")).select("*");
-    expect(real).toHaveLength(0);
-
-    const list = await (await GET(makeRequest("http://localhost/api/sprints"))).json();
-    expect(list.map((s) => s.goal)).toEqual(["Sandboxed"]);
-  });
-
-  it("a sandboxed GET merges the overlay onto real rows other users still see unsandboxed", async () => {
-    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
-    const real = await insertSprint({ number: 1, goal: "Real sprint" });
-
-    asRole("web_dev", "webdev1");
-    await POST(makeRequest("http://localhost/api/sprints", { method: "POST", body: { number: 2, goal: "My sandbox sprint" } }));
-    const sandboxedList = await (await GET(makeRequest("http://localhost/api/sprints"))).json();
-    expect(sandboxedList.map((s) => s.goal)).toEqual(["My sandbox sprint", "Real sprint"]);
-
-    // A different, non-sandboxed viewer never sees it.
-    asRole("course_lead", "lead1");
-    const realList = await (await GET(makeRequest("http://localhost/api/sprints"))).json();
-    expect(realList.map((s) => s.goal)).toEqual(["Real sprint"]);
-    void real;
-  });
-
-  it("a sandboxed edit to a real sprint doesn't touch the real row", async () => {
-    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
-    const real = await insertSprint({ number: 1, goal: "Original" });
-    asRole("web_dev", "webdev1");
-
-    const patchRes = await PATCH(
-      makeRequest(`http://localhost/api/sprints/${real.id}`, { method: "PATCH", body: { goal: "Edited in sandbox" } }),
-      { params: { id: real.id } }
-    );
-    expect((await patchRes.json()).goal).toBe("Edited in sandbox");
-
-    const { data: stillReal } = await testClient().from(table("sprints")).select("goal").eq("id", real.id).single();
-    expect(stillReal.goal).toBe("Original");
-  });
-
-  it("a sandboxed delete of a real sprint doesn't touch the real row, and it disappears from the sandboxed view", async () => {
-    await insertUser({ net_id: "webdev1", role: "WEB", sandbox_mode: "persistent" });
-    const real = await insertSprint({ number: 1, goal: "Original" });
-    asRole("web_dev", "webdev1");
-
-    const delRes = await DELETE(makeRequest(`http://localhost/api/sprints/${real.id}`, { method: "DELETE" }), { params: { id: real.id } });
-    expect(delRes.status).toBe(204);
-
-    const list = await (await GET(makeRequest("http://localhost/api/sprints"))).json();
-    expect(list).toHaveLength(0);
-
-    const { data: stillReal } = await testClient().from(table("sprints")).select("id").eq("id", real.id).maybeSingle();
-    expect(stillReal).not.toBeNull();
   });
 });
 
@@ -282,80 +213,3 @@ describe("sprint completions", () => {
   });
 });
 
-describe("sprint completions - sandbox mode", () => {
-  beforeEach(clearAllTestTables);
-
-  it.each([["pm", "PM"], ["web_dev", "WEB"]])("limits %s completion reads and writes to their group", async (role, dbRole) => {
-    await insertUser({ net_id: "manager", role: dbRole, group_number: 1 });
-    await insertUser({ net_id: "mine", role: "STUDENT", group_number: 1 });
-    await insertUser({ net_id: "other", role: "STUDENT", group_number: 2 });
-    const sprint = await insertSprint({ number: 1, goal: "Sprint" });
-    await testClient().from(table("sprintCompletions")).insert(["mine", "other"].map((student_net_id) => ({ sprint_id: sprint.id, student_net_id, marked_by: "lead" })));
-    asRole(role, "manager");
-    const url = `http://localhost/api/sprints/${sprint.id}/completions`;
-    const params = { params: { id: sprint.id } };
-    expect((await (await GET_COMPLETIONS(makeRequest(url), params)).json()).map((row) => row.student_net_id)).toEqual(["mine"]);
-    expect((await POST_COMPLETION(makeRequest(url, { method: "POST", body: { student_net_id: "other" } }), params)).status).toBe(403);
-    expect((await DELETE_COMPLETION(makeRequest(`${url}?student_net_id=other`, { method: "DELETE" }), params)).status).toBe(403);
-    await testClient().from(table("users")).update({ group_number: null }).eq("net_id", "manager");
-    expect(await (await GET_COMPLETIONS(makeRequest(url), params)).json()).toEqual([]);
-  });
-
-  it("a sandboxed mark writes to the overlay, not the real table", async () => {
-    await insertUser({ net_id: "webdev1", role: "WEB", group_number: 1, sandbox_mode: "persistent" });
-    await insertUser({ net_id: "stu1", role: "STUDENT", group_number: 1 });
-    const sprint = await insertSprint({ number: 1, goal: "Sprint 1" });
-    asRole("web_dev", "webdev1");
-
-    const res = await POST_COMPLETION(
-      makeRequest(`http://localhost/api/sprints/${sprint.id}/completions`, { method: "POST", body: { student_net_id: "stu1" } }),
-      { params: { id: sprint.id } }
-    );
-    expect(res.status).toBe(201);
-
-    const { data: real } = await testClient().from(table("sprintCompletions")).select("*").eq("sprint_id", sprint.id);
-    expect(real).toHaveLength(0);
-
-    const list = await (await GET_COMPLETIONS(makeRequest(`http://localhost/api/sprints/${sprint.id}/completions`), { params: { id: sprint.id } })).json();
-    expect(list.map((c) => c.student_net_id)).toEqual(["stu1"]);
-  });
-
-  it("re-marking the same student in sandbox mode updates in place, not a duplicate", async () => {
-    await insertUser({ net_id: "webdev1", role: "WEB", group_number: 1, sandbox_mode: "persistent" });
-    await insertUser({ net_id: "stu1", role: "STUDENT", group_number: 1 });
-    const sprint = await insertSprint({ number: 1, goal: "Sprint 1" });
-    asRole("web_dev", "webdev1");
-
-    await POST_COMPLETION(
-      makeRequest(`http://localhost/api/sprints/${sprint.id}/completions`, { method: "POST", body: { student_net_id: "stu1" } }),
-      { params: { id: sprint.id } }
-    );
-    await POST_COMPLETION(
-      makeRequest(`http://localhost/api/sprints/${sprint.id}/completions`, { method: "POST", body: { student_net_id: "stu1" } }),
-      { params: { id: sprint.id } }
-    );
-
-    const list = await (await GET_COMPLETIONS(makeRequest(`http://localhost/api/sprints/${sprint.id}/completions`), { params: { id: sprint.id } })).json();
-    expect(list).toHaveLength(1);
-  });
-
-  it("sandboxing a real completion's removal doesn't touch the real row", async () => {
-    await insertUser({ net_id: "webdev1", role: "WEB", group_number: 1, sandbox_mode: "persistent" });
-    await insertUser({ net_id: "stu1", role: "STUDENT", group_number: 1 });
-    const sprint = await insertSprint({ number: 1, goal: "Sprint 1" });
-    await testClient().from(table("sprintCompletions")).insert({ sprint_id: sprint.id, student_net_id: "stu1", marked_by: "lead1" });
-    asRole("web_dev", "webdev1");
-
-    const del = await DELETE_COMPLETION(
-      makeRequest(`http://localhost/api/sprints/${sprint.id}/completions?student_net_id=stu1`, { method: "DELETE" }),
-      { params: { id: sprint.id } }
-    );
-    expect(del.status).toBe(204);
-
-    const list = await (await GET_COMPLETIONS(makeRequest(`http://localhost/api/sprints/${sprint.id}/completions`), { params: { id: sprint.id } })).json();
-    expect(list).toHaveLength(0);
-
-    const { data: stillReal } = await testClient().from(table("sprintCompletions")).select("*").eq("sprint_id", sprint.id).eq("student_net_id", "stu1");
-    expect(stillReal).toHaveLength(1);
-  });
-});

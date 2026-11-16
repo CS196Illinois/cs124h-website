@@ -79,21 +79,6 @@ test.describe("sprint understanding checks", () => {
     await expect(page.getByText("We used a JWT session")).toBeVisible(SLOW);
   });
 
-  test("a web dev assigned to a group runs the check like a pm", async ({ page, loginAs }) => {
-    test.setTimeout(60_000);
-    await insertUser({ net_id: "e2e-web", role: "WEB", group_number: 3 });
-    await insertUser({ net_id: "e2e-stu3", role: "STUDENT", name: "Student Three", group_number: 3 });
-    await insertSprint({ number: 5, goal: "Web dev sprint", check_questions: ["What did you decide?"], check_max_score: 20 });
-
-    await loginAs({ netID: "e2e-web", role: "web_dev" });
-    await page.goto("/user/web_dev/sprints");
-    await expect(page.getByText("Web dev sprint")).toBeVisible(SLOW);
-    await expect(page.getByText("● Closed")).toBeVisible(SLOW);
-    await page.getByRole("button", { name: "Open Understanding Check" }).click();
-    await expect(page.getByText("● Open")).toBeVisible(SLOW);
-    await expect(page.getByText("Not submitted")).toBeVisible(SLOW);
-  });
-
   test("a second student in the group still shows locked until the pm opens it", async ({ page, loginAs }) => {
     test.setTimeout(60_000);
     await insertUser({ net_id: "e2e-pm2", role: "PM", group_number: 2 });
@@ -105,6 +90,8 @@ test.describe("sprint understanding checks", () => {
     await page.locator("textarea").nth(0).fill("Sprint with a check");
     await page.getByRole("checkbox").first().check();
     await page.getByRole("button", { name: "Create Sprint" }).click();
+    // Wait for the save before switching users, or the student can load first.
+    await expect(page.getByText("Sprint with a check")).toBeVisible(SLOW);
 
     await loginAs({ netID: "e2e-stu2", role: "student" });
     await page.goto("/user/student/sprints");

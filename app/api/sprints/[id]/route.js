@@ -11,7 +11,7 @@ import { forbidden, invalidInput, serverError } from "../../../../lib/apiRespons
 import { getSessionUser } from "../../../../lib/session";
 import { sprintNumberTaken, sprintNumberTakenMessage } from "../../../../lib/sprintNumbers";
 
-const MANAGE_ROLES = ["course_lead", "head_pm", "lead_web_dev", "web_dev", "pm"];
+const MANAGE_ROLES = ["course_lead", "head_pm", "lead_web_dev", "pm"];
 
 export async function PATCH(request, { params }) {
   const { role: userRole, netID } = await getSessionUser();
@@ -48,9 +48,13 @@ export async function PATCH(request, { params }) {
     const sprintNumber = parseSprintNumber(updates.number);
     if (sprintNumber.error) return NextResponse.json({ error: sprintNumber.error }, { status: 400 });
     updates.number = sprintNumber.value;
+  }
+  // Numbers are unique within a semester, so moving a sprint's dates can clash too.
+  if ("number" in updates || "start_date" in updates) {
+    const number = updates.number ?? Number(existingSprint.number);
     try {
-      if (await sprintNumberTaken(updates.number, { netID, role: userRole, exceptId: id })) {
-        return NextResponse.json({ error: sprintNumberTakenMessage(updates.number) }, { status: 409 });
+      if (await sprintNumberTaken(number, { exceptId: id, startDate: updates.start_date ?? existingSprint.start_date })) {
+        return NextResponse.json({ error: sprintNumberTakenMessage(number) }, { status: 409 });
       }
     } catch { return serverError(); }
   }

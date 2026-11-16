@@ -169,39 +169,22 @@ describe("understanding check: submission", () => {
   });
 });
 
-describe("understanding check: web dev doubling as a PM", () => {
+describe("understanding check: forgotten windows", () => {
   beforeEach(clearAllTestTables);
 
-  it("a web dev with a group gets their own group's roster and opens only that group", async () => {
+  it("closes on its own 3 hours after it was opened", async () => {
     const sprint = await seed();
     await withQuestions(sprint);
-    await insertUser({ net_id: "web1", role: "WEB", group_number: 1 });
-
-    asRole("web_dev", "web1");
+    const fourHoursAgo = new Date(Date.now() - 4 * 3_600_000).toISOString();
+    await insertSprintCheckWindow({ sprint_id: sprint.id, group_number: 1, is_open: true, opened_at: fourHoursAgo, opened_by: "pm1" });
+    asRole("student", "stu1");
     const view = await (await GET(makeRequest(`http://localhost/api/sprints/${sprint.id}/check`), { params: { id: sprint.id } })).json();
-    expect(view.groupNumber).toBe(1);
-    expect(view.roster.map((r) => r.net_id)).toContain("stu1");
-    expect(view.groups).toBeUndefined();
-
-    const opened = await OPEN(
-      makeRequest(`http://localhost/api/sprints/${sprint.id}/check/open`, { method: "POST", body: { group_number: 2 } }),
+    expect(view.isOpen).toBe(false);
+    const res = await SUBMIT(
+      makeRequest(`http://localhost/api/sprints/${sprint.id}/check/submit`, { method: "POST", body: { answers: ["a", "b"] } }),
       { params: { id: sprint.id } },
     );
-    expect(opened.status).toBe(200);
-    const { data: windows } = await testClient().from(table("sprintCheckWindows")).select("*");
-    expect(windows).toHaveLength(1);
-    expect(windows[0].group_number).toBe(1);
-  });
-
-  it("a web dev with no group gets an empty PM roster", async () => {
-    const sprint = await seed();
-    await withQuestions(sprint);
-    await insertUser({ net_id: "web2", role: "WEB" });
-
-    asRole("web_dev", "web2");
-    const view = await (await GET(makeRequest(`http://localhost/api/sprints/${sprint.id}/check`), { params: { id: sprint.id } })).json();
-    expect(view.groups).toBeUndefined();
-    expect(view.roster).toEqual([]);
+    expect(res.status).toBe(403);
   });
 });
 

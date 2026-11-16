@@ -7,7 +7,7 @@ import styles from "./OnboardingTour.module.css";
 
 const ROLE_LABELS = {
   course_lead: "Course Lead", head_pm: "Head PM", lead_web_dev: "Lead Web Dev",
-  pm: "Project Manager", web_dev: "Web Developer", student: "Student",
+  pm: "Project Manager", student: "Student",
 };
 
 const TOUR_STEPS = {
@@ -26,11 +26,8 @@ const TOUR_STEPS = {
     { title: "Gradebook", copy: "Compare groups and open any student’s grade history.", href: "/user/head_pm/gradebook", target: "nav-gradebook" },
   ],
   lead_web_dev: [
-    { title: "Your web team workspace", copy: "This tour shows the pages you use to manage the web team and support the site.", href: "/user/lead_web_dev", target: "nav-dashboard" },
-    { title: "Web devs", copy: "Add web developers and set their roles and groups.", href: "/user/lead_web_dev/people", target: "nav-web-devs" },
-    { title: "Role requests", copy: "Approve or deny web developers’ requests to preview other roles’ dashboards.", href: "/user/lead_web_dev/role_requests", target: "nav-role-requests" },
+    { title: "Your workspace", copy: "This tour shows the pages you use to support the site.", href: "/user/lead_web_dev", target: "nav-dashboard" },
     { title: "Support tickets", copy: "Read and resolve problems people report from the Support page.", href: "/user/lead_web_dev/support", target: "nav-support-tickets" },
-    { title: "Sandbox mode", copy: "Sandbox keeps your changes private to you, so you can test without touching real data.", href: "/user/lead_web_dev", target: "nav-dashboard" },
   ],
   pm: [
     { title: "Your PM workspace", copy: "This tour shows the pages you use each week. You don’t need to change anything as you go.", href: "/user/pm", target: "nav-dashboard" },
@@ -41,12 +38,6 @@ const TOUR_STEPS = {
     { title: "Take attendance", copy: "Use + New Event to set the time and audience, then open check-in and show the code.", href: "/user/pm/events", target: "event-new" },
     { title: "Gradebook", copy: "See your group’s check scores and feedback over time.", href: "/user/pm/gradebook", target: "gradebook-view" },
     { title: "PM Guide", copy: "The PM Guide walks through each week step by step. Come back to it anytime.", href: "/user/pm/guide", target: "nav-pm-guide" },
-  ],
-  web_dev: [
-    { title: "Your web developer workspace", copy: "You work with a group like a PM, and help build the site.", href: "/user/web_dev", target: "nav-dashboard" },
-    { title: "Sandbox mode", copy: "Sandbox keeps your changes private to you, so you can try things without touching real data.", href: "/user/web_dev", target: "nav-dashboard" },
-    { title: "Your group", copy: "My Students, Sprints, Events, and Gradebook work the same way they do for PMs.", href: "/user/web_dev/students", target: "nav-my-students" },
-    { title: "PM Guide", copy: "The PM Guide walks through each week step by step.", href: "/user/web_dev/guide", target: "nav-pm-guide" },
   ],
   student: [
     { title: "Welcome to CS 124H", copy: "This tour shows where to find your sprint checks and attendance.", href: "/user/student", target: "nav-dashboard" },

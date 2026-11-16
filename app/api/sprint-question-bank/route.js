@@ -5,7 +5,7 @@ import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { getSessionUser } from "../../../lib/session";
 
-const EDIT_ROLES = ["course_lead", "head_pm", "pm", "web_dev", "lead_web_dev"];
+const EDIT_ROLES = ["course_lead", "head_pm", "pm", "lead_web_dev"];
 
 export async function GET(request) {
   const caller = await getSessionUser();

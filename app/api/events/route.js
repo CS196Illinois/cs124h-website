@@ -8,7 +8,7 @@ import { EVENT_TEXT_MAX } from "../../../lib/fieldRules";
 import { invalidInput, serverError, signInRequired } from "../../../lib/apiResponses";
 import { getSessionUser } from "../../../lib/session";
 
-const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
+const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 
 export async function GET(request) {
   const { role: userRole, netID } = await getSessionUser();
@@ -21,7 +21,7 @@ export async function GET(request) {
   // Events: created, hosted, or joined events. Lead web devs and course leads see all.
   const scope = new URL(request.url).searchParams.get("scope") || "mine";
 
-  const columns = "id, title, description, location, presenter, start_time, end_time, check_in_open, check_in_opened_at, created_by, created_at, point_value, sheet_synced_at, sheet_sync_error, audience_type, audience_values";
+  const columns = "id, title, description, location, presenter, start_time, end_time, check_in_open, check_in_opened_at, created_by, created_at, sheet_synced_at, sheet_sync_error, audience_type, audience_values";
   let { data, error } = await supabaseServer
     .from(table("events"))
     .select(`${columns}, hosts`)
@@ -73,7 +73,7 @@ export async function POST(request) {
   if (!body || typeof body !== "object" || Array.isArray(body)) return invalidInput();
   const { title, description, location, presenter, start_time, end_time } = body;
   let { audience_type, audience_values = [] } = body;
-  if (audience_type === undefined && ["pm", "web_dev"].includes(userRole)) {
+  if (audience_type === undefined && ["pm"].includes(userRole)) {
     const { data: me, error } = await supabaseServer.from(table("users")).select("group_number").eq("net_id", netID).maybeSingle();
     if (error) return NextResponse.json({ error: "Your group could not be loaded. Please try again." }, { status: 503 });
     const effectiveMe = isSandboxRole(userRole) && (await getSandboxMode(netID)) !== "off" ? await getEffectiveRow(netID, "users", netID, me) : me;

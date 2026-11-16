@@ -5,7 +5,7 @@ import { syncEventAttendance } from "../../../../../lib/eventAttendanceSync";
 import { serverError, signInRequired } from "../../../../../lib/apiResponses";
 import { getSessionUser } from "../../../../../lib/session";
 
-const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm", "web_dev"];
+const STAFF_ROLES = ["course_lead", "lead_web_dev", "head_pm", "pm"];
 
 // Manual fallback for the automatic post-check-in sync - lets staff force a
 // fresh write to the sheet (e.g. after the automatic sync failed, or right

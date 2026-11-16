@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures";
-import { insertRoleViewRequest, testClient, clearAllTestTables } from "../helpers/db";
+import { testClient, clearAllTestTables } from "../helpers/db";
 import { table } from "../../lib/tables";
 
 const ROLE_HOME = {
@@ -7,7 +7,6 @@ const ROLE_HOME = {
   head_pm: { path: "/user/head_pm", heading: /head pm/i },
   pm: { path: "/user/pm", heading: /pm/i },
   lead_web_dev: { path: "/user/lead_web_dev", heading: /lead web dev/i },
-  web_dev: { path: "/user/web_dev", heading: /web dev/i },
   student: { path: "/user/student", heading: /student/i },
 };
 
@@ -32,7 +31,7 @@ test.describe("auth + role-gated dashboards", () => {
 
     // Covers the post-sign-in flow: /signin defaults callbackUrl to the bare
     // /user root, which app/user/page.js redirects onward from. Regression
-    // test for a bug where middleware blocked web_dev at /user itself before
+    // test for a bug where middleware blocked a role at /user itself before
     // that redirect could run, sending them to /unauthorized instead.
     test(`${role} lands on their own dashboard via the bare /user redirect`, async ({ page, loginAs }) => {
       await loginAs({ netID: `e2e-${role}-root`, role });
@@ -57,44 +56,6 @@ test.describe("auth + role-gated dashboards", () => {
     await loginAs({ netID: "e2e-leadweb", role: "lead_web_dev" });
     await page.goto("/user/course_lead");
     await expect(page).not.toHaveURL(/\/unauthorized/);
-  });
-
-  test("web_dev without an approved view is blocked from other dashboards, but not with one", async ({ page, loginAs }) => {
-    await loginAs({ netID: "e2e-webdev", role: "web_dev" });
-    await page.goto("/user/pm");
-    await expect(page).toHaveURL(/\/unauthorized/);
-
-    await insertRoleViewRequest({ requester_net_id: "e2e-webdev", requested_role: "pm", status: "approved" });
-    await page.goto("/user/pm");
-    await expect(page).not.toHaveURL(/\/unauthorized/);
-  });
-
-  // Regression test: role-view access is checked live against the DB, not
-  // cached on the JWT. It used to be JWT-cached, which meant an approval
-  // granted after the requester's session was already minted stayed
-  // invisible (and thus blocked) until the JWT happened to refresh.
-  test("a role approved after the web_dev's session was already minted works immediately", async ({ page, loginAs }) => {
-    await loginAs({ netID: "e2e-webdev-late-approve", role: "web_dev" });
-    await insertRoleViewRequest({ requester_net_id: "e2e-webdev-late-approve", requested_role: "course_lead", status: "approved" });
-
-    await page.goto("/user/course_lead");
-    await expect(page).not.toHaveURL(/\/unauthorized/);
-  });
-
-  // Mirror-image regression test: revoking access must take effect
-  // immediately too, not just granting it - a JWT-cached "yes" is just as
-  // wrong as a JWT-cached "no" once the DB has moved on.
-  test("revoking an approved view blocks access immediately, without needing a new session", async ({ page, loginAs }) => {
-    const req = await insertRoleViewRequest({ requester_net_id: "e2e-webdev-revoke", requested_role: "pm", status: "approved" });
-    await loginAs({ netID: "e2e-webdev-revoke", role: "web_dev" });
-
-    await page.goto("/user/pm");
-    await expect(page).not.toHaveURL(/\/unauthorized/);
-
-    await testClient().from(table("roleViewRequests")).delete().eq("id", req.id);
-
-    await page.goto("/user/pm");
-    await expect(page).toHaveURL(/\/unauthorized/);
   });
 
   // Regression test: a student who has enrolled but hasn't been added to the

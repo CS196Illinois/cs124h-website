@@ -6,7 +6,6 @@ import PMSidebar from "../pm/components/PMSidebar";
 import HeadSidebar from "../head_pm/components/HeadSidebar";
 import LeadSidebar from "../course_lead/components/LeadSidebar";
 import LeadWebSidebar from "../lead_web_dev/components/LeadWebSidebar";
-import WebSidebar from "../web_dev/components/WebSidebar";
 
 const SIDEBAR_BY_ROLE = {
   student: StudentSidebar,
@@ -14,7 +13,6 @@ const SIDEBAR_BY_ROLE = {
   head_pm: HeadSidebar,
   course_lead: LeadSidebar,
   lead_web_dev: LeadWebSidebar,
-  web_dev: WebSidebar,
 };
 
 // /user/checkin is role-agnostic (any signed-in role can check in, see

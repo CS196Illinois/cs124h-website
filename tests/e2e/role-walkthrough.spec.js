@@ -127,24 +127,6 @@ test("head PM: can only add PMs/students, edits name and group, removes with und
   expect.soft(errors).toEqual([]);
 });
 
-test("lead web dev: adds a web dev and promotes them", async ({ page, loginAs }) => {
-  const errors = watchErrors(page);
-  await insertUser({ net_id: "f-lw", role: "LEAD_WEB" });
-  await loginAs({ netID: "f-lw", role: "lead_web_dev" });
-  await page.goto("/user/lead_web_dev/people");
-  await expect(page.getByText("f-lw", { exact: true })).toBeVisible(SLOW);
-  await page.getByRole("button", { name: "+ Add Member" }).click();
-  await page.getByPlaceholder("Jane Doe").fill("New Web");
-  await page.getByPlaceholder("jdoe2").fill("f-web");
-  await page.getByRole("button", { name: /^Add/ }).last().click();
-  await expect.soft(page.getByText("New Web")).toBeVisible(SLOW);
-  await page.getByRole("row").filter({ hasText: "f-web" }).getByRole("button", { name: "Edit" }).click();
-  await page.locator("select").last().selectOption("LEAD_WEB");
-  await page.getByRole("button", { name: /^Save/ }).click();
-  await expect.poll(async () => (await userRow("f-web"))?.role, SLOW).toBe("LEAD_WEB");
-  expect.soft(errors).toEqual([]);
-});
-
 test("course lead: sprint form validation and editing", async ({ page, loginAs }) => {
   const errors = watchErrors(page);
   await insertSprint({ number: 1, goal: "Existing", start_date: "2026-10-05", end_date: "2026-10-11" });
@@ -157,7 +139,7 @@ test("course lead: sprint form validation and editing", async ({ page, loginAs }
   await page.locator('input[type="number"]').first().fill("1");
   await page.getByPlaceholder("What should students accomplish this sprint?").fill("Dup");
   await page.getByRole("button", { name: "Create Sprint" }).click();
-  await expect.soft(page.getByText("Sprint 1 already exists. Choose a different number.")).toBeVisible(SLOW);
+  await expect.soft(page.getByText("Sprint 1 already exists this semester. Choose a different number.")).toBeVisible(SLOW);
   await page.getByRole("button", { name: "Cancel" }).click();
 
   // End before start.

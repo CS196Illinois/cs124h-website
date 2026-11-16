@@ -19,7 +19,6 @@ async function seed() {
   await insertUser({ net_id: "lead1", role: "LEAD" });
   await insertUser({ net_id: "pm1", role: "PM", group_number: 1 });
   await insertUser({ net_id: "pm2", role: "PM", group_number: 2 });
-  await insertUser({ net_id: "web1", role: "WEB", group_number: 1, sandbox_mode: "off" });
   await insertUser({ net_id: "stu1", role: "STUDENT", group_number: 1 });
   await insertUser({ net_id: "stu2", role: "STUDENT", group_number: 2 });
   const sprint = await insertSprint({ number: 1, goal: "Scope", start_date: "2000-01-01", end_date: "2999-01-01", check_questions: ["Q"] });
@@ -47,14 +46,6 @@ describe("PMs only view and manage their own group's understanding checks", () =
     expect((await grade(data.other.id, 8)).status).toBe(403);
   });
 
-  it("a web dev acting as a PM is held to the same group scope", async () => {
-    asRole("web_dev", "web1");
-    expect((await grade(data.own.id, 7)).status).toBe(200);
-    expect((await grade(data.other.id, 7)).status).toBe(403);
-    const listed = await (await GET(makeRequest("http://localhost/api/action_items?scope=all"))).json();
-    expect(listed.filter((item) => item.sprint_id).map((item) => item.net_id)).toEqual(["stu1"]);
-  });
-
   it("course managers can grade every group's submissions", async () => {
     asRole("head_pm", "head1");
     expect((await grade(data.other.id, 9)).status).toBe(200);
@@ -65,7 +56,7 @@ describe("a lead web dev previewing the PM page sees and edits it as a PM", () =
   let data;
   beforeEach(async () => {
     data = await seed();
-    await insertUser({ net_id: "leadweb", role: "LEAD_WEB", group_number: 1, sandbox_mode: "off" });
+    await insertUser({ net_id: "leadweb", role: "LEAD_WEB", group_number: 1 });
     asRole("lead_web_dev", "leadweb");
   });
 

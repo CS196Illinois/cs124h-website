@@ -1,7 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
-import { MANAGEABLE_BY as MANAGEABLE_ROLES, WEB_TEAM_ROLE_IDS, DEFAULT_WEB_SANDBOX_MODE } from "../../../lib/roles";
+import { MANAGEABLE_BY as MANAGEABLE_ROLES, WEB_TEAM_ROLE_IDS } from "../../../lib/roles";
 import { parseGroupNumber } from "../../../lib/fieldRules";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows, getEffectiveRow, sandboxWrite, resetSandbox } from "../../../lib/sandbox";
 import { syncSheetAccessForRole, SHEET_ACCESS_ROLES } from "../../../lib/sheetAccess";
@@ -78,7 +78,7 @@ export async function POST(request) {
     }
     const fullRow = {
       net_id: cleanNetId, role, name: name?.trim() || null, group_number: group.value,
-      sub: null, discord_user_id: null, sandbox_mode: "off",
+      sub: null, discord_user_id: null,
     };
     await sandboxWrite(netID, "users", "insert", cleanNetId, fullRow);
     return NextResponse.json(fullRow, { status: 201 });
@@ -88,7 +88,6 @@ export async function POST(request) {
     .from(table("users"))
     .insert({
       net_id: cleanNetId, role, name: name?.trim() || null, group_number: group.value,
-      ...(WEB_TEAM_ROLE_IDS.includes(role) && { sandbox_mode: DEFAULT_WEB_SANDBOX_MODE }),
     })
     .select()
     .single();
@@ -107,7 +106,7 @@ export async function POST(request) {
   return NextResponse.json(data, { status: 201 });
 }
 
-const BULK_DELETE_ROLES = ["course_lead", "lead_web_dev", "web_dev"];
+const BULK_DELETE_ROLES = ["course_lead", "lead_web_dev"];
 
 export async function DELETE(request) {
   const { role: userRole, netID } = await getSessionUser();
@@ -142,7 +141,6 @@ export async function DELETE(request) {
   // sandboxed route again either way) - avoid leaving orphaned overlay rows
   // behind for a whole bulk-deleted role.
   if (role === "WEB" || role === "LEAD_WEB") {
-    await Promise.all(data.map((u) => resetSandbox(u.net_id)));
   }
 
   if (SHEET_ACCESS_ROLES.has(role)) {

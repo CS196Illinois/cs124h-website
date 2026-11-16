@@ -255,7 +255,7 @@ function getNetIDFromIdentity(user) {
 }
 
 /**
- * Map the DB role string (LEAD, HEAD, PM, WEB, STUDENT) to the URL-path role
+ * Map the DB role string (LEAD, LEAD_WEB, HEAD, PM, STUDENT) to the URL-path role
  * used throughout the app.
  */
 function mapRole(dbRole) {
@@ -264,7 +264,6 @@ function mapRole(dbRole) {
     LEAD_WEB: "lead_web_dev",
     HEAD: "head_pm",
     PM: "pm",
-    WEB: "web_dev",
     STUDENT: "student",
   };
   return map[dbRole] ?? "error";

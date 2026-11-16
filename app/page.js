@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getSupabaseServer } from "../lib/supabaseServer";
 import { table } from "../lib/tables";
+import { currentTerm } from "../lib/term";
 
 // Server-rendered from Supabase at build time; without this, roster changes
 // (e.g. a new course lead) would need a full redeploy to ever show up here -
@@ -112,8 +113,12 @@ export default async function Home() {
           <h4>If You're Not a James Scholar:</h4>
           <p>
             If you are not a James Scholar or not taking the course for honors
-            credit, you should enroll in CS 199 124 (CRN: 67084) on
-            self-service. The course is zero credit hours and S (satisfactory) /
+            credit, you should enroll in CS 199 124 on self-service. Its CRN
+            is listed on{" "}
+            <a href={`https://courses.illinois.edu/schedule/${currentTerm().year}/${currentTerm().season}/CS/199`} target="_blank" rel="noopener noreferrer">
+              Course Explorer
+            </a>
+            . The course is zero credit hours and S (satisfactory) /
             U (unsatisfactory) graded, but you will need to participate to earn
             the S grade!
           </p>

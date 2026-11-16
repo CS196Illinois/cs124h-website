@@ -27,7 +27,7 @@ test("signed-out Dashboard starts no OAuth attempt until the user chooses sign-i
   await expect(page.getByRole("link", { name: /submit a support ticket/i })).toBeVisible();
 });
 
-for (const [role, dbRole] of [["pm", "PM"], ["web_dev", "WEB"]]) {
+for (const [role, dbRole] of [["pm", "PM"]]) {
   test(`${role} sprint totals include only their group`, async ({ page, loginAs }) => {
     await clearAllTestTables();
     await insertUser({ net_id: "group-manager", role: dbRole, group_number: 1 });
@@ -41,7 +41,6 @@ for (const [role, dbRole] of [["pm", "PM"], ["web_dev", "WEB"]]) {
     const count = page.getByText("/ 2 students in your group marked sprint complete", { exact: true }).locator("..");
     await expect(count).toHaveText(/1\s*\/ 2 students in your group marked sprint complete/);
     await expect(page.getByText("outside-student", { exact: true })).toHaveCount(0);
-    if (role === "web_dev") await expect(page.getByRole("link", { name: "PM Guide", exact: true })).toBeVisible();
   });
 }
 

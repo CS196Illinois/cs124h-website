@@ -1,6 +1,5 @@
 // middleware.js
 import { NextResponse } from "next/server";
-import { fetchApprovedViews } from "./lib/roleViews";
 import { readSession, expireCookies } from "./lib/sessionCookies";
 
 export default async function middleware(req) {
@@ -47,9 +46,7 @@ async function route(req, token, hadSessionCookie) {
   }
 
   // Role-agnostic shared routes - any enrolled role can reach these, checked
-  // before the role-specific gating below (web_dev's branch in particular is
-  // an allowlist of its own known paths, so without this a web_dev would be
-  // bounced from a page that isn't actually role-restricted at all).
+  // before the role-specific gating below.
   const SHARED_PATHS = ["/user/checkin"];
   if (SHARED_PATHS.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))) {
     return NextResponse.next();
@@ -57,41 +54,6 @@ async function route(req, token, hadSessionCookie) {
 
   // Lead web devs have full admin-level access and can navigate any dashboard
   if (role === "lead_web_dev") {
-    return NextResponse.next();
-  }
-
-  // Web devs can visit role dashboards they have an approved (non-expired) view request for.
-  if (role === "web_dev") {
-    const ROLE_PATH_MAP = {
-      "/user/course_lead": "course_lead",
-      "/user/head_pm":     "head_pm",
-      "/user/pm":          "pm",
-      "/user/student":     "student",
-    };
-    const matchedPrefix = Object.keys(ROLE_PATH_MAP).find((prefix) => path.startsWith(prefix));
-
-    if (matchedPrefix) {
-      const viewRole = ROLE_PATH_MAP[matchedPrefix];
-      // Checked live against the DB rather than cached on the JWT: a JWT
-      // snapshot only refreshes at sign-in or the periodic reverify window,
-      // which made both directions of this wrong - a freshly *approved* view
-      // stayed blocked, and a freshly *revoked* one stayed accessible. This
-      // path (a web_dev browsing another role's dashboard) is rare enough
-      // that a DB hit here is cheap insurance for an access-control decision.
-      const liveViews = await fetchApprovedViews(token.netID);
-      if (liveViews.includes(viewRole)) {
-        return NextResponse.next();
-      }
-      const url = new URL("/unauthorized", req.url);
-      url.searchParams.set("callbackUrl", path);
-      return NextResponse.redirect(url);
-    }
-
-    if (!path.startsWith("/user/web_dev")) {
-      const url = new URL("/unauthorized", req.url);
-      url.searchParams.set("callbackUrl", path);
-      return NextResponse.redirect(url);
-    }
     return NextResponse.next();
   }
 
@@ -117,11 +79,6 @@ async function route(req, token, hadSessionCookie) {
     return NextResponse.redirect(url);
   }
   if (path.startsWith("/user/course_lead") && role !== "course_lead") {
-    const url = new URL("/unauthorized", req.url);
-    url.searchParams.set("callbackUrl", path);
-    return NextResponse.redirect(url);
-  }
-  if (path.startsWith("/user/web_dev") && role !== "web_dev") {
     const url = new URL("/unauthorized", req.url);
     url.searchParams.set("callbackUrl", path);
     return NextResponse.redirect(url);

@@ -5,7 +5,7 @@ import { insertUser, insertSprint, clearAllTestTables } from "../helpers/db";
 // group, not the course-wide list of every group.
 test("a lead web dev previewing PM sprints sees only their own group, as a PM does", async ({ page, loginAs }) => {
   await clearAllTestTables();
-  await insertUser({ net_id: "e2e-leadweb", role: "LEAD_WEB", group_number: 1, sandbox_mode: "off" });
+  await insertUser({ net_id: "e2e-leadweb", role: "LEAD_WEB", group_number: 1 });
   await insertUser({ net_id: "e2e-own", role: "STUDENT", name: "Own Group Student", group_number: 1 });
   await insertUser({ net_id: "e2e-other", role: "STUDENT", name: "Other Group Student", group_number: 2 });
   await insertSprint({ number: 1, goal: "Preview sprint", start_date: "2000-01-01", end_date: "2999-01-01", check_questions: ["Required question"] });

@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../lib/supabaseServer";
 import { table } from "../../../lib/tables";
 import { isPmViewRole } from "../../../lib/roles";
-import { groupStudentIds } from "../../../lib/groupScope";
 import { manageableCheckStudents } from "../../../lib/sprintCheckAccess";
 import { isSandboxRole, getSandboxMode, mergeSandboxRows } from "../../../lib/sandbox";
 import { serverError, signInRequired } from "../../../lib/apiResponses";
 import { getSessionUser } from "../../../lib/session";
+import { currentTerm } from "../../../lib/term";
 
 export async function GET(request) {
   const { role: userRole, netID } = await getSessionUser();
@@ -20,11 +20,6 @@ export async function GET(request) {
   const scope = searchParams.get("scope") || "mine";
 
   let visibleRecipients = null;
-  // The developer's PM screens use the same group scope as PMs; explicit
-  // developer previews retain their existing access and sandbox tools.
-  if (userRole === "web_dev" && searchParams.get("group_scope") === "true") {
-    visibleRecipients = [netID, ...await groupStudentIds(netID, userRole)];
-  }
   if (userRole === "pm" || userRole === "head_pm") {
     let roster = supabaseServer.from(table("users")).select("net_id");
     if (userRole === "pm") {
@@ -42,9 +37,11 @@ export async function GET(request) {
     }
   }
 
+  // This semester's items only, so gradebooks start fresh each term.
   let query = supabaseServer
     .from(table("actionItems"))
     .select("*")
+    .gte("created_at", `${currentTerm().from}T00:00:00Z`)
     .order("created_at", { ascending: false });
 
   if (visibleRecipients) query = query.in("net_id", visibleRecipients);

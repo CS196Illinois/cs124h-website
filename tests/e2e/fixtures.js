@@ -18,7 +18,7 @@ const MAX_AGE = 30 * 24 * 60 * 60; // 30 days
  * real CILogon OAuth handshake entirely while still exercising the app's
  * actual session/middleware code, unlike the Vitest mock-based approach.
  *
- * `role` is the URL-path role string (course_lead / head_pm / pm / web_dev /
+ * `role` is the URL-path role string (course_lead / head_pm / pm /
  * lead_web_dev / student). Pair with a seeded roster row for that netID so
  * pages that fetch /api/users/me etc. have something to find.
  */
